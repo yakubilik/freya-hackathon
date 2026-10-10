@@ -1,0 +1,803 @@
+"""The builder: one brief and its tool API file in, one phone agent on Freya out.
+
+    python3 builder/build.py <brief.md> <tools.json> [--out-dir runs/<run_id>] [--slot NAME] [--skip-tests]
+                             [--reuse-table PATH] [--base BRIEF.md] [--no-deploy] [--no-platform-test]
+
+Stages, under one 30-minute budget with reservations (Schedule below):
+  1. read     builder.readers.read_brief -> frozen rule table (or --reuse-table). Failure -> T1 floor.
+  2. emit     both variants (final on the tool API's server, test on OWN_BANK_URL or a placeholder for the diff
+              check), static walk, variant diff limited to endpoint strings. Emitter failure twice -> T2 floor.
+              An unsupported obligation on every customer's path -> T4 floor.
+  3. selftest exec the engine snippet incl. the error path; the public cases through the local simulator and an
+              in-process mock bank when the brief is a public one (by hash), else the table's own examples.
+  4. deploy   dry run, save into the slot (state file builder/.freya-agents.json, updated in place on reruns of
+              the same slot), read back and compare, export to submission/<brief_slug>.workflow.json.
+  5. platform one public case on the official scorer when time remains and the brief is public.
+  6. manifest runs/<run_id>/manifest.json, written even on failure.
+
+The floor is the kit's example builder (kit/build-the-builder/examples/agent_builder.py), run as a subprocess.
+Trace: runs/<run_id>/trace.log (plain text) and trace.jsonl. Keys come from the environment or from .env in the
+repository root (KEY=VALUE lines); they are never written to the trace.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as _dt
+import hashlib
+import json
+import os
+import pathlib
+import re
+import subprocess
+import sys
+import time
+import traceback
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+KIT = ROOT / "kit" / "build-the-builder"
+STATE_FILE = ROOT / "builder" / ".freya-agents.json"
+SUBMISSION = ROOT / "submission"
+PUBLIC_BRIEFS = {"A": KIT / "briefs" / "brief-a.md", "B": KIT / "briefs" / "brief-b.md"}
+# a public brief that builds on another one; the reader gets the base as an earlier document of the same source
+PUBLIC_BASES = {"B": ["A"]}
+TEST_PLACEHOLDER_BANK = "http://127.0.0.1:9"
+# T4: obligation states every customer passes through on a normal call
+EVERY_PATH_STATES = {"any", "pre_verification", "closing"}
+EVERY_PATH_STAGES = {"party", "close"}
+
+TOTAL_S = 1800
+READ_MAX_S = 780
+EMIT_DEPLOY_S = 180
+EXPORT_RESERVE_S = 180
+# measured 2026-10-10: "Code and data for code_exec total N bytes, over the 131072-byte limit a sandboxed process
+# can receive"; N is the JSON-encoded code plus the variables. Keep room for a growing engine_state.
+CODE_EXEC_LIMIT = 131072
+CODE_EXEC_MAX = 122000
+FLOOR_MIN_S = 600          # the kit floor is not started with less than this left
+PLATFORM_TEST_MIN_S = 360  # one public case on the official scorer takes about 3 to 5 minutes
+
+
+# --------------------------------------------------------------------------------------------------------------
+# environment
+
+
+def read_dotenv(path) -> dict:
+    """KEY=VALUE lines; blank lines and # comments skipped; optional `export ` and matching quotes stripped."""
+    out = {}
+    p = pathlib.Path(path)
+    if not p.exists():
+        return out
+    for raw in p.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):].strip()
+        key, _, val = line.partition("=")
+        key, val = key.strip(), val.strip()
+        if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", key):
+            continue
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in "'\"":
+            val = val[1:-1]
+        elif " #" in val:
+            val = val.split(" #", 1)[0].rstrip()
+        out[key] = val
+    return out
+
+
+def load_env(path=ROOT / ".env"):
+    """Set the variables of `path` that the environment does not already have. Returns the key names set."""
+    vals = read_dotenv(path)
+    set_ = [k for k in vals if k not in os.environ]
+    for k in set_:
+        os.environ[k] = vals[k]
+    return set_
+
+
+# --------------------------------------------------------------------------------------------------------------
+# deadline scheduler
+
+
+class Deadline:
+    """Same interface as builder.readers.models.Deadline: remaining(), expired(), elapsed()."""
+
+    def __init__(self, seconds, clock=time.monotonic):
+        self.seconds = max(0.0, float(seconds))
+        self.clock = clock
+        self.t0 = clock()
+
+    def remaining(self):
+        return max(0.0, self.seconds - (self.clock() - self.t0))
+
+    def expired(self):
+        return self.remaining() <= 0
+
+    def elapsed(self):
+        return self.clock() - self.t0
+
+
+class Schedule:
+    """One hard budget from the start of the run. Each stage gets min(its cap, what is left after the
+    reservations of the stages that must still run)."""
+
+    RESERVE_AFTER = {"read": EMIT_DEPLOY_S + EXPORT_RESERVE_S, "emit": EMIT_DEPLOY_S, "selftest": EMIT_DEPLOY_S,
+                     "deploy": EXPORT_RESERVE_S // 2, "floor": EXPORT_RESERVE_S, "platform": EXPORT_RESERVE_S}
+    CAPS = {"read": READ_MAX_S, "emit": 60, "selftest": 300, "deploy": EMIT_DEPLOY_S}
+
+    def __init__(self, total=TOTAL_S, clock=time.monotonic):
+        self.total = float(total)
+        self.clock = clock
+        self.t0 = clock()
+
+    def elapsed(self):
+        return self.clock() - self.t0
+
+    def remaining(self):
+        return max(0.0, self.total - self.elapsed())
+
+    def budget(self, stage):
+        left = self.remaining() - self.RESERVE_AFTER.get(stage, 0)
+        cap = self.CAPS.get(stage)
+        return max(0.0, min(cap, left) if cap is not None else left)
+
+    def deadline(self, stage):
+        return Deadline(self.budget(stage), clock=self.clock)
+
+
+# --------------------------------------------------------------------------------------------------------------
+# trace
+
+
+def _now_iso():
+    return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+class Trace:
+    """trace.log (one human-readable line per event) and trace.jsonl (the same events as JSON)."""
+
+    def __init__(self, out_dir, schedule=None, echo=True):
+        self.dir = pathlib.Path(out_dir)
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self.log = self.dir / "trace.log"
+        self.jsonl = self.dir / "trace.jsonl"
+        self.schedule = schedule
+        self.echo = echo
+        self.log.write_text("")
+        self.jsonl.write_text("")
+        self.model_calls = []
+        self.tests = []
+        self.stages = {}
+
+    def _t(self):
+        return round(self.schedule.elapsed(), 1) if self.schedule else None
+
+    def write(self, kind, text, **data):
+        rec = {"at": _now_iso(), "t": self._t(), "kind": kind, **data}
+        line = "%s [%7s s] %-8s %s" % (rec["at"], rec["t"], kind, text)
+        with self.log.open("a") as fh:
+            fh.write(line + "\n")
+        with self.jsonl.open("a") as fh:
+            fh.write(json.dumps(rec, default=str, ensure_ascii=False) + "\n")
+        if self.echo:
+            print(line, flush=True)
+
+    def info(self, text, **data):
+        self.write("info", text, **data)
+
+    def error(self, text, **data):
+        self.write("error", text, **data)
+
+    def model_call(self, model, purpose, tokens, seconds, **extra):
+        self.model_calls.append({"model": model, "purpose": purpose, "tokens": tokens, "seconds": seconds})
+        self.write("model", "model=%s purpose=%s tokens=%s seconds=%s" % (model, purpose, tokens, seconds),
+                   model=model, purpose=purpose, tokens=tokens, seconds=seconds, **extra)
+
+    def test(self, tier, name, result, detail=""):
+        self.tests.append({"tier": tier, "name": name, "result": result, "detail": detail})
+        self.write("test", "[tier %s] %-4s %s | %s" % (tier, result, name, str(detail)[:300]),
+                   tier=tier, name=name, result=result, detail=detail)
+
+    def stage_start(self, name, budget):
+        self.stages[name] = {"start": self._t(), "budget_s": round(budget, 1)}
+        self.write("stage", "start %s (budget %.0f s)" % (name, budget), stage=name, budget_s=round(budget, 1))
+
+    def stage_end(self, name, status="ok"):
+        st = self.stages.setdefault(name, {"start": self._t()})
+        st["end"] = self._t()
+        st["seconds"] = round((st["end"] or 0) - (st["start"] or 0), 1)
+        st["status"] = status
+        self.write("stage", "end %s: %s in %.1f s" % (name, status, st["seconds"]), stage=name, status=status,
+                   seconds=st["seconds"])
+
+
+# --------------------------------------------------------------------------------------------------------------
+# helpers
+
+
+def sha256_text(s):
+    return hashlib.sha256(s.encode() if isinstance(s, str) else s).hexdigest()
+
+
+def sha256_file(p):
+    return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+
+
+def canonical_hash(obj):
+    return sha256_text(json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+
+
+def slug(path):
+    s = re.sub(r"[^a-z0-9]+", "-", pathlib.Path(path).stem.lower()).strip("-")
+    return s or "brief"
+
+
+def public_brief(brief_text):
+    """'A' or 'B' when the brief is byte-identical to a public brief of the kit, else None."""
+    h = sha256_text(brief_text)
+    for letter, p in PUBLIC_BRIEFS.items():
+        if p.exists() and sha256_file(p) == h:
+            return letter
+    return None
+
+
+def source_commit():
+    try:
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, timeout=10).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, capture_output=True,
+                               text=True, timeout=10).stdout.strip()
+        return head + ("+dirty" if dirty else "")
+    except Exception:  # noqa: BLE001
+        return "unknown"
+
+
+def diff_paths(a, b, path=""):
+    """Every leaf path where a and b differ: [(path, a_value, b_value)]; a missing side is the string <absent>."""
+    out = []
+    if isinstance(a, dict) and isinstance(b, dict):
+        for k in sorted(set(a) | set(b), key=str):
+            p = "%s/%s" % (path, k)
+            if k not in a:
+                out.append((p, "<absent>", b[k]))
+            elif k not in b:
+                out.append((p, a[k], "<absent>"))
+            else:
+                out += diff_paths(a[k], b[k], p)
+    elif isinstance(a, list) and isinstance(b, list):
+        for i in range(max(len(a), len(b))):
+            p = "%s/%d" % (path, i)
+            if i >= len(a):
+                out.append((p, "<absent>", b[i]))
+            elif i >= len(b):
+                out.append((p, a[i], "<absent>"))
+            else:
+                out += diff_paths(a[i], b[i], p)
+    elif a != b:
+        out.append((path, a, b))
+    return out
+
+
+def variant_diff(final_wf, test_wf, final_base, test_base):
+    """(endpoint_diffs, other_diffs): the two variants may differ only in strings where the final base URL is
+    replaced by the test base URL."""
+    endpoint, other = [], []
+    for p, a, b in diff_paths(final_wf, test_wf):
+        if isinstance(a, str) and isinstance(b, str) and final_base in a and a.replace(final_base, test_base) == b:
+            endpoint.append(p)
+        else:
+            other.append((p, a, b))
+    return endpoint, other
+
+
+def urls_in(obj, out=None):
+    out = [] if out is None else out
+    if isinstance(obj, dict):
+        for v in obj.values():
+            urls_in(v, out)
+    elif isinstance(obj, list):
+        for v in obj:
+            urls_in(v, out)
+    elif isinstance(obj, str):
+        out += re.findall(r"https?://[^\s\"'{}]+", obj)
+    return out
+
+
+def endpoint_check(stored_wf, official_base):
+    """'clean' when every URL in the workflow starts with the official base URL, else the offending URLs."""
+    bad = sorted({u for u in urls_in(stored_wf) if not u.startswith(official_base)})
+    return "clean" if not bad else "foreign urls: " + ", ".join(bad[:10])
+
+
+def code_sizes(wf):
+    """{node: JSON-encoded size of the largest code its code_exec actions send}."""
+    out = {}
+    for name, n in (wf.get("nodes") or {}).items():
+        for fn in n.get("pre_actions") or []:
+            code = (((fn.get("function") or {}).get("parameters") or {}).get("properties") or {}).get("code", {}).get("default")
+            if isinstance(code, str):
+                out[name] = max(out.get(name, 0), len(json.dumps(code)))
+        if isinstance(n.get("code"), str):
+            out[name] = max(out.get(name, 0), len(json.dumps(n["code"])))
+    return out
+
+
+def t4_check(table):
+    """Unsupported obligations on every customer's path: [(obligation id, why)]. An obligation is on every path
+    when its state is one every call passes through, or it belongs to a non-per-item plan stage of a type every
+    call runs."""
+    stage_of = {}
+    for st in table.get("plan") or []:
+        if isinstance(st, dict):
+            for oid in st.get("obligations") or []:
+                stage_of[oid] = st
+    hits = []
+    for o in table.get("obligations") or []:
+        if o.get("capability") != "unsupported" or o.get("status", "effective") != "effective":
+            continue
+        state = (o.get("when") or {}).get("state")
+        st = stage_of.get(o.get("id"))
+        if state in EVERY_PATH_STATES:
+            hits.append((o.get("id"), "state %s" % state))
+        elif st and st.get("type") in EVERY_PATH_STAGES and not st.get("per_item"):
+            hits.append((o.get("id"), "stage %s" % st.get("type")))
+    return hits
+
+
+def import_freya():
+    if str(KIT) not in sys.path:
+        sys.path.insert(0, str(KIT))
+    import freya  # noqa: PLC0415 - reads the keys from the environment at import
+    return freya
+
+
+TRANSIENT = re.compile(r"-> (502|503|504|429):|timed out|Connection reset|Remote end closed|temporarily|SSL|URLError|EOF occurred", re.I)
+
+
+def with_retry(fn, deadline, trace, what, *args, **kwargs):
+    """Call fn; retry on 502/503/504/429 and transport errors with backoff while the deadline allows."""
+    delay, attempt = 2.0, 0
+    while True:
+        attempt += 1
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:  # noqa: BLE001
+            msg = "%s: %s" % (type(e).__name__, str(e)[:400])
+            if not (TRANSIENT.search(msg) or isinstance(e, (TimeoutError, ConnectionError))) or deadline.remaining() < delay + 5:
+                raise
+            trace.info("%s failed (attempt %d, %s); retrying in %.0f s" % (what, attempt, msg[:160], delay))
+            time.sleep(delay)
+            delay = min(delay * 2, 30)
+
+
+# --------------------------------------------------------------------------------------------------------------
+# the run
+
+
+class FloorTrigger(Exception):
+    def __init__(self, trigger, reason):
+        super().__init__("%s: %s" % (trigger, reason))
+        self.trigger, self.reason = trigger, reason
+
+
+def parse_args(argv=None):
+    ap = argparse.ArgumentParser(description="Build a Freya phone agent from a brief.")
+    ap.add_argument("brief")
+    ap.add_argument("tools")
+    ap.add_argument("--out-dir")
+    ap.add_argument("--slot")
+    ap.add_argument("--skip-tests", action="store_true", help="no local and no platform self-tests")
+    ap.add_argument("--reuse-table", help="a frozen table.json from an earlier reading; skips the reading")
+    ap.add_argument("--base", action="append", default=[], help="a brief this one builds on (repeatable)")
+    ap.add_argument("--no-deploy", action="store_true", help="stop after the local self-tests (offline run)")
+    ap.add_argument("--no-platform-test", action="store_true")
+    ap.add_argument("--budget", type=float, default=TOTAL_S, help=argparse.SUPPRESS)
+    return ap.parse_args(argv)
+
+
+def run(argv=None, schedule=None):
+    a = parse_args(argv)
+    schedule = schedule or Schedule(a.budget)
+    started = _now_iso()
+    brief_path, tools_path = pathlib.Path(a.brief).resolve(), pathlib.Path(a.tools).resolve()
+    bslug = slug(brief_path)
+    run_id = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d-%H%M%S") + "-" + bslug
+    out_dir = pathlib.Path(a.out_dir) if a.out_dir else ROOT / "runs" / run_id
+    if a.out_dir:
+        run_id = out_dir.name
+    trace = Trace(out_dir, schedule)
+    env_set = load_env()
+    manifest = {
+        "run_id": run_id, "brief_path": str(brief_path), "tools_path": str(tools_path),
+        "brief_hash": None, "tools_hash": None, "table_hash": "none", "plan_hash": "none",
+        "source_commit": source_commit(), "variant": "final", "slot": None, "workflow_id": None, "agent_id": None,
+        "version": None, "export_path": None, "export_hash": None, "bank_url": None, "endpoint_check": None,
+        "variant_diff": None, "model_config": None, "tiers_run": [], "fallback": None, "trigger": None,
+        "results": {"PASS": 0, "FAIL": 0, "INVALID": 0, "UNKNOWN": 0}, "status": "running", "errors": [],
+        "stages": trace.stages, "model_calls": trace.model_calls, "tests": trace.tests,
+        "started": started, "finished": None,
+    }
+    trace.info("builder start: run %s, brief %s, tools %s, commit %s" % (run_id, brief_path, tools_path,
+                                                                         manifest["source_commit"]))
+    trace.info("environment: %d keys loaded from .env (names only: %s)" % (len(env_set), ", ".join(sorted(env_set))))
+    try:
+        _pipeline(a, schedule, trace, manifest, brief_path, tools_path, bslug, run_id, out_dir)
+    except Exception as e:  # noqa: BLE001 - the manifest is written whatever happens
+        manifest["status"] = "failed"
+        manifest["errors"].append("%s: %s" % (type(e).__name__, e))
+        trace.error("run failed: %s: %s" % (type(e).__name__, e), tb=traceback.format_exc()[-2000:])
+    finally:
+        for t in trace.tests:
+            manifest["results"][t["result"] if t["result"] in manifest["results"] else "UNKNOWN"] += 1
+        manifest["finished"] = _now_iso()
+        manifest["elapsed_s"] = round(schedule.elapsed(), 1)
+        (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1, default=str))
+        trace.info("builder end: status %s, %.1f s, results %s, manifest %s" % (
+            manifest["status"], schedule.elapsed(), manifest["results"], out_dir / "manifest.json"))
+        trace.info("created on Freya: workflow %s, agent %s, slot %s, version %s, export %s" % (
+            manifest["workflow_id"], manifest["agent_id"], manifest["slot"], manifest["version"], manifest["export_path"]))
+    return manifest
+
+
+def _pipeline(a, schedule, trace, manifest, brief_path, tools_path, bslug, run_id, out_dir):
+    from builder.readers.api_file import parse_api
+
+    brief_text = brief_path.read_text()
+    tools_text = tools_path.read_text()
+    manifest["brief_hash"] = sha256_text(brief_text)
+    manifest["tools_hash"] = sha256_text(tools_text)
+    raw_api = json.loads(tools_text)
+    api = parse_api(raw_api)
+    public = public_brief(brief_text)
+    trace.info("brief %s (sha256 %s), %s; tools: %d (%s)" % (
+        brief_path.name, manifest["brief_hash"][:12], "public brief %s" % public if public else "not a public brief",
+        len(api["tools"]), ", ".join(sorted(api["tools"]))))
+
+    table = None
+    try:
+        table = stage_read(a, schedule, trace, manifest, brief_path, tools_path, public, out_dir)
+        wf, counts_ = stage_emit(a, schedule, trace, manifest, table, api, raw_api)
+    except FloorTrigger as ft:
+        return run_floor(a, schedule, trace, manifest, ft, brief_path, tools_path, bslug)
+
+    if not a.skip_tests:
+        stage_selftest(schedule, trace, manifest, table, api, public)
+    if a.no_deploy:
+        manifest["status"] = "built offline (no deploy)"
+        return
+    slot = a.slot or "%s-final" % run_id          # run_id already carries the brief slug
+    stage_deploy(schedule, trace, manifest, wf, counts_, slot, bslug, api)
+    if not a.skip_tests and not a.no_platform_test:
+        stage_platform(schedule, trace, manifest, public)
+    manifest["status"] = "ok"
+
+
+# ---- 1. read
+
+
+def stage_read(a, schedule, trace, manifest, brief_path, tools_path, public, out_dir):
+    from builder.readers import read_brief
+    from builder.readers.r1 import ReaderError
+
+    dl = schedule.deadline("read")
+    trace.stage_start("read", dl.seconds)
+    if a.reuse_table:
+        table = json.loads(pathlib.Path(a.reuse_table).read_text())
+        rm = table.get("run_metadata") or {}
+        trace.info("reusing frozen table %s (table hash %s, assurance %s); no model calls in this run" % (
+            a.reuse_table, rm.get("table_hash"), rm.get("assurance")))
+        _note_table(trace, manifest, table)
+        trace.stage_end("read", "reused")
+        return table
+    bases = [str(pathlib.Path(b).resolve()) for b in a.base]
+    if not bases and public in PUBLIC_BASES:
+        bases = [str(PUBLIC_BRIEFS[x]) for x in PUBLIC_BASES[public]]
+    if bases:
+        trace.info("base documents for the reading: %s" % ", ".join(bases))
+    read_dir = out_dir / "read"
+    errors = []
+    for attempt in (1, 2):
+        budget = dl.remaining()
+        if attempt == 2 and budget < 300:
+            trace.info("no second reading attempt: %.0f s left of the reading budget" % budget)
+            break
+        trace.info("reading attempt %d, deadline %.0f s" % (attempt, budget))
+        try:
+            table = read_brief.read(str(brief_path), str(tools_path), out_dir=read_dir, deadline_s=budget,
+                                    base_paths=bases)
+        except (ReaderError, Exception) as e:  # noqa: BLE001
+            errors.append("%s: %s" % (type(e).__name__, str(e)[:300]))
+            trace.error("reading attempt %d failed: %s" % (attempt, errors[-1]))
+            _trace_reader_calls(trace, read_dir / "trace.jsonl")
+            continue
+        _trace_reader_calls(trace, None, table)
+        _note_table(trace, manifest, table)
+        trace.stage_end("read", "ok")
+        return table
+    trace.stage_end("read", "failed")
+    raise FloorTrigger("T1", "no frozen table after %d attempt(s): %s" % (len(errors), " | ".join(errors)))
+
+
+def _trace_reader_calls(trace, jsonl_path=None, table=None):
+    seen = set()
+    rows = []
+    if table is not None:
+        rm = table.get("run_metadata") or {}
+        rows = list(rm.get("usage") or []) + list(rm.get("adjudication_usage") or [])
+    elif jsonl_path and pathlib.Path(jsonl_path).exists():
+        rows = [json.loads(ln) for ln in pathlib.Path(jsonl_path).read_text().splitlines() if ln.strip()]
+    for u in rows:
+        key = json.dumps(u, sort_keys=True, default=str)
+        if key in seen:
+            continue
+        seen.add(key)
+        trace.model_call(u.get("model"), u.get("purpose"), u.get("tokens"), u.get("seconds"), backend=u.get("backend"))
+
+
+def _note_table(trace, manifest, table):
+    rm = table.get("run_metadata") or {}
+    manifest["table_hash"] = rm.get("table_hash") or canonical_hash({k: v for k, v in table.items() if k != "run_metadata"})
+    manifest["plan_hash"] = canonical_hash(table["plan"]) if table.get("plan") else "none"
+    manifest["assurance"] = rm.get("assurance")
+    trace.info("table: hash %s, %d obligations, %d parameters, plan %s, assurance %s, reader timings %s" % (
+        manifest["table_hash"][:12], len(table.get("obligations") or []), len(table.get("parameters") or {}),
+        [s.get("type") for s in table.get("plan") or []], rm.get("assurance"), rm.get("timings")))
+
+
+# ---- 2. emit
+
+
+def stage_emit(a, schedule, trace, manifest, table, api, raw_api):
+    from builder.emitter.emit import base_url_for, counts, emit
+    from builder.emitter.walk import walk
+
+    dl = schedule.deadline("emit")
+    trace.stage_start("emit", dl.seconds)
+    final_base = base_url_for(api, "final", None)
+    manifest["bank_url"] = final_base
+    wf, last = None, None
+    for attempt in (1, 2):
+        try:
+            wf = emit(table, api, variant="final")
+            findings = walk(wf, table, raw_api)
+            big = {k: v for k, v in code_sizes(wf).items() if v > CODE_EXEC_MAX}
+            if big:
+                findings = list(findings) + ["code node %s sends %d bytes of code, over %d (platform limit %d with the variables)"
+                                             % (k, v, CODE_EXEC_MAX, CODE_EXEC_LIMIT) for k, v in big.items()]
+            if findings:
+                raise ValueError("static walk: %d finding(s): %s" % (len(findings), " | ".join(map(str, findings[:5]))))
+            break
+        except Exception as e:  # noqa: BLE001
+            last = "%s: %s" % (type(e).__name__, str(e)[:400])
+            trace.error("emit attempt %d failed: %s" % (attempt, last))
+            wf = None
+    if wf is None:
+        trace.stage_end("emit", "failed")
+        raise FloorTrigger("T2", last)
+    c = counts(wf)
+    size = len(json.dumps(wf))
+    engine_code = max((len(json.dumps(n)) for n in wf["nodes"].values()), default=0)
+    tools = sorted({fn["function"]["name"] for n in wf["nodes"].values()
+                    for fn in (n.get("pre_actions") or []) + (n.get("functions") or []) + (n.get("tools") or [])
+                    if isinstance(fn, dict) and isinstance(fn.get("function"), dict) and fn["function"].get("name")})
+    trace.info("emitted final variant on %s: %d nodes, %d transitions, %s, %d tool definitions, %.0f KB (largest node %.0f KB); static walk clean"
+               % (final_base, c["nodes"], c["transitions"], c["by_type"], len(tools), size / 1024, engine_code / 1024))
+    sizes = code_sizes(wf)
+    manifest["counts"] = {**c, "tools": len(tools), "tool_names": tools, "bytes": size, "largest_code_json": max(sizes.values(), default=0)}
+    trace.info("largest code node: %s, %d bytes as JSON (limit %d with the variables)" % (
+        max(sizes, key=sizes.get) if sizes else None, max(sizes.values(), default=0), CODE_EXEC_LIMIT))
+
+    test_base_in = os.environ.get("OWN_BANK_URL") or TEST_PLACEHOLDER_BANK
+    test_wf = emit(table, api, variant="test", bank_url=test_base_in)
+    test_base = base_url_for(api, "test", test_base_in)
+    endpoint, other = variant_diff(wf, test_wf, final_base, test_base)
+    manifest["variant_diff"] = {"endpoint_locations": len(endpoint), "other": [p for p, _, _ in other][:20],
+                                "test_bank": "OWN_BANK_URL" if os.environ.get("OWN_BANK_URL") else "placeholder"}
+    if other:
+        trace.error("variants differ outside endpoint strings at %d location(s): %s" % (
+            len(other), ", ".join(p for p, _, _ in other[:10])))
+        manifest["errors"].append("variant diff outside endpoints")
+    else:
+        trace.info("variant diff: final and test differ only at %d endpoint location(s): %s" % (
+            len(endpoint), ", ".join(endpoint[:3]) + (" ..." if len(endpoint) > 3 else "")))
+    hits = t4_check(table)
+    unsupported = [o.get("id") for o in table.get("obligations") or [] if o.get("capability") == "unsupported"]
+    trace.info("capability: %d unsupported obligation(s) %s; on every customer's path: %s" % (
+        len(unsupported), unsupported[:10], hits or "none"))
+    if hits:
+        trace.stage_end("emit", "T4")
+        raise FloorTrigger("T4", "unsupported on every path: %s" % hits)
+    trace.stage_end("emit", "ok")
+    return wf, c
+
+
+# ---- 3. local self-tests
+
+
+def stage_selftest(schedule, trace, manifest, table, api, public):
+    from builder import selftest
+
+    dl = schedule.deadline("selftest")
+    trace.stage_start("selftest", dl.seconds)
+    manifest["tiers_run"].append("0")
+    for r in selftest.snippet_check(table):
+        trace.test("0", r["name"], r["result"], r["detail"])
+    if public:
+        trace.info("public brief %s: running its public cases through the local simulator on an in-process mock bank" % public)
+        for r in selftest.public_cases(table, api, public):
+            trace.test("0", "local %s" % r["name"], r["result"], r["detail"])
+    else:
+        rows = selftest.witness_cases(table)
+        if rows:
+            for r in rows:
+                trace.test("0", r["name"], r["result"], r["detail"])
+        else:
+            trace.info("not a public brief and the table has no witness examples: no case-level local test")
+    trace.stage_end("selftest", "ok" if dl.remaining() > 0 else "over budget")
+
+
+# ---- 4. deploy
+
+
+def _strip_report(sent, stored):
+    """Paths present in what we sent and absent or changed in what the platform stored."""
+    out = {"stripped": [], "changed": [], "added": []}
+    for p, a, b in diff_paths(sent, stored):
+        if b == "<absent>":
+            out["stripped"].append(p)
+        elif a == "<absent>":
+            out["added"].append(p)
+        else:
+            out["changed"].append(p)
+    return out
+
+
+def stage_deploy(schedule, trace, manifest, wf, counts_, slot, bslug, api):
+    freya = import_freya()
+    dl = schedule.deadline("deploy")
+    trace.stage_start("deploy", dl.seconds)
+    manifest["slot"] = slot
+    manifest["model_config"] = dict(freya.AGENT_LLM)
+    try:
+        with_retry(freya.validate_workflow, dl, trace, "dry run", slot, wf)
+        trace.info("dry run accepted")
+    except Exception as e:  # noqa: BLE001
+        trace.error("dry run rejected: %s" % str(e)[:800])
+        manifest["errors"].append("dry run rejected")
+        trace.stage_end("deploy", "dry run rejected")
+        raise
+    state_before = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
+    existed = slot in state_before
+    res = with_retry(freya.save_workflow, dl, trace, "save", slot, wf, state_file=str(STATE_FILE))
+    manifest["workflow_id"], manifest["agent_id"] = res["workflow_id"], res["agent_id"]
+    if existed:
+        manifest["version"] = res.get("version")
+        trace.info("updated workflow %s in place (slot %s), published version %s" % (res["workflow_id"], slot, res.get("version")))
+    else:
+        # a fresh create: set the event's model and publish, the same way the kit's update does
+        manifest["version"] = with_retry(freya.update_workflow, dl, trace, "publish", res["workflow_id"], wf)
+        trace.info("created workflow %s (agent %s) in slot %s, published version %s" % (
+            res["workflow_id"], res["agent_id"], slot, manifest["version"]))
+    stored = with_retry(freya.api, dl, trace, "read back", "GET", "/api/v2/workflow/%s" % res["workflow_id"],
+                        workspaceId=freya.workspace_id())["workflow"]
+    stored_wf = stored.get("workflow") or {}
+    rep = _strip_report(wf, stored_wf)
+    manifest["readback"] = {k: (len(v), v[:15]) for k, v in rep.items()}
+    trace.info("read back: %d node(s) stored of %d sent; %d path(s) stripped, %d changed, %d added by the platform" % (
+        len(stored_wf.get("nodes") or {}), counts_["nodes"], len(rep["stripped"]), len(rep["changed"]), len(rep["added"])))
+    for kind in ("stripped", "changed"):
+        if rep[kind]:
+            trace.info("read back %s: %s" % (kind, ", ".join(rep[kind][:15]) + (" ..." if len(rep[kind]) > 15 else "")))
+    llm = ((stored_wf.get("agent_config") or {}).get("llmConfig") or {})
+    trace.info("stored agent model: %s/%s" % (llm.get("provider"), llm.get("model")))
+    manifest["endpoint_check"] = endpoint_check(stored_wf, manifest["bank_url"])
+    trace.info("endpoint check on the stored workflow: %s" % manifest["endpoint_check"])
+    _export(freya, trace, manifest, res["workflow_id"], bslug, dl)
+    trace.stage_end("deploy", "ok")
+
+
+def _export(freya, trace, manifest, workflow_id, bslug, dl):
+    SUBMISSION.mkdir(exist_ok=True)
+    path = SUBMISSION / ("%s.workflow.json" % bslug)
+    with_retry(freya.export_workflow, dl, trace, "export", workflow_id, str(path))
+    manifest["export_path"] = str(path.relative_to(ROOT))
+    manifest["export_hash"] = sha256_file(path)
+    trace.info("exported %s (sha256 %s)" % (manifest["export_path"], manifest["export_hash"][:16]))
+
+
+# ---- 5. platform self-test
+
+
+def stage_platform(schedule, trace, manifest, public):
+    budget = schedule.budget("platform")
+    if not public:
+        trace.info("platform self-test skipped: no practice cases exist for this brief")
+        return
+    if budget < PLATFORM_TEST_MIN_S:
+        trace.info("platform self-test skipped: %.0f s left after the export reserve, %d needed" % (budget, PLATFORM_TEST_MIN_S))
+        return
+    case = "PUB-01" if public == "A" else "PUB-11"
+    trace.stage_start("platform", budget)
+    manifest["tiers_run"].append("platform")
+    cmd = [sys.executable, str(KIT / "tools" / "run_cases.py"), manifest["agent_id"], "--brief", public, "--only", case]
+    trace.info("official scorer, one case, one rep: run_cases.py <agent> --brief %s --only %s (timeout %.0f s)" % (public, case, budget))
+    try:
+        p = subprocess.run(cmd, cwd=KIT, capture_output=True, text=True, timeout=budget, env=dict(os.environ))
+        out = p.stdout + p.stderr
+        (trace.dir / "platform-test.log").write_text(out)
+        line = next((ln for ln in out.splitlines() if ln.startswith(("PASS ", "FAIL "))), None)
+        reasons = [ln.strip() for ln in out.splitlines() if ln.startswith("       -")]
+        sim = re.search(r"Last simulation (\S+)", out)
+        if line:
+            trace.test("platform", case, line.split()[0], line + (" | " + " | ".join(reasons) if reasons else "")
+                       + (" | simulation %s" % sim.group(1).rstrip(",") if sim else ""))
+        else:
+            trace.test("platform", case, "UNKNOWN", "no verdict line; exit %s; %s" % (p.returncode, out[-300:]))
+        trace.stage_end("platform", "ok")
+    except subprocess.TimeoutExpired:
+        trace.test("platform", case, "UNKNOWN", "timed out after %.0f s (the simulation may still run on the platform)" % budget)
+        trace.stage_end("platform", "timeout")
+
+
+# ---- floor
+
+
+def run_floor(a, schedule, trace, manifest, ft, brief_path, tools_path, bslug):
+    manifest["trigger"] = {"id": ft.trigger, "reason": ft.reason}
+    trace.error("fallback trigger %s: %s" % (ft.trigger, ft.reason))
+    budget = schedule.budget("floor")
+    if budget < FLOOR_MIN_S:
+        trace.error("floor not admitted: %.0f s left after the export reserve, %d needed; no agent from this run" % (budget, FLOOR_MIN_S))
+        manifest["status"] = "no agent"
+        return
+    if a.no_deploy:
+        trace.info("floor not run: --no-deploy")
+        manifest["status"] = "no agent (offline)"
+        manifest["fallback"] = "kit (not run)"
+        return
+    manifest["fallback"] = "kit"
+    trace.stage_start("floor", budget)
+    cmd = [sys.executable, str(KIT / "examples" / "agent_builder.py"), str(brief_path), str(tools_path)]
+    trace.info("running the kit's example builder as the floor (model %s, timeout %.0f s)" % (
+        os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), budget))
+    t0 = time.monotonic()
+    try:
+        p = subprocess.run(cmd, cwd=KIT, capture_output=True, text=True, timeout=budget, env=dict(os.environ))
+        (trace.dir / "floor.log").write_text(p.stdout + p.stderr)
+        done = re.search(r"done: (\d+) turns, (\d+) s, \$([\d.]+)", p.stdout)
+        trace.model_call(os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), "kit floor: build, test and fix a phone agent",
+                         None, round(time.monotonic() - t0, 1), detail=done.group(0) if done else "exit %s" % p.returncode)
+    except subprocess.TimeoutExpired:
+        trace.error("floor timed out after %.0f s; exporting what it saved, if anything" % budget)
+    kit_state = KIT / ".freya-agents.json"
+    state = json.loads(kit_state.read_text()) if kit_state.exists() else {}
+    entry = state.get(brief_path.stem)
+    if not entry:
+        trace.stage_end("floor", "no workflow saved")
+        manifest["status"] = "no agent"
+        return
+    manifest["slot"] = "kit:" + brief_path.stem
+    manifest["workflow_id"], manifest["agent_id"] = entry["workflow_id"], entry["agent_id"]
+    manifest["version"] = entry.get("version")
+    freya = import_freya()
+    _export(freya, trace, manifest, entry["workflow_id"], bslug, Deadline(max(60.0, schedule.remaining())))
+    trace.stage_end("floor", "ok")
+    manifest["status"] = "ok (floor)"
+
+
+def main(argv=None):
+    m = run(argv)
+    return 0 if m["status"].startswith("ok") or m["status"].startswith("built") else 1
+
+
+def _use_repo_venv():
+    """`python3 builder/build.py` with a system Python: re-run under the repository's .venv when there is one."""
+    venv = ROOT / ".venv" / "bin" / "python"
+    if venv.exists() and pathlib.Path(sys.prefix).resolve() != (ROOT / ".venv").resolve() and not os.environ.get("BUILD_NO_REEXEC"):
+        os.environ["BUILD_NO_REEXEC"] = "1"
+        os.execv(str(venv), [str(venv), str(pathlib.Path(__file__).resolve())] + sys.argv[1:])
+
+
+if __name__ == "__main__":
+    _use_repo_venv()
+    sys.exit(main())
