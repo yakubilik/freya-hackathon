@@ -4,9 +4,9 @@
 !.env.example
 
 # Pre-event notes, kept local
-PLAN.md
-research/
-docs/
+/PLAN.md
+/research/
+/docs/
 
 # Python
 __pycache__/
