@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rule_table.schema.json",
+  "title": "Rule table (frozen interface 1.0)",
+  "type": "object",
+  "required": ["schema_version", "documents", "units", "dispositions", "obligations", "parameters", "wire_map", "phrases", "plan"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "documents": {"type": "array", "items": {"$ref": "#/$defs/document"}},
+    "units": {"type": "object", "additionalProperties": {"$ref": "#/$defs/unit"}},
+    "dispositions": {"type": "object", "additionalProperties": {"$ref": "#/$defs/disposition"}},
+    "obligations": {"type": "array", "items": {"$ref": "#/$defs/obligation"}},
+    "parameters": {"type": "object", "additionalProperties": {"$ref": "#/$defs/value_entry"}},
+    "amendments": {"type": "array", "items": {"$ref": "#/$defs/amendment"}},
+    "wire_map": {"$ref": "#/$defs/wire_map"},
+    "phrases": {"type": "array", "items": {"$ref": "#/$defs/phrase"}},
+    "examples": {"type": "array", "items": {"type": "object", "required": ["unit", "input", "expected"], "properties": {"unit": {"type": "string"}, "input": {}, "expected": {}}}},
+    "open_questions": {"type": "array", "items": {"type": "object", "required": ["topic", "readings", "taken", "rule"], "properties": {"topic": {"type": "string"}, "readings": {"type": "array", "items": {"type": "string"}}, "taken": {"type": "string"}, "rule": {"type": "string"}}}},
+    "plan": {"type": "array", "items": {"$ref": "#/$defs/stage"}},
+    "run_metadata": {"type": "object"}
+  },
+  "$defs": {
+    "document": {
+      "type": "object", "required": ["doc_id", "kind", "role"], "additionalProperties": false,
+      "properties": {
+        "doc_id": {"type": "string"}, "kind": {"type": "string"}, "title": {"type": "string"},
+        "issue_date": {"type": ["string", "null"]},
+        "role": {"enum": ["authoritative", "amends", "informational", "superseded"]},
+        "evidence_units": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "unit": {
+      "type": "object", "required": ["text", "doc_id", "offset", "kind"], "additionalProperties": false,
+      "properties": {
+        "text": {"type": "string"}, "doc_id": {"type": "string"}, "offset": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer"}, "kind": {"enum": ["sentence", "row", "heading", "item", "quote", "footnote", "other"]},
+        "parent": {"type": ["string", "null"]}, "table": {"type": ["string", "null"]}
+      }
+    },
+    "disposition": {
+      "type": "object", "required": ["kind"], "additionalProperties": false,
+      "properties": {
+        "kind": {"enum": ["obligation", "definition", "example", "informational", "superseded", "unreadable"]},
+        "refs": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"}, "evidence": {"type": "string"}
+      }
+    },
+    "obligation": {
+      "type": "object", "required": ["id", "units", "quote", "when", "then", "kind", "scope", "status"], "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^O-"},
+        "units": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "quote": {"type": "string"},
+        "when": {
+          "type": "object", "required": ["state"], "additionalProperties": false,
+          "properties": {
+            "state": {"enum": ["pre_verification", "identity", "verified", "third_party", "disclosure", "negotiation", "readback", "recording", "closing", "any"]},
+            "guards": {"type": "array", "items": {"type": "string"}},
+            "event": {"type": ["string", "null"]},
+            "stage_id": {"type": ["string", "null"]}
+          }
+        },
+        "then": {"type": "array", "items": {"$ref": "#/$defs/action"}},
+        "kind": {"enum": ["state", "communication", "ordering", "prohibition", "definition"]},
+        "scope": {"type": "string"},
+        "exception_of": {"type": ["string", "null"]},
+        "precedence": {"type": "array", "items": {"type": "string"}},
+        "status": {"enum": ["effective", "superseded", "informational"]},
+        "effective": {"type": ["object", "null"], "properties": {"from": {"type": ["string", "null"]}, "to": {"type": ["string", "null"]}, "anchor": {"type": "string"}, "inclusive": {"type": "boolean"}}},
+        "capability": {"enum": ["structural", "prompt_only", "unsupported", null]},
+        "notes": {"type": "string"}
+      }
+    },
+    "action": {
+      "type": "object", "minProperties": 1, "maxProperties": 1,
+      "properties": {
+        "say": {"type": "object", "properties": {"exact": {"type": "string"}, "content": {"type": "string"}}},
+        "ask": {"type": "object", "properties": {"question_id": {"type": "string"}, "content": {"type": "string"}}},
+        "offer": {"type": "object", "properties": {"amount_rule": {"type": "string"}, "date_expr": {"type": "string"}, "once": {"type": "boolean"}}},
+        "tool": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "args": {"type": "object"}}},
+        "close": {"type": "object", "required": ["outcome"], "properties": {"outcome": {"type": "string"}, "reason": {"type": ["string", "null"]}}},
+        "forbid": {"type": "string"},
+        "transfer": {"type": "object", "required": ["queue"], "properties": {"queue": {"type": "string"}}},
+        "note": {"type": "object", "properties": {"reason": {"type": "string"}, "text": {"type": "string"}}},
+        "callback": {"type": "object"},
+        "defer": {"type": "string"},
+        "count": {"type": "object", "required": ["counter", "max"], "properties": {"counter": {"type": "string"}, "max": {"type": "integer"}}},
+        "stop": {"type": "boolean"},
+        "other": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "value_entry": {
+      "type": "object", "required": ["type", "confidence"], "additionalProperties": false,
+      "properties": {
+        "value": {},
+        "windows": {"type": "array", "items": {"type": "object", "required": ["value", "effective"], "properties": {"value": {}, "effective": {"type": "object"}}}},
+        "type": {"type": "string"},
+        "quotes": {"type": "array", "items": {"type": "string"}},
+        "units": {"type": "array", "items": {"type": "string"}},
+        "obligations": {"type": "array", "items": {"type": "string"}},
+        "confidence": {"enum": ["quoted", "derived", "not_specified"]}
+      }
+    },
+    "amendment": {
+      "type": "object", "required": ["amending_unit", "amended_units", "path", "old", "new", "authority", "scope"], "additionalProperties": false,
+      "properties": {
+        "amending_unit": {"type": "string"}, "amended_units": {"type": "array", "items": {"type": "string"}},
+        "path": {"type": "string"}, "old": {}, "new": {},
+        "authority": {"enum": ["explicit_replaces", "explicit_effective_date", "stated_supersession", "inferred"]},
+        "issue_date": {"type": ["string", "null"]},
+        "effective": {"type": ["object", "null"]},
+        "scope": {"enum": ["clause", "section", "document"]},
+        "quotes": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "wire_map": {
+      "type": "object", "required": ["tools", "concepts", "enums"], "additionalProperties": false,
+      "properties": {
+        "tools": {"type": "object", "additionalProperties": {"type": "object", "required": ["path", "method"], "properties": {"path": {"type": "string"}, "method": {"type": "string"}, "request_fields": {"type": "object"}, "response_fields": {"type": "object"}}}},
+        "concepts": {"type": "object", "additionalProperties": {"type": "object", "required": ["tool", "field", "wire"], "properties": {"tool": {"type": "string"}, "field": {"type": "string"}, "wire": {}, "units": {"type": "array", "items": {"type": "string"}}}}},
+        "enums": {"type": "object", "additionalProperties": {"type": "object", "properties": {"obligations": {"type": "array", "items": {"type": "string"}}, "unused": {"type": "string"}}}}
+      }
+    },
+    "phrase": {
+      "type": "object", "required": ["id", "kind", "text", "exact", "obligation"], "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string"}, "kind": {"enum": ["mandatory", "forbidden"]}, "text": {"type": "string"}, "exact": {"type": "boolean"},
+        "obligation": {"type": "string"}, "when": {"type": "string"}
+      }
+    },
+    "stage": {
+      "type": "object", "required": ["id", "type"], "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string"},
+        "type": {"enum": ["party", "verify", "consent", "say", "ask", "fetch", "disclose", "negotiate", "readback", "record", "note", "close", "prompt_only"]},
+        "params": {"type": "object"},
+        "obligations": {"type": "array", "items": {"type": "string"}},
+        "units": {"type": "array", "items": {"type": "string"}},
+        "per_item": {"type": "boolean"},
+        "gates": {"type": "array", "items": {"type": "string"}},
+        "outcomes": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

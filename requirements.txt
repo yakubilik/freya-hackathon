@@ -1,0 +1,4 @@
+claude-agent-sdk
+jsonschema
+pytest
+requests
