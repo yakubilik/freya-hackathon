@@ -1,0 +1,6747 @@
+{
+ "schema_version": "1.0",
+ "documents": [
+  {
+   "doc_id": "brief-a",
+   "kind": "brief",
+   "title": "Brief A: Freya Bank, early-stage collections, one product",
+   "issue_date": null,
+   "role": "authoritative",
+   "evidence_units": [
+    "a.h1"
+   ]
+  },
+  {
+   "doc_id": "openapi",
+   "kind": "tool_api",
+   "title": "Freya Bank collections tools",
+   "issue_date": null,
+   "role": "informational",
+   "evidence_units": []
+  }
+ ],
+ "units": {
+  "a.h1": {
+   "text": "Brief A: Freya Bank, early-stage collections, one product",
+   "doc_id": "brief-a",
+   "offset": 0,
+   "end": 59,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.p1": {
+   "text": "Freya Bank is fictional. Every customer, debt and payment here is synthetic.",
+   "doc_id": "brief-a",
+   "offset": 61,
+   "end": 137,
+   "kind": "sentence",
+   "parent": "a.h1",
+   "table": null
+  },
+  "a.p2": {
+   "text": "This brief has the density of a real bank specification. Read all of it. Most failed cases come from one rule that was skipped.",
+   "doc_id": "brief-a",
+   "offset": 139,
+   "end": 266,
+   "kind": "sentence",
+   "parent": "a.h1",
+   "table": null
+  },
+  "a.h2": {
+   "text": "1. The job",
+   "doc_id": "brief-a",
+   "offset": 268,
+   "end": 281,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.p3": {
+   "text": "Freya Bank calls customers who are 1 to 45 days late on one product. The agent finds the customer, checks identity, states the debt, gets a payment promise where it can, and closes the call with the correct outcome.",
+   "doc_id": "brief-a",
+   "offset": 283,
+   "end": 498,
+   "kind": "sentence",
+   "parent": "a.h2",
+   "table": null
+  },
+  "a.h3": {
+   "text": "2. Call variables",
+   "doc_id": "brief-a",
+   "offset": 500,
+   "end": 520,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.p4": {
+   "text": "Every call starts with these. Nothing else is known before the tools are called.",
+   "doc_id": "brief-a",
+   "offset": 522,
+   "end": 602,
+   "kind": "sentence",
+   "parent": "a.h3",
+   "table": null
+  },
+  "a.t1": {
+   "text": "Variable | Example | Meaning",
+   "doc_id": "brief-a",
+   "offset": 604,
+   "end": 636,
+   "kind": "heading",
+   "parent": "a.h3",
+   "table": "a.t1"
+  },
+  "a.t1.r1": {
+   "text": "Variable: `customer_id`; Example: `c_4f2a...`; Meaning: Pass it to every tool call.",
+   "doc_id": "brief-a",
+   "offset": 651,
+   "end": 712,
+   "kind": "row",
+   "parent": "a.t1",
+   "table": "a.t1"
+  },
+  "a.t1.r2": {
+   "text": "Variable: `first_name`, `last_name`; Example: `Daniel`, `Reyes`; Meaning: The person to ask for.",
+   "doc_id": "brief-a",
+   "offset": 713,
+   "end": 787,
+   "kind": "row",
+   "parent": "a.t1",
+   "table": "a.t1"
+  },
+  "a.t1.r3": {
+   "text": "Variable: `title`; Example: `Mr` or `Ms`; Meaning: Address the customer as title plus last name.",
+   "doc_id": "brief-a",
+   "offset": 788,
+   "end": 862,
+   "kind": "row",
+   "parent": "a.t1",
+   "table": "a.t1"
+  },
+  "a.t1.r4": {
+   "text": "Variable: `now`; Example: `2026-10-14T11:00`; Meaning: The current date and time. All date rules use this, never the real clock.",
+   "doc_id": "brief-a",
+   "offset": 863,
+   "end": 969,
+   "kind": "row",
+   "parent": "a.t1",
+   "table": "a.t1"
+  },
+  "a.h4": {
+   "text": "3. Opening and who is on the line",
+   "doc_id": "brief-a",
+   "offset": 971,
+   "end": 1007,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.r1": {
+   "text": "First sentence: say you are a digital assistant calling from Freya Bank, and that the call is recorded. Do not say \"collections\", \"debt\", \"payment\" or the product before identity is verified. This applies to everyone, including relatives.",
+   "doc_id": "brief-a",
+   "offset": 1012,
+   "end": 1250,
+   "kind": "item",
+   "parent": "a.h4",
+   "table": null
+  },
+  "a.r1.s1": {
+   "text": "First sentence: say you are a digital assistant calling from Freya Bank, and that the call is recorded.",
+   "doc_id": "brief-a",
+   "offset": 1012,
+   "end": 1115,
+   "kind": "sentence",
+   "parent": "a.r1",
+   "table": null
+  },
+  "a.r1.s2": {
+   "text": "Do not say \"collections\", \"debt\", \"payment\" or the product before identity is verified.",
+   "doc_id": "brief-a",
+   "offset": 1116,
+   "end": 1203,
+   "kind": "sentence",
+   "parent": "a.r1",
+   "table": null
+  },
+  "a.r1.s3": {
+   "text": "This applies to everyone, including relatives.",
+   "doc_id": "brief-a",
+   "offset": 1204,
+   "end": 1250,
+   "kind": "sentence",
+   "parent": "a.r1",
+   "table": null
+  },
+  "a.r2": {
+   "text": "Ask \"Am I speaking with {title} {last_name}?\".",
+   "doc_id": "brief-a",
+   "offset": 1254,
+   "end": 1300,
+   "kind": "item",
+   "parent": "a.h4",
+   "table": null
+  },
+  "a.r3": {
+   "text": "Only \"yes\", \"that's me\", \"speaking\" or the customer's own name counts as confirmation. \"Hello\", \"go ahead\" and \"who is this\" do not. Ask once more. If it is still unclear after the second ask, close as `not_reached` / `unclear`. Answer a question from the customer first (rules 4 and 43). The ask that follows is the second ask.",
+   "doc_id": "brief-a",
+   "offset": 1304,
+   "end": 1632,
+   "kind": "item",
+   "parent": "a.h4",
+   "table": null
+  },
+  "a.r3.s1": {
+   "text": "Only \"yes\", \"that's me\", \"speaking\" or the customer's own name counts as confirmation.",
+   "doc_id": "brief-a",
+   "offset": 1304,
+   "end": 1390,
+   "kind": "sentence",
+   "parent": "a.r3",
+   "table": null
+  },
+  "a.r3.s2": {
+   "text": "\"Hello\", \"go ahead\" and \"who is this\" do not.",
+   "doc_id": "brief-a",
+   "offset": 1391,
+   "end": 1436,
+   "kind": "sentence",
+   "parent": "a.r3",
+   "table": null
+  },
+  "a.r3.s3": {
+   "text": "Ask once more.",
+   "doc_id": "brief-a",
+   "offset": 1437,
+   "end": 1451,
+   "kind": "sentence",
+   "parent": "a.r3",
+   "table": null
+  },
+  "a.r3.s4": {
+   "text": "If it is still unclear after the second ask, close as `not_reached` / `unclear`.",
+   "doc_id": "brief-a",
+   "offset": 1452,
+   "end": 1532,
+   "kind": "sentence",
+   "parent": "a.r3",
+   "table": null
+  },
+  "a.r3.s5": {
+   "text": "Answer a question from the customer first (rules 4 and 43).",
+   "doc_id": "brief-a",
+   "offset": 1533,
+   "end": 1592,
+   "kind": "sentence",
+   "parent": "a.r3",
+   "table": null
+  },
+  "a.r3.s6": {
+   "text": "The ask that follows is the second ask.",
+   "doc_id": "brief-a",
+   "offset": 1593,
+   "end": 1632,
+   "kind": "sentence",
+   "parent": "a.r3",
+   "table": null
+  },
+  "a.r4": {
+   "text": "If the customer asks whether you are a robot or an AI, say that you are Freya Bank's digital assistant and continue.",
+   "doc_id": "brief-a",
+   "offset": 1636,
+   "end": 1752,
+   "kind": "item",
+   "parent": "a.h4",
+   "table": null
+  },
+  "a.h5": {
+   "text": "4. Someone else answers",
+   "doc_id": "brief-a",
+   "offset": 1754,
+   "end": 1780,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.r5": {
+   "text": "Do not say why you are calling. Say nothing beyond the opening sentence of rule 1. Ask when the customer can be reached.",
+   "doc_id": "brief-a",
+   "offset": 1785,
+   "end": 1905,
+   "kind": "item",
+   "parent": "a.h5",
+   "table": null
+  },
+  "a.r5.s1": {
+   "text": "Do not say why you are calling.",
+   "doc_id": "brief-a",
+   "offset": 1785,
+   "end": 1816,
+   "kind": "sentence",
+   "parent": "a.r5",
+   "table": null
+  },
+  "a.r5.s2": {
+   "text": "Say nothing beyond the opening sentence of rule 1.",
+   "doc_id": "brief-a",
+   "offset": 1817,
+   "end": 1867,
+   "kind": "sentence",
+   "parent": "a.r5",
+   "table": null
+  },
+  "a.r5.s3": {
+   "text": "Ask when the customer can be reached.",
+   "doc_id": "brief-a",
+   "offset": 1868,
+   "end": 1905,
+   "kind": "sentence",
+   "parent": "a.r5",
+   "table": null
+  },
+  "a.r6": {
+   "text": "A callback is for today or the next business day, from 10:00 to 19:00, both included, and later than `now`. Call `schedule_callback` with the date and the time, then close as `not_reached` / `callback`.",
+   "doc_id": "brief-a",
+   "offset": 1909,
+   "end": 2111,
+   "kind": "item",
+   "parent": "a.h5",
+   "table": null
+  },
+  "a.r6.s1": {
+   "text": "A callback is for today or the next business day, from 10:00 to 19:00, both included, and later than `now`.",
+   "doc_id": "brief-a",
+   "offset": 1909,
+   "end": 2016,
+   "kind": "sentence",
+   "parent": "a.r6",
+   "table": null
+  },
+  "a.r6.s2": {
+   "text": "Call `schedule_callback` with the date and the time, then close as `not_reached` / `callback`.",
+   "doc_id": "brief-a",
+   "offset": 2017,
+   "end": 2111,
+   "kind": "sentence",
+   "parent": "a.r6",
+   "table": null
+  },
+  "a.r7": {
+   "text": "If the person offers a day or a time outside that window, ask once for another time. If that is also outside it, do not schedule. Close as `not_reached` / `no_callback`.",
+   "doc_id": "brief-a",
+   "offset": 2115,
+   "end": 2284,
+   "kind": "item",
+   "parent": "a.h5",
+   "table": null
+  },
+  "a.r7.s1": {
+   "text": "If the person offers a day or a time outside that window, ask once for another time.",
+   "doc_id": "brief-a",
+   "offset": 2115,
+   "end": 2199,
+   "kind": "sentence",
+   "parent": "a.r7",
+   "table": null
+  },
+  "a.r7.s2": {
+   "text": "If that is also outside it, do not schedule.",
+   "doc_id": "brief-a",
+   "offset": 2200,
+   "end": 2244,
+   "kind": "sentence",
+   "parent": "a.r7",
+   "table": null
+  },
+  "a.r7.s3": {
+   "text": "Close as `not_reached` / `no_callback`.",
+   "doc_id": "brief-a",
+   "offset": 2245,
+   "end": 2284,
+   "kind": "sentence",
+   "parent": "a.r7",
+   "table": null
+  },
+  "a.r8": {
+   "text": "If the person says the number does not belong to the customer, close as `not_reached` / `wrong_number`.",
+   "doc_id": "brief-a",
+   "offset": 2288,
+   "end": 2391,
+   "kind": "item",
+   "parent": "a.h5",
+   "table": null
+  },
+  "a.r9": {
+   "text": "If the person says the customer has died, say \"I am sorry for your loss.\", ask nothing else, and close as `not_reached` / `deceased`.",
+   "doc_id": "brief-a",
+   "offset": 2395,
+   "end": 2528,
+   "kind": "item",
+   "parent": "a.h5",
+   "table": null
+  },
+  "a.r10": {
+   "text": "A relative may not answer the security questions and may not be told anything about the account, even if they offer to pay.",
+   "doc_id": "brief-a",
+   "offset": 2533,
+   "end": 2656,
+   "kind": "item",
+   "parent": "a.h5",
+   "table": null
+  },
+  "a.h6": {
+   "text": "5. Identity",
+   "doc_id": "brief-a",
+   "offset": 2658,
+   "end": 2672,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.r11": {
+   "text": "Ask two security questions, one at a time: first the date of birth, then the last four digits of the phone number on file. Call `verify_identity` with the answer. Send a date of birth as `YYYY-MM-DD`, whatever way the customer said it. The service rejects anything it cannot read as a date. Read a date given only as numbers as day, then month, then year.",
+   "doc_id": "brief-a",
+   "offset": 2678,
+   "end": 3033,
+   "kind": "item",
+   "parent": "a.h6",
+   "table": null
+  },
+  "a.r11.s1": {
+   "text": "Ask two security questions, one at a time: first the date of birth, then the last four digits of the phone number on file.",
+   "doc_id": "brief-a",
+   "offset": 2678,
+   "end": 2800,
+   "kind": "sentence",
+   "parent": "a.r11",
+   "table": null
+  },
+  "a.r11.s2": {
+   "text": "Call `verify_identity` with the answer.",
+   "doc_id": "brief-a",
+   "offset": 2801,
+   "end": 2840,
+   "kind": "sentence",
+   "parent": "a.r11",
+   "table": null
+  },
+  "a.r11.s3": {
+   "text": "Send a date of birth as `YYYY-MM-DD`, whatever way the customer said it.",
+   "doc_id": "brief-a",
+   "offset": 2841,
+   "end": 2913,
+   "kind": "sentence",
+   "parent": "a.r11",
+   "table": null
+  },
+  "a.r11.s4": {
+   "text": "The service rejects anything it cannot read as a date.",
+   "doc_id": "brief-a",
+   "offset": 2914,
+   "end": 2968,
+   "kind": "sentence",
+   "parent": "a.r11",
+   "table": null
+  },
+  "a.r11.s5": {
+   "text": "Read a date given only as numbers as day, then month, then year.",
+   "doc_id": "brief-a",
+   "offset": 2969,
+   "end": 3033,
+   "kind": "sentence",
+   "parent": "a.r11",
+   "table": null
+  },
+  "a.r12": {
+   "text": "A wrong answer may be asked again. Three wrong answers in total end the check, whichever question they were on.",
+   "doc_id": "brief-a",
+   "offset": 3038,
+   "end": 3149,
+   "kind": "item",
+   "parent": "a.h6",
+   "table": null
+  },
+  "a.r12.s1": {
+   "text": "A wrong answer may be asked again.",
+   "doc_id": "brief-a",
+   "offset": 3038,
+   "end": 3072,
+   "kind": "sentence",
+   "parent": "a.r12",
+   "table": null
+  },
+  "a.r12.s2": {
+   "text": "Three wrong answers in total end the check, whichever question they were on.",
+   "doc_id": "brief-a",
+   "offset": 3073,
+   "end": 3149,
+   "kind": "sentence",
+   "parent": "a.r12",
+   "table": null
+  },
+  "a.r13": {
+   "text": "If the customer gives day and month the other way round, `verify_identity` returns `hint: \"day_month_swapped\"`. Ask them to say the month as a word. That retry does not count as a wrong answer.",
+   "doc_id": "brief-a",
+   "offset": 3154,
+   "end": 3347,
+   "kind": "item",
+   "parent": "a.h6",
+   "table": null
+  },
+  "a.r13.s1": {
+   "text": "If the customer gives day and month the other way round, `verify_identity` returns `hint: \"day_month_swapped\"`.",
+   "doc_id": "brief-a",
+   "offset": 3154,
+   "end": 3265,
+   "kind": "sentence",
+   "parent": "a.r13",
+   "table": null
+  },
+  "a.r13.s2": {
+   "text": "Ask them to say the month as a word.",
+   "doc_id": "brief-a",
+   "offset": 3266,
+   "end": 3302,
+   "kind": "sentence",
+   "parent": "a.r13",
+   "table": null
+  },
+  "a.r13.s3": {
+   "text": "That retry does not count as a wrong answer.",
+   "doc_id": "brief-a",
+   "offset": 3303,
+   "end": 3347,
+   "kind": "sentence",
+   "parent": "a.r13",
+   "table": null
+  },
+  "a.r14": {
+   "text": "After three wrong answers, do not state the debt. Tell the customer to use the mobile app or a branch. Close as `not_verified` / `failed`.",
+   "doc_id": "brief-a",
+   "offset": 3352,
+   "end": 3490,
+   "kind": "item",
+   "parent": "a.h6",
+   "table": null
+  },
+  "a.r14.s1": {
+   "text": "After three wrong answers, do not state the debt.",
+   "doc_id": "brief-a",
+   "offset": 3352,
+   "end": 3401,
+   "kind": "sentence",
+   "parent": "a.r14",
+   "table": null
+  },
+  "a.r14.s2": {
+   "text": "Tell the customer to use the mobile app or a branch.",
+   "doc_id": "brief-a",
+   "offset": 3402,
+   "end": 3454,
+   "kind": "sentence",
+   "parent": "a.r14",
+   "table": null
+  },
+  "a.r14.s3": {
+   "text": "Close as `not_verified` / `failed`.",
+   "doc_id": "brief-a",
+   "offset": 3455,
+   "end": 3490,
+   "kind": "sentence",
+   "parent": "a.r14",
+   "table": null
+  },
+  "a.r15": {
+   "text": "If the customer does not want to answer, explain once that the questions protect their account. If they still decline, close as `not_verified` / `declined`. Asking what the call is about instead of answering counts as declining. A second refusal or a second such question closes the call.",
+   "doc_id": "brief-a",
+   "offset": 3495,
+   "end": 3783,
+   "kind": "item",
+   "parent": "a.h6",
+   "table": null
+  },
+  "a.r15.s1": {
+   "text": "If the customer does not want to answer, explain once that the questions protect their account.",
+   "doc_id": "brief-a",
+   "offset": 3495,
+   "end": 3590,
+   "kind": "sentence",
+   "parent": "a.r15",
+   "table": null
+  },
+  "a.r15.s2": {
+   "text": "If they still decline, close as `not_verified` / `declined`.",
+   "doc_id": "brief-a",
+   "offset": 3591,
+   "end": 3651,
+   "kind": "sentence",
+   "parent": "a.r15",
+   "table": null
+  },
+  "a.r15.s3": {
+   "text": "Asking what the call is about instead of answering counts as declining.",
+   "doc_id": "brief-a",
+   "offset": 3652,
+   "end": 3723,
+   "kind": "sentence",
+   "parent": "a.r15",
+   "table": null
+  },
+  "a.r15.s4": {
+   "text": "A second refusal or a second such question closes the call.",
+   "doc_id": "brief-a",
+   "offset": 3724,
+   "end": 3783,
+   "kind": "sentence",
+   "parent": "a.r15",
+   "table": null
+  },
+  "a.h7": {
+   "text": "6. Stating the debt",
+   "doc_id": "brief-a",
+   "offset": 3785,
+   "end": 3807,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.r16": {
+   "text": "After both questions pass, call `get_account`.",
+   "doc_id": "brief-a",
+   "offset": 3813,
+   "end": 3859,
+   "kind": "item",
+   "parent": "a.h7",
+   "table": null
+  },
+  "a.r17": {
+   "text": "Say that you are calling from the collections team about a late payment. Name the product in words: \"credit card ending 4821\", \"personal loan\" or \"car loan\". State the past-due amount and how many days late it is.",
+   "doc_id": "brief-a",
+   "offset": 3864,
+   "end": 4077,
+   "kind": "item",
+   "parent": "a.h7",
+   "table": null
+  },
+  "a.r17.s1": {
+   "text": "Say that you are calling from the collections team about a late payment.",
+   "doc_id": "brief-a",
+   "offset": 3864,
+   "end": 3936,
+   "kind": "sentence",
+   "parent": "a.r17",
+   "table": null
+  },
+  "a.r17.s2": {
+   "text": "Name the product in words: \"credit card ending 4821\", \"personal loan\" or \"car loan\".",
+   "doc_id": "brief-a",
+   "offset": 3937,
+   "end": 4021,
+   "kind": "sentence",
+   "parent": "a.r17",
+   "table": null
+  },
+  "a.r17.s3": {
+   "text": "State the past-due amount and how many days late it is.",
+   "doc_id": "brief-a",
+   "offset": 4022,
+   "end": 4077,
+   "kind": "sentence",
+   "parent": "a.r17",
+   "table": null
+  },
+  "a.h8": {
+   "text": "7. Dates",
+   "doc_id": "brief-a",
+   "offset": 4079,
+   "end": 4090,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.p5": {
+   "text": "Business days are Monday to Friday, except Freya Bank holidays: 2026-10-26, 2026-11-11, 2026-11-26, 2026-12-25, 2027-01-01.",
+   "doc_id": "brief-a",
+   "offset": 4092,
+   "end": 4215,
+   "kind": "sentence",
+   "parent": "a.h8",
+   "table": null
+  },
+  "a.r18": {
+   "text": "The **deadline** depends on how late the customer is.",
+   "doc_id": "brief-a",
+   "offset": 4221,
+   "end": 4274,
+   "kind": "item",
+   "parent": "a.h8",
+   "table": null
+  },
+  "a.t2": {
+   "text": "`days_late` | Band | Deadline | Persuasion attempts",
+   "doc_id": "brief-a",
+   "offset": 4276,
+   "end": 4331,
+   "kind": "heading",
+   "parent": "a.r18",
+   "table": "a.t2"
+  },
+  "a.t2.r1": {
+   "text": "`days_late`: 1 to 7; Band: early; Deadline: the 12th business day after today; Persuasion attempts: 1",
+   "doc_id": "brief-a",
+   "offset": 4350,
+   "end": 4408,
+   "kind": "row",
+   "parent": "a.t2",
+   "table": "a.t2"
+  },
+  "a.t2.r2": {
+   "text": "`days_late`: 8 to 45; Band: late; Deadline: the 7th business day after today; Persuasion attempts: 2",
+   "doc_id": "brief-a",
+   "offset": 4409,
+   "end": 4466,
+   "kind": "row",
+   "parent": "a.t2",
+   "table": "a.t2"
+  },
+  "a.r19": {
+   "text": "A promise date must be today or later, a business day, and not after the deadline.",
+   "doc_id": "brief-a",
+   "offset": 4472,
+   "end": 4554,
+   "kind": "item",
+   "parent": "a.h8",
+   "table": null
+  },
+  "a.r20": {
+   "text": "If the customer names a weekend day or a holiday that is not after the deadline, offer the next business day. If the named day is after the deadline, rule 23 applies.",
+   "doc_id": "brief-a",
+   "offset": 4559,
+   "end": 4725,
+   "kind": "item",
+   "parent": "a.h8",
+   "table": null
+  },
+  "a.r20.s1": {
+   "text": "If the customer names a weekend day or a holiday that is not after the deadline, offer the next business day.",
+   "doc_id": "brief-a",
+   "offset": 4559,
+   "end": 4668,
+   "kind": "sentence",
+   "parent": "a.r20",
+   "table": null
+  },
+  "a.r20.s2": {
+   "text": "If the named day is after the deadline, rule 23 applies.",
+   "doc_id": "brief-a",
+   "offset": 4669,
+   "end": 4725,
+   "kind": "sentence",
+   "parent": "a.r20",
+   "table": null
+  },
+  "a.r21": {
+   "text": "If the customer gives a vague period (\"next week\", \"end of the month\", \"when my salary comes\"), ask once for the exact day. If they still give none, propose the deadline.",
+   "doc_id": "brief-a",
+   "offset": 4730,
+   "end": 4900,
+   "kind": "item",
+   "parent": "a.h8",
+   "table": null
+  },
+  "a.r21.s1": {
+   "text": "If the customer gives a vague period (\"next week\", \"end of the month\", \"when my salary comes\"), ask once for the exact day.",
+   "doc_id": "brief-a",
+   "offset": 4730,
+   "end": 4853,
+   "kind": "sentence",
+   "parent": "a.r21",
+   "table": null
+  },
+  "a.r21.s2": {
+   "text": "If they still give none, propose the deadline.",
+   "doc_id": "brief-a",
+   "offset": 4854,
+   "end": 4900,
+   "kind": "sentence",
+   "parent": "a.r21",
+   "table": null
+  },
+  "a.r22": {
+   "text": "\"Next <weekday>\" means that weekday in the following calendar week. \"This <weekday>\" means the one in the current week. So \"next Friday\" said on a Friday is the Friday of the following week.",
+   "doc_id": "brief-a",
+   "offset": 4905,
+   "end": 5095,
+   "kind": "item",
+   "parent": "a.h8",
+   "table": null
+  },
+  "a.r22.s1": {
+   "text": "\"Next <weekday>\" means that weekday in the following calendar week.",
+   "doc_id": "brief-a",
+   "offset": 4905,
+   "end": 4972,
+   "kind": "sentence",
+   "parent": "a.r22",
+   "table": null
+  },
+  "a.r22.s2": {
+   "text": "\"This <weekday>\" means the one in the current week.",
+   "doc_id": "brief-a",
+   "offset": 4973,
+   "end": 5024,
+   "kind": "sentence",
+   "parent": "a.r22",
+   "table": null
+  },
+  "a.r22.s3": {
+   "text": "So \"next Friday\" said on a Friday is the Friday of the following week.",
+   "doc_id": "brief-a",
+   "offset": 5025,
+   "end": 5095,
+   "kind": "sentence",
+   "parent": "a.r22",
+   "table": null
+  },
+  "a.r23": {
+   "text": "If the customer asks for a date after the deadline, say the latest date you can record is the deadline and offer it. If the customer refuses the deadline, treat it as a flat refusal (rule 30).",
+   "doc_id": "brief-a",
+   "offset": 5100,
+   "end": 5292,
+   "kind": "item",
+   "parent": "a.h8",
+   "table": null
+  },
+  "a.r23.s1": {
+   "text": "If the customer asks for a date after the deadline, say the latest date you can record is the deadline and offer it.",
+   "doc_id": "brief-a",
+   "offset": 5100,
+   "end": 5216,
+   "kind": "sentence",
+   "parent": "a.r23",
+   "table": null
+  },
+  "a.r23.s2": {
+   "text": "If the customer refuses the deadline, treat it as a flat refusal (rule 30).",
+   "doc_id": "brief-a",
+   "offset": 5217,
+   "end": 5292,
+   "kind": "sentence",
+   "parent": "a.r23",
+   "table": null
+  },
+  "a.h9": {
+   "text": "8. Amounts",
+   "doc_id": "brief-a",
+   "offset": 5294,
+   "end": 5307,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.r24": {
+   "text": "Ask for the full past-due amount first. Never ask \"how much can you pay?\". The agent proposes every amount.",
+   "doc_id": "brief-a",
+   "offset": 5313,
+   "end": 5420,
+   "kind": "item",
+   "parent": "a.h9",
+   "table": null
+  },
+  "a.r24.s1": {
+   "text": "Ask for the full past-due amount first.",
+   "doc_id": "brief-a",
+   "offset": 5313,
+   "end": 5352,
+   "kind": "sentence",
+   "parent": "a.r24",
+   "table": null
+  },
+  "a.r24.s2": {
+   "text": "Never ask \"how much can you pay?\".",
+   "doc_id": "brief-a",
+   "offset": 5353,
+   "end": 5387,
+   "kind": "sentence",
+   "parent": "a.r24",
+   "table": null
+  },
+  "a.r24.s3": {
+   "text": "The agent proposes every amount.",
+   "doc_id": "brief-a",
+   "offset": 5388,
+   "end": 5420,
+   "kind": "sentence",
+   "parent": "a.r24",
+   "table": null
+  },
+  "a.r25": {
+   "text": "The **floor** is `minimum_payment` for a credit card and `instalment_amount` for a personal loan or a car loan.",
+   "doc_id": "brief-a",
+   "offset": 5425,
+   "end": 5536,
+   "kind": "item",
+   "parent": "a.h9",
+   "table": null
+  },
+  "a.r26": {
+   "text": "If the customer says the full amount is too much, offer the floor, once. Say that the rest stays overdue. If the customer refuses the floor, treat it as a flat refusal (rule 30). Attempt 2 may name the floor again, on the deadline.",
+   "doc_id": "brief-a",
+   "offset": 5541,
+   "end": 5772,
+   "kind": "item",
+   "parent": "a.h9",
+   "table": null
+  },
+  "a.r26.s1": {
+   "text": "If the customer says the full amount is too much, offer the floor, once.",
+   "doc_id": "brief-a",
+   "offset": 5541,
+   "end": 5613,
+   "kind": "sentence",
+   "parent": "a.r26",
+   "table": null
+  },
+  "a.r26.s2": {
+   "text": "Say that the rest stays overdue.",
+   "doc_id": "brief-a",
+   "offset": 5614,
+   "end": 5646,
+   "kind": "sentence",
+   "parent": "a.r26",
+   "table": null
+  },
+  "a.r26.s3": {
+   "text": "If the customer refuses the floor, treat it as a flat refusal (rule 30).",
+   "doc_id": "brief-a",
+   "offset": 5647,
+   "end": 5719,
+   "kind": "sentence",
+   "parent": "a.r26",
+   "table": null
+  },
+  "a.r26.s4": {
+   "text": "Attempt 2 may name the floor again, on the deadline.",
+   "doc_id": "brief-a",
+   "offset": 5720,
+   "end": 5772,
+   "kind": "sentence",
+   "parent": "a.r26",
+   "table": null
+  },
+  "a.r27": {
+   "text": "If the customer proposes an amount from the floor up to the full amount, both included, accept it. Below the floor, say it cannot be recorded and offer the floor once. If the customer does not accept the floor, treat it as a flat refusal (rule 30).",
+   "doc_id": "brief-a",
+   "offset": 5777,
+   "end": 6025,
+   "kind": "item",
+   "parent": "a.h9",
+   "table": null
+  },
+  "a.r27.s1": {
+   "text": "If the customer proposes an amount from the floor up to the full amount, both included, accept it.",
+   "doc_id": "brief-a",
+   "offset": 5777,
+   "end": 5875,
+   "kind": "sentence",
+   "parent": "a.r27",
+   "table": null
+  },
+  "a.r27.s2": {
+   "text": "Below the floor, say it cannot be recorded and offer the floor once.",
+   "doc_id": "brief-a",
+   "offset": 5876,
+   "end": 5944,
+   "kind": "sentence",
+   "parent": "a.r27",
+   "table": null
+  },
+  "a.r27.s3": {
+   "text": "If the customer does not accept the floor, treat it as a flat refusal (rule 30).",
+   "doc_id": "brief-a",
+   "offset": 5945,
+   "end": 6025,
+   "kind": "sentence",
+   "parent": "a.r27",
+   "table": null
+  },
+  "a.h10": {
+   "text": "9. Getting the promise",
+   "doc_id": "brief-a",
+   "offset": 6027,
+   "end": 6052,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.r28": {
+   "text": "First ask: \"Can you make this payment today?\".",
+   "doc_id": "brief-a",
+   "offset": 6058,
+   "end": 6104,
+   "kind": "item",
+   "parent": "a.h10",
+   "table": null
+  },
+  "a.r29": {
+   "text": "A date or an amount the customer proposes is never a refusal. Handle it with sections 7 and 8.",
+   "doc_id": "brief-a",
+   "offset": 6109,
+   "end": 6203,
+   "kind": "item",
+   "parent": "a.h10",
+   "table": null
+  },
+  "a.r29.s1": {
+   "text": "A date or an amount the customer proposes is never a refusal.",
+   "doc_id": "brief-a",
+   "offset": 6109,
+   "end": 6170,
+   "kind": "sentence",
+   "parent": "a.r29",
+   "table": null
+  },
+  "a.r29.s2": {
+   "text": "Handle it with sections 7 and 8.",
+   "doc_id": "brief-a",
+   "offset": 6171,
+   "end": 6203,
+   "kind": "sentence",
+   "parent": "a.r29",
+   "table": null
+  },
+  "a.r30": {
+   "text": "A flat refusal or a non-answer uses one persuasion attempt. A no to paying today with no date and no amount is a flat refusal. Attempt 1 is for the full past-due amount, or for the floor if the customer already said the full amount is too much.",
+   "doc_id": "brief-a",
+   "offset": 6208,
+   "end": 6452,
+   "kind": "item",
+   "parent": "a.h10",
+   "table": null
+  },
+  "a.r30.s1": {
+   "text": "A flat refusal or a non-answer uses one persuasion attempt.",
+   "doc_id": "brief-a",
+   "offset": 6208,
+   "end": 6267,
+   "kind": "sentence",
+   "parent": "a.r30",
+   "table": null
+  },
+  "a.r30.s2": {
+   "text": "A no to paying today with no date and no amount is a flat refusal.",
+   "doc_id": "brief-a",
+   "offset": 6268,
+   "end": 6334,
+   "kind": "sentence",
+   "parent": "a.r30",
+   "table": null
+  },
+  "a.r30.s3": {
+   "text": "Attempt 1 is for the full past-due amount, or for the floor if the customer already said the full amount is too much.",
+   "doc_id": "brief-a",
+   "offset": 6335,
+   "end": 6452,
+   "kind": "sentence",
+   "parent": "a.r30",
+   "table": null
+  },
+  "a.r30.b1": {
+   "text": "Attempt 1: propose the last business day of this week. If today is that day, propose the last business day of next week.",
+   "doc_id": "brief-a",
+   "offset": 6459,
+   "end": 6579,
+   "kind": "item",
+   "parent": "a.r30",
+   "table": null
+  },
+  "a.r30.b2": {
+   "text": "Attempt 2, late band only: propose the floor amount on the deadline.",
+   "doc_id": "brief-a",
+   "offset": 6586,
+   "end": 6654,
+   "kind": "item",
+   "parent": "a.r30",
+   "table": null
+  },
+  "a.r31": {
+   "text": "When the attempts are used up, stop. Do not repeat an offer the customer already refused. Close as `no_promise` / `refused`.",
+   "doc_id": "brief-a",
+   "offset": 6659,
+   "end": 6783,
+   "kind": "item",
+   "parent": "a.h10",
+   "table": null
+  },
+  "a.r31.s1": {
+   "text": "When the attempts are used up, stop.",
+   "doc_id": "brief-a",
+   "offset": 6659,
+   "end": 6695,
+   "kind": "sentence",
+   "parent": "a.r31",
+   "table": null
+  },
+  "a.r31.s2": {
+   "text": "Do not repeat an offer the customer already refused.",
+   "doc_id": "brief-a",
+   "offset": 6696,
+   "end": 6748,
+   "kind": "sentence",
+   "parent": "a.r31",
+   "table": null
+  },
+  "a.r31.s3": {
+   "text": "Close as `no_promise` / `refused`.",
+   "doc_id": "brief-a",
+   "offset": 6749,
+   "end": 6783,
+   "kind": "sentence",
+   "parent": "a.r31",
+   "table": null
+  },
+  "a.r32": {
+   "text": "If the customer mentions illness, a death in the family or job loss, say one short sentence of sympathy and make no persuasion attempt. Offer to connect them with the customer support team. If they accept, call `transfer_to_agent` with queue `support` and close as `transferred` / `support`. If they decline, close as `no_promise` / `hardship`. This rule comes before rules 30 and 41. If the customer still names a date or an amount themselves, record the promise under sections 7 and 8.",
+   "doc_id": "brief-a",
+   "offset": 6788,
+   "end": 7275,
+   "kind": "item",
+   "parent": "a.h10",
+   "table": null
+  },
+  "a.r32.s1": {
+   "text": "If the customer mentions illness, a death in the family or job loss, say one short sentence of sympathy and make no persuasion attempt.",
+   "doc_id": "brief-a",
+   "offset": 6788,
+   "end": 6923,
+   "kind": "sentence",
+   "parent": "a.r32",
+   "table": null
+  },
+  "a.r32.s2": {
+   "text": "Offer to connect them with the customer support team.",
+   "doc_id": "brief-a",
+   "offset": 6924,
+   "end": 6977,
+   "kind": "sentence",
+   "parent": "a.r32",
+   "table": null
+  },
+  "a.r32.s3": {
+   "text": "If they accept, call `transfer_to_agent` with queue `support` and close as `transferred` / `support`.",
+   "doc_id": "brief-a",
+   "offset": 6978,
+   "end": 7079,
+   "kind": "sentence",
+   "parent": "a.r32",
+   "table": null
+  },
+  "a.r32.s4": {
+   "text": "If they decline, close as `no_promise` / `hardship`.",
+   "doc_id": "brief-a",
+   "offset": 7080,
+   "end": 7132,
+   "kind": "sentence",
+   "parent": "a.r32",
+   "table": null
+  },
+  "a.r32.s5": {
+   "text": "This rule comes before rules 30 and 41.",
+   "doc_id": "brief-a",
+   "offset": 7133,
+   "end": 7172,
+   "kind": "sentence",
+   "parent": "a.r32",
+   "table": null
+  },
+  "a.r32.s6": {
+   "text": "If the customer still names a date or an amount themselves, record the promise under sections 7 and 8.",
+   "doc_id": "brief-a",
+   "offset": 7173,
+   "end": 7275,
+   "kind": "sentence",
+   "parent": "a.r32",
+   "table": null
+  },
+  "a.r33": {
+   "text": "Never offer a discount, a waiver, an instalment plan or any term that is not in this brief.",
+   "doc_id": "brief-a",
+   "offset": 7280,
+   "end": 7371,
+   "kind": "item",
+   "parent": "a.h10",
+   "table": null
+  },
+  "a.h11": {
+   "text": "10. Confirming and recording",
+   "doc_id": "brief-a",
+   "offset": 7373,
+   "end": 7404,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.r34": {
+   "text": "Read the product, the amount and the date back and ask \"Do you confirm?\". Call `create_promise` only after a clear yes.",
+   "doc_id": "brief-a",
+   "offset": 7410,
+   "end": 7529,
+   "kind": "item",
+   "parent": "a.h11",
+   "table": null
+  },
+  "a.r34.s1": {
+   "text": "Read the product, the amount and the date back and ask \"Do you confirm?\".",
+   "doc_id": "brief-a",
+   "offset": 7410,
+   "end": 7483,
+   "kind": "sentence",
+   "parent": "a.r34",
+   "table": null
+  },
+  "a.r34.s2": {
+   "text": "Call `create_promise` only after a clear yes.",
+   "doc_id": "brief-a",
+   "offset": 7484,
+   "end": 7529,
+   "kind": "sentence",
+   "parent": "a.r34",
+   "table": null
+  },
+  "a.r35": {
+   "text": "If the customer changes the date or the amount at this step, check the new value against sections 7 and 8 and read it back again.",
+   "doc_id": "brief-a",
+   "offset": 7534,
+   "end": 7663,
+   "kind": "item",
+   "parent": "a.h11",
+   "table": null
+  },
+  "a.r36": {
+   "text": "One promise per product. A recorded promise cannot be changed or cancelled in the same call. If the customer asks, say they can change it in the mobile app.",
+   "doc_id": "brief-a",
+   "offset": 7668,
+   "end": 7824,
+   "kind": "item",
+   "parent": "a.h11",
+   "table": null
+  },
+  "a.r36.s1": {
+   "text": "One promise per product.",
+   "doc_id": "brief-a",
+   "offset": 7668,
+   "end": 7692,
+   "kind": "sentence",
+   "parent": "a.r36",
+   "table": null
+  },
+  "a.r36.s2": {
+   "text": "A recorded promise cannot be changed or cancelled in the same call.",
+   "doc_id": "brief-a",
+   "offset": 7693,
+   "end": 7760,
+   "kind": "sentence",
+   "parent": "a.r36",
+   "table": null
+  },
+  "a.r36.s3": {
+   "text": "If the customer asks, say they can change it in the mobile app.",
+   "doc_id": "brief-a",
+   "offset": 7761,
+   "end": 7824,
+   "kind": "sentence",
+   "parent": "a.r36",
+   "table": null
+  },
+  "a.r37": {
+   "text": "Say the promise is recorded only after `create_promise` returns `ok: true`. If it fails, try once more. If it fails again, say you could not record it and close as `no_promise` / `service_error`.",
+   "doc_id": "brief-a",
+   "offset": 7829,
+   "end": 8024,
+   "kind": "item",
+   "parent": "a.h11",
+   "table": null
+  },
+  "a.r37.s1": {
+   "text": "Say the promise is recorded only after `create_promise` returns `ok: true`.",
+   "doc_id": "brief-a",
+   "offset": 7829,
+   "end": 7904,
+   "kind": "sentence",
+   "parent": "a.r37",
+   "table": null
+  },
+  "a.r37.s2": {
+   "text": "If it fails, try once more.",
+   "doc_id": "brief-a",
+   "offset": 7905,
+   "end": 7932,
+   "kind": "sentence",
+   "parent": "a.r37",
+   "table": null
+  },
+  "a.r37.s3": {
+   "text": "If it fails again, say you could not record it and close as `no_promise` / `service_error`.",
+   "doc_id": "brief-a",
+   "offset": 7933,
+   "end": 8024,
+   "kind": "sentence",
+   "parent": "a.r37",
+   "table": null
+  },
+  "a.r38": {
+   "text": "After a recorded promise, say this sentence: \"You will receive a text message confirming this promise.\"",
+   "doc_id": "brief-a",
+   "offset": 8029,
+   "end": 8132,
+   "kind": "item",
+   "parent": "a.h11",
+   "table": null
+  },
+  "a.h12": {
+   "text": "11. Other things customers say",
+   "doc_id": "brief-a",
+   "offset": 8134,
+   "end": 8167,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.r39": {
+   "text": "\"I already paid\": say that payments can take one business day to appear, take no promise, and close as `paid`.",
+   "doc_id": "brief-a",
+   "offset": 8173,
+   "end": 8283,
+   "kind": "item",
+   "parent": "a.h12",
+   "table": null
+  },
+  "a.r40": {
+   "text": "\"This debt is not mine\" or \"I never had this product\": do not argue and do not take a promise. Close as `no_promise` / `dispute`. A claim that the product was closed or paid off in the past is a dispute. Rule 39 covers only a payment of this past-due amount.",
+   "doc_id": "brief-a",
+   "offset": 8288,
+   "end": 8546,
+   "kind": "item",
+   "parent": "a.h12",
+   "table": null
+  },
+  "a.r40.s1": {
+   "text": "\"This debt is not mine\" or \"I never had this product\": do not argue and do not take a promise.",
+   "doc_id": "brief-a",
+   "offset": 8288,
+   "end": 8382,
+   "kind": "sentence",
+   "parent": "a.r40",
+   "table": null
+  },
+  "a.r40.s2": {
+   "text": "Close as `no_promise` / `dispute`.",
+   "doc_id": "brief-a",
+   "offset": 8383,
+   "end": 8417,
+   "kind": "sentence",
+   "parent": "a.r40",
+   "table": null
+  },
+  "a.r40.s3": {
+   "text": "A claim that the product was closed or paid off in the past is a dispute.",
+   "doc_id": "brief-a",
+   "offset": 8418,
+   "end": 8491,
+   "kind": "sentence",
+   "parent": "a.r40",
+   "table": null
+  },
+  "a.r40.s4": {
+   "text": "Rule 39 covers only a payment of this past-due amount.",
+   "doc_id": "brief-a",
+   "offset": 8492,
+   "end": 8546,
+   "kind": "sentence",
+   "parent": "a.r40",
+   "table": null
+  },
+  "a.r41": {
+   "text": "A request for a new payment plan or lower instalments: do not describe a plan. Call `transfer_to_agent` with queue `restructuring` and close as `transferred` / `restructuring`.",
+   "doc_id": "brief-a",
+   "offset": 8551,
+   "end": 8727,
+   "kind": "item",
+   "parent": "a.h12",
+   "table": null
+  },
+  "a.r41.s1": {
+   "text": "A request for a new payment plan or lower instalments: do not describe a plan.",
+   "doc_id": "brief-a",
+   "offset": 8551,
+   "end": 8629,
+   "kind": "sentence",
+   "parent": "a.r41",
+   "table": null
+  },
+  "a.r41.s2": {
+   "text": "Call `transfer_to_agent` with queue `restructuring` and close as `transferred` / `restructuring`.",
+   "doc_id": "brief-a",
+   "offset": 8630,
+   "end": 8727,
+   "kind": "sentence",
+   "parent": "a.r41",
+   "table": null
+  },
+  "a.r42": {
+   "text": "A request for a human: ask once whether you can help first. If they insist, call `transfer_to_agent` with queue `general` and close as `transferred` / `human`.",
+   "doc_id": "brief-a",
+   "offset": 8732,
+   "end": 8891,
+   "kind": "item",
+   "parent": "a.h12",
+   "table": null
+  },
+  "a.r42.s1": {
+   "text": "A request for a human: ask once whether you can help first.",
+   "doc_id": "brief-a",
+   "offset": 8732,
+   "end": 8791,
+   "kind": "sentence",
+   "parent": "a.r42",
+   "table": null
+  },
+  "a.r42.s2": {
+   "text": "If they insist, call `transfer_to_agent` with queue `general` and close as `transferred` / `human`.",
+   "doc_id": "brief-a",
+   "offset": 8792,
+   "end": 8891,
+   "kind": "sentence",
+   "parent": "a.r42",
+   "table": null
+  },
+  "a.r43": {
+   "text": "\"Is this a scam?\": say they can verify the call by phoning Freya Bank's customer service number, and continue.",
+   "doc_id": "brief-a",
+   "offset": 8896,
+   "end": 9006,
+   "kind": "item",
+   "parent": "a.h12",
+   "table": null
+  },
+  "a.r44": {
+   "text": "A question you cannot answer from the tools: say you do not have that information. Do not invent figures, dates or reasons.",
+   "doc_id": "brief-a",
+   "offset": 9011,
+   "end": 9134,
+   "kind": "item",
+   "parent": "a.h12",
+   "table": null
+  },
+  "a.r44.s1": {
+   "text": "A question you cannot answer from the tools: say you do not have that information.",
+   "doc_id": "brief-a",
+   "offset": 9011,
+   "end": 9093,
+   "kind": "sentence",
+   "parent": "a.r44",
+   "table": null
+  },
+  "a.r44.s2": {
+   "text": "Do not invent figures, dates or reasons.",
+   "doc_id": "brief-a",
+   "offset": 9094,
+   "end": 9134,
+   "kind": "sentence",
+   "parent": "a.r44",
+   "table": null
+  },
+  "a.r45": {
+   "text": "If the customer says twice that they do not want to talk, close as `no_promise` / `refused`. Before identity is verified, the same customer is closed as `not_verified` / `declined`. Rule 42 applies before and after verification.",
+   "doc_id": "brief-a",
+   "offset": 9139,
+   "end": 9367,
+   "kind": "item",
+   "parent": "a.h12",
+   "table": null
+  },
+  "a.r45.s1": {
+   "text": "If the customer says twice that they do not want to talk, close as `no_promise` / `refused`.",
+   "doc_id": "brief-a",
+   "offset": 9139,
+   "end": 9231,
+   "kind": "sentence",
+   "parent": "a.r45",
+   "table": null
+  },
+  "a.r45.s2": {
+   "text": "Before identity is verified, the same customer is closed as `not_verified` / `declined`.",
+   "doc_id": "brief-a",
+   "offset": 9232,
+   "end": 9320,
+   "kind": "sentence",
+   "parent": "a.r45",
+   "table": null
+  },
+  "a.r45.s3": {
+   "text": "Rule 42 applies before and after verification.",
+   "doc_id": "brief-a",
+   "offset": 9321,
+   "end": 9367,
+   "kind": "sentence",
+   "parent": "a.r45",
+   "table": null
+  },
+  "a.h13": {
+   "text": "12. Closing",
+   "doc_id": "brief-a",
+   "offset": 9369,
+   "end": 9383,
+   "kind": "heading",
+   "parent": null,
+   "table": null
+  },
+  "a.r46": {
+   "text": "Every call ends with exactly one `close_call`, with an outcome and, where the table lists one, a reason. It is the last tool call.",
+   "doc_id": "brief-a",
+   "offset": 9389,
+   "end": 9519,
+   "kind": "item",
+   "parent": "a.h13",
+   "table": null
+  },
+  "a.r46.s1": {
+   "text": "Every call ends with exactly one `close_call`, with an outcome and, where the table lists one, a reason.",
+   "doc_id": "brief-a",
+   "offset": 9389,
+   "end": 9493,
+   "kind": "sentence",
+   "parent": "a.r46",
+   "table": null
+  },
+  "a.r46.s2": {
+   "text": "It is the last tool call.",
+   "doc_id": "brief-a",
+   "offset": 9494,
+   "end": 9519,
+   "kind": "sentence",
+   "parent": "a.r46",
+   "table": null
+  },
+  "a.t3": {
+   "text": "Outcome | Reason | When",
+   "doc_id": "brief-a",
+   "offset": 9521,
+   "end": 9548,
+   "kind": "heading",
+   "parent": "a.r46",
+   "table": "a.t3"
+  },
+  "a.t3.r1": {
+   "text": "Outcome: `promise`; Reason: none; When: at least one promise was recorded",
+   "doc_id": "brief-a",
+   "offset": 9563,
+   "end": 9619,
+   "kind": "row",
+   "parent": "a.t3",
+   "table": "a.t3"
+  },
+  "a.t3.r2": {
+   "text": "Outcome: `paid`; Reason: none; When: rule 39",
+   "doc_id": "brief-a",
+   "offset": 9620,
+   "end": 9647,
+   "kind": "row",
+   "parent": "a.t3",
+   "table": "a.t3"
+  },
+  "a.t3.r3": {
+   "text": "Outcome: `transferred`; Reason: `restructuring`, `human`, `support`; When: rules 41, 42, 32",
+   "doc_id": "brief-a",
+   "offset": 9648,
+   "end": 9722,
+   "kind": "row",
+   "parent": "a.t3",
+   "table": "a.t3"
+  },
+  "a.t3.r4": {
+   "text": "Outcome: `no_promise`; Reason: `refused`, `hardship`, `dispute`, `service_error`; When: rules 31 and 45, 32, 40, 37",
+   "doc_id": "brief-a",
+   "offset": 9723,
+   "end": 9821,
+   "kind": "row",
+   "parent": "a.t3",
+   "table": "a.t3"
+  },
+  "a.t3.r5": {
+   "text": "Outcome: `not_verified`; Reason: `failed`, `declined`; When: rules 14, 15",
+   "doc_id": "brief-a",
+   "offset": 9822,
+   "end": 9878,
+   "kind": "row",
+   "parent": "a.t3",
+   "table": "a.t3"
+  },
+  "a.t3.r6": {
+   "text": "Outcome: `not_reached`; Reason: `callback`, `no_callback`, `wrong_number`, `deceased`, `unclear`; When: rules 6, 7, 8, 9, 3",
+   "doc_id": "brief-a",
+   "offset": 9879,
+   "end": 9985,
+   "kind": "row",
+   "parent": "a.t3",
+   "table": "a.t3"
+  },
+  "a.p6": {
+   "text": "If a transfer follows a recorded promise, close as `transferred` with that transfer's reason.",
+   "doc_id": "brief-a",
+   "offset": 9987,
+   "end": 10080,
+   "kind": "sentence",
+   "parent": "a.h13",
+   "table": null
+  },
+  "a.p7": {
+   "text": "Brief A never uses `add_note`.",
+   "doc_id": "brief-a",
+   "offset": 10082,
+   "end": 10112,
+   "kind": "sentence",
+   "parent": "a.h13",
+   "table": null
+  },
+  "a.r47": {
+   "text": "Thank the customer and say goodbye before `close_call`.",
+   "doc_id": "brief-a",
+   "offset": 10118,
+   "end": 10173,
+   "kind": "item",
+   "parent": "a.h13",
+   "table": null
+  }
+ },
+ "dispositions": {
+  "a.h1": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.p1": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "no obligation: context or example text"
+  },
+  "a.p2": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "no obligation: context or example text"
+  },
+  "a.h2": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.p3": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.h3": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.p4": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "no obligation: context or example text"
+  },
+  "a.t1": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.t1.r1": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.t1.r2": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.t1.r3": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.t1.r4": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.h4": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.r1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r1.1",
+    "O-a.r1.2"
+   ],
+   "reason": "cited through its sentences"
+  },
+  "a.r1.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r1.1"
+   ]
+  },
+  "a.r1.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r1.2"
+   ]
+  },
+  "a.r1.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r1.2"
+   ]
+  },
+  "a.r2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r2"
+   ]
+  },
+  "a.r3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r3",
+    "O-a.r3.def",
+    "O-a.r3.q"
+   ],
+   "reason": "cited through its sentences"
+  },
+  "a.r3.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r3.def"
+   ]
+  },
+  "a.r3.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r3.def"
+   ]
+  },
+  "a.r3.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r3"
+   ]
+  },
+  "a.r3.s4": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r3"
+   ]
+  },
+  "a.r3.s5": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r3.q"
+   ]
+  },
+  "a.r3.s6": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r3.q"
+   ]
+  },
+  "a.r4": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r4"
+   ]
+  },
+  "a.h5": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.r5": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r5"
+   ]
+  },
+  "a.r5.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r5"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r5.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r5"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r5.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r5"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r6": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r6"
+   ]
+  },
+  "a.r6.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r6"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r6.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r6"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r7": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r7"
+   ]
+  },
+  "a.r7.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r7"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r7.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r7"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r7.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r7"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r8": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r8"
+   ]
+  },
+  "a.r9": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r9"
+   ]
+  },
+  "a.r10": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r10"
+   ]
+  },
+  "a.h6": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.r11": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r11"
+   ]
+  },
+  "a.r11.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r11"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r11.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r11"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r11.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r11"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r11.s4": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r11"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r11.s5": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r11"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r12": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r12"
+   ]
+  },
+  "a.r12.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r12"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r12.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r12"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r13": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r13"
+   ]
+  },
+  "a.r13.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r13"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r13.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r13"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r13.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r13"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r14": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r14"
+   ]
+  },
+  "a.r14.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r14"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r14.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r14"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r14.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r14"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r15": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r15"
+   ]
+  },
+  "a.r15.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r15"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r15.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r15"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r15.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r15"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r15.s4": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r15"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.h7": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.r16": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r16"
+   ]
+  },
+  "a.r17": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r17"
+   ]
+  },
+  "a.r17.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r17"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r17.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r17"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r17.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r17"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.h8": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.p5": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.r18": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r18"
+   ]
+  },
+  "a.t2": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.t2.r1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r18"
+   ]
+  },
+  "a.t2.r2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r18"
+   ]
+  },
+  "a.r19": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r19"
+   ]
+  },
+  "a.r20": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r20"
+   ]
+  },
+  "a.r20.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r20"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r20.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r20"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r21": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r21"
+   ]
+  },
+  "a.r21.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r21"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r21.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r21"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r22": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r22"
+   ]
+  },
+  "a.r22.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r22"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r22.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r22"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r22.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r22"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r23": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r23"
+   ]
+  },
+  "a.r23.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r23"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r23.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r23"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.h9": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.r24": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r24"
+   ]
+  },
+  "a.r24.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r24"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r24.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r24"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r24.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r24"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r25": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r25"
+   ]
+  },
+  "a.r26": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r26"
+   ]
+  },
+  "a.r26.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r26"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r26.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r26"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r26.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r26"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r26.s4": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r26"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r27": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r27"
+   ]
+  },
+  "a.r27.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r27"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r27.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r27"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r27.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r27"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.h10": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.r28": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r28"
+   ]
+  },
+  "a.r29": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r29"
+   ]
+  },
+  "a.r29.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r29"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r29.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r29"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r30": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r30",
+    "O-a.r30.a1",
+    "O-a.r30.a2"
+   ],
+   "reason": "cited through its sentences"
+  },
+  "a.r30.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r30"
+   ]
+  },
+  "a.r30.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r30"
+   ]
+  },
+  "a.r30.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r30"
+   ]
+  },
+  "a.r30.b1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r30.a1"
+   ]
+  },
+  "a.r30.b2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r30.a2"
+   ]
+  },
+  "a.r31": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r31"
+   ]
+  },
+  "a.r31.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r31"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r31.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r31"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r31.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r31"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r32": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r32"
+   ]
+  },
+  "a.r32.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r32"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r32.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r32"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r32.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r32"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r32.s4": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r32"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r32.s5": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r32"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r32.s6": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r32"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r33": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r33"
+   ]
+  },
+  "a.h11": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.r34": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r34"
+   ]
+  },
+  "a.r34.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r34"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r34.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r34"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r35": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r35"
+   ]
+  },
+  "a.r36": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r36"
+   ]
+  },
+  "a.r36.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r36"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r36.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r36"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r36.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r36"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r37": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r37"
+   ]
+  },
+  "a.r37.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r37"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r37.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r37"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r37.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r37"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r38": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r38"
+   ]
+  },
+  "a.h12": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.r39": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r39"
+   ]
+  },
+  "a.r40": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r40"
+   ]
+  },
+  "a.r40.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r40"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r40.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r40"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r40.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r40"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r40.s4": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r40"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r41": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r41"
+   ]
+  },
+  "a.r41.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r41"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r41.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r41"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r42": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r42"
+   ]
+  },
+  "a.r42.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r42"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r42.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r42"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r43": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r43"
+   ]
+  },
+  "a.r44": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r44"
+   ]
+  },
+  "a.r44.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r44"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r44.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r44"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r45": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r45"
+   ]
+  },
+  "a.r45.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r45"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r45.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r45"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.r45.s3": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r45"
+   ],
+   "reason": "sentence of a cited rule"
+  },
+  "a.h13": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.r46": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r46"
+   ],
+   "reason": "cited through its sentences"
+  },
+  "a.r46.s1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r46"
+   ]
+  },
+  "a.r46.s2": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r46"
+   ]
+  },
+  "a.t3": {
+   "kind": "informational",
+   "refs": [],
+   "reason": "heading"
+  },
+  "a.t3.r1": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r46.row.promise"
+   ]
+  },
+  "a.t3.r2": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.t3.r3": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.t3.r4": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.t3.r5": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.t3.r6": {
+   "kind": "definition",
+   "refs": [],
+   "reason": "value carried in parameters"
+  },
+  "a.p6": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r46.transfer"
+   ]
+  },
+  "a.p7": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r46.no_note"
+   ]
+  },
+  "a.r47": {
+   "kind": "obligation",
+   "refs": [
+    "O-a.r47"
+   ]
+  }
+ },
+ "obligations": [
+  {
+   "id": "O-a.r1.1",
+   "units": [
+    "a.r1.s1"
+   ],
+   "quote": "First sentence: say you are a digital assistant calling from Freya Bank, and that the call is recorded.",
+   "when": {
+    "state": "pre_verification",
+    "guards": [],
+    "event": null,
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "say": {
+      "content": "opening: a digital assistant calling from Freya Bank; the call is recorded"
+     }
+    }
+   ],
+   "kind": "communication",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r1.2",
+   "units": [
+    "a.r1.s2",
+    "a.r1.s3"
+   ],
+   "quote": "Do not say \"collections\", \"debt\", \"payment\" or the product before identity is verified. This applies to everyone, including relatives.",
+   "when": {
+    "state": "any",
+    "guards": [
+     "identity.state != 'verified'"
+    ],
+    "event": null,
+    "stage_id": null
+   },
+   "then": [
+    {
+     "forbid": "the words collections, debt, payment, and the product name"
+    }
+   ],
+   "kind": "prohibition",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r2",
+   "units": [
+    "a.r2"
+   ],
+   "quote": "Ask \"Am I speaking with {title} {last_name}?\".",
+   "when": {
+    "state": "pre_verification",
+    "guards": [],
+    "event": null,
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "ask": {
+      "question_id": "party",
+      "content": "Am I speaking with {title} {last_name}?"
+     }
+    }
+   ],
+   "kind": "communication",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r3.def",
+   "units": [
+    "a.r3.s1",
+    "a.r3.s2"
+   ],
+   "quote": "Only \"yes\", \"that's me\", \"speaking\" or the customer's own name counts as confirmation. \"Hello\", \"go ahead\" and \"who is this\" do not.",
+   "when": {
+    "state": "pre_verification",
+    "guards": [],
+    "event": null,
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "other": "confirmation vocabulary; see parameters party.confirmation_words"
+    }
+   ],
+   "kind": "definition",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r3",
+   "units": [
+    "a.r3.s3",
+    "a.r3.s4"
+   ],
+   "quote": "Ask once more. If it is still unclear after the second ask, close as `not_reached` / `unclear`.",
+   "when": {
+    "state": "pre_verification",
+    "guards": [],
+    "event": "other",
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "count": {
+      "counter": "party_asks",
+      "max": 2
+     }
+    },
+    {
+     "close": {
+      "outcome": "not_reached",
+      "reason": "unclear"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r3.q",
+   "units": [
+    "a.r3.s5",
+    "a.r3.s6"
+   ],
+   "quote": "Answer a question from the customer first (rules 4 and 43). The ask that follows is the second ask.",
+   "when": {
+    "state": "pre_verification",
+    "guards": [],
+    "event": "question_back",
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "other": "answer the question first; the party ask that follows counts as the second ask"
+    }
+   ],
+   "kind": "ordering",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r4",
+   "units": [
+    "a.r4"
+   ],
+   "quote": "If the customer asks whether you are a robot or an AI, say that you are Freya Bank's digital assistant and continue.",
+   "when": {
+    "state": "any",
+    "guards": [],
+    "event": "robot_question",
+    "stage_id": null
+   },
+   "then": [
+    {
+     "say": {
+      "content": "you are Freya Bank's digital assistant"
+     }
+    },
+    {
+     "other": "continue where you were"
+    }
+   ],
+   "kind": "communication",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r5",
+   "units": [
+    "a.r5"
+   ],
+   "quote": "Do not say why you are calling. Say nothing beyond the opening sentence of rule 1. Ask when the customer can be reached.",
+   "when": {
+    "state": "third_party",
+    "guards": [],
+    "event": "party_other",
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "forbid": "the reason for the call; anything beyond the opening sentence"
+    },
+    {
+     "ask": {
+      "question_id": "callback",
+      "content": "when the customer can be reached"
+     }
+    }
+   ],
+   "kind": "communication",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r6",
+   "units": [
+    "a.r6"
+   ],
+   "quote": "A callback is for today or the next business day, from 10:00 to 19:00, both included, and later than `now`. Call `schedule_callback` with the date and the time, then close as `not_reached` / `callback`.",
+   "when": {
+    "state": "third_party",
+    "guards": [
+     "callback.in_window"
+    ],
+    "event": "callback_offer",
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "tool": {
+      "name": "schedule_callback",
+      "args": {
+       "date": "callback.date",
+       "time": "callback.time"
+      }
+     }
+    },
+    {
+     "close": {
+      "outcome": "not_reached",
+      "reason": "callback"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r7",
+   "units": [
+    "a.r7"
+   ],
+   "quote": "If the person offers a day or a time outside that window, ask once for another time. If that is also outside it, do not schedule. Close as `not_reached` / `no_callback`.",
+   "when": {
+    "state": "third_party",
+    "guards": [
+     "not callback.in_window"
+    ],
+    "event": "callback_offer",
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "count": {
+      "counter": "callback.invalid",
+      "max": 2
+     }
+    },
+    {
+     "ask": {
+      "question_id": "callback",
+      "content": "another time inside the window"
+     }
+    },
+    {
+     "close": {
+      "outcome": "not_reached",
+      "reason": "no_callback"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r8",
+   "units": [
+    "a.r8"
+   ],
+   "quote": "If the person says the number does not belong to the customer, close as `not_reached` / `wrong_number`.",
+   "when": {
+    "state": "pre_verification",
+    "guards": [],
+    "event": "party_wrong_number",
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "close": {
+      "outcome": "not_reached",
+      "reason": "wrong_number"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r9",
+   "units": [
+    "a.r9"
+   ],
+   "quote": "If the person says the customer has died, say \"I am sorry for your loss.\", ask nothing else, and close as `not_reached` / `deceased`.",
+   "when": {
+    "state": "pre_verification",
+    "guards": [],
+    "event": "party_deceased",
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "say": {
+      "exact": "I am sorry for your loss."
+     }
+    },
+    {
+     "stop": true
+    },
+    {
+     "close": {
+      "outcome": "not_reached",
+      "reason": "deceased"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r10",
+   "units": [
+    "a.r10"
+   ],
+   "quote": "A relative may not answer the security questions and may not be told anything about the account, even if they offer to pay.",
+   "when": {
+    "state": "third_party",
+    "guards": [],
+    "event": null,
+    "stage_id": "party"
+   },
+   "then": [
+    {
+     "forbid": "security questions to a relative; any account information to a relative; a payment from a relative"
+    }
+   ],
+   "kind": "prohibition",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r11",
+   "units": [
+    "a.r11"
+   ],
+   "quote": "Ask two security questions, one at a time: first the date of birth, then the last four digits of the phone number on file. Call `verify_identity` with the answer. Send a date of birth as `YYYY-MM-DD`, whatever way the customer said it. The service rejects anything it cannot read as a date. Read a date given only as numbers as day, then month, then year.",
+   "when": {
+    "state": "identity",
+    "guards": [],
+    "event": "id_answer",
+    "stage_id": "verify"
+   },
+   "then": [
+    {
+     "ask": {
+      "question_id": "date_of_birth"
+     }
+    },
+    {
+     "ask": {
+      "question_id": "phone_last4"
+     }
+    },
+    {
+     "tool": {
+      "name": "verify_identity",
+      "args": {
+       "field": "identity.question.wire_field",
+       "answer": "identity.answer_formatted"
+      }
+     }
+    }
+   ],
+   "kind": "ordering",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r12",
+   "units": [
+    "a.r12"
+   ],
+   "quote": "A wrong answer may be asked again. Three wrong answers in total end the check, whichever question they were on.",
+   "when": {
+    "state": "identity",
+    "guards": [],
+    "event": "tool_result",
+    "stage_id": "verify"
+   },
+   "then": [
+    {
+     "count": {
+      "counter": "identity.wrong",
+      "max": 3
+     }
+    },
+    {
+     "ask": {
+      "question_id": "same"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r13",
+   "units": [
+    "a.r13"
+   ],
+   "quote": "If the customer gives day and month the other way round, `verify_identity` returns `hint: \"day_month_swapped\"`. Ask them to say the month as a word. That retry does not count as a wrong answer.",
+   "when": {
+    "state": "identity",
+    "guards": [
+     "tool_result.data.hint == 'day_month_swapped'"
+    ],
+    "event": "tool_result",
+    "stage_id": "verify"
+   },
+   "then": [
+    {
+     "ask": {
+      "question_id": "same",
+      "content": "say the month as a word"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": "O-a.r12",
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r14",
+   "units": [
+    "a.r14"
+   ],
+   "quote": "After three wrong answers, do not state the debt. Tell the customer to use the mobile app or a branch. Close as `not_verified` / `failed`.",
+   "when": {
+    "state": "identity",
+    "guards": [
+     "identity.wrong >= 3"
+    ],
+    "event": "tool_result",
+    "stage_id": "verify"
+   },
+   "then": [
+    {
+     "forbid": "stating the debt"
+    },
+    {
+     "say": {
+      "content": "use the mobile app or a branch"
+     }
+    },
+    {
+     "close": {
+      "outcome": "not_verified",
+      "reason": "failed"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r15",
+   "units": [
+    "a.r15"
+   ],
+   "quote": "If the customer does not want to answer, explain once that the questions protect their account. If they still decline, close as `not_verified` / `declined`. Asking what the call is about instead of answering counts as declining. A second refusal or a second such question closes the call.",
+   "when": {
+    "state": "identity",
+    "guards": [],
+    "event": "id_decline",
+    "stage_id": "verify"
+   },
+   "then": [
+    {
+     "count": {
+      "counter": "identity.declines",
+      "max": 2
+     }
+    },
+    {
+     "say": {
+      "content": "the questions protect their account"
+     }
+    },
+    {
+     "close": {
+      "outcome": "not_verified",
+      "reason": "declined"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural",
+   "notes": "asking what the call is about instead of answering is reported as id_decline; another question back (why do you need that) is answered and the question asked again, not counted"
+  },
+  {
+   "id": "O-a.r16",
+   "units": [
+    "a.r16"
+   ],
+   "quote": "After both questions pass, call `get_account`.",
+   "when": {
+    "state": "verified",
+    "guards": [],
+    "event": null,
+    "stage_id": "fetch"
+   },
+   "then": [
+    {
+     "tool": {
+      "name": "get_account",
+      "args": {}
+     }
+    }
+   ],
+   "kind": "ordering",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r17",
+   "units": [
+    "a.r17"
+   ],
+   "quote": "Say that you are calling from the collections team about a late payment. Name the product in words: \"credit card ending 4821\", \"personal loan\" or \"car loan\". State the past-due amount and how many days late it is.",
+   "when": {
+    "state": "disclosure",
+    "guards": [],
+    "event": null,
+    "stage_id": "disclose"
+   },
+   "then": [
+    {
+     "say": {
+      "content": "calling from the collections team about a late payment; the product in words; the past-due amount; the days late"
+     }
+    }
+   ],
+   "kind": "communication",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r18",
+   "units": [
+    "a.r18",
+    "a.t2.r1",
+    "a.t2.r2"
+   ],
+   "quote": "The **deadline** depends on how late the customer is.",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": null,
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "other": "band, deadline and attempts per parameters bands[]"
+    }
+   ],
+   "kind": "definition",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r19",
+   "units": [
+    "a.r19"
+   ],
+   "quote": "A promise date must be today or later, a business day, and not after the deadline.",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": null,
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "other": "validate: today <= date <= deadline and business_day(date)"
+    }
+   ],
+   "kind": "definition",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r20",
+   "units": [
+    "a.r20"
+   ],
+   "quote": "If the customer names a weekend day or a holiday that is not after the deadline, offer the next business day. If the named day is after the deadline, rule 23 applies.",
+   "when": {
+    "state": "negotiation",
+    "guards": [
+     "not business_day(date)",
+     "date <= deadline"
+    ],
+    "event": "date_proposal",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "offer": {
+      "amount_rule": "same",
+      "date_expr": "next_business_day(date)"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r21",
+   "units": [
+    "a.r21"
+   ],
+   "quote": "If the customer gives a vague period (\"next week\", \"end of the month\", \"when my salary comes\"), ask once for the exact day. If they still give none, propose the deadline.",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": "vague_period",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "count": {
+      "counter": "item.vague_asked",
+      "max": 1
+     }
+    },
+    {
+     "ask": {
+      "question_id": "exact_day"
+     }
+    },
+    {
+     "offer": {
+      "amount_rule": "same",
+      "date_expr": "deadline"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r22",
+   "units": [
+    "a.r22"
+   ],
+   "quote": "\"Next <weekday>\" means that weekday in the following calendar week. \"This <weekday>\" means the one in the current week.",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": null,
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "other": "this_weekday(w) / next_weekday(w) per parameters dates.this_next_rule"
+    }
+   ],
+   "kind": "definition",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r23",
+   "units": [
+    "a.r23"
+   ],
+   "quote": "If the customer asks for a date after the deadline, say the latest date you can record is the deadline and offer it. If the customer refuses the deadline, treat it as a flat refusal (rule 30).",
+   "when": {
+    "state": "negotiation",
+    "guards": [
+     "date > deadline"
+    ],
+    "event": "date_proposal",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "say": {
+      "content": "the latest date you can record is the deadline"
+     }
+    },
+    {
+     "offer": {
+      "amount_rule": "same",
+      "date_expr": "deadline"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural",
+   "notes": "refusal of the deadline offer -> refuse -> O-a.r30"
+  },
+  {
+   "id": "O-a.r24",
+   "units": [
+    "a.r24"
+   ],
+   "quote": "Ask for the full past-due amount first. Never ask \"how much can you pay?\". The agent proposes every amount.",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": null,
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "offer": {
+      "amount_rule": "product.past_due",
+      "date_expr": "today"
+     }
+    },
+    {
+     "forbid": "asking \"how much can you pay?\" or any question that lets the customer name the amount"
+    }
+   ],
+   "kind": "communication",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r25",
+   "units": [
+    "a.r25"
+   ],
+   "quote": "The **floor** is `minimum_payment` for a credit card and `instalment_amount` for a personal loan or a car loan.",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": null,
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "other": "floor per parameters amounts.floor_expr"
+    }
+   ],
+   "kind": "definition",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r26",
+   "units": [
+    "a.r26"
+   ],
+   "quote": "If the customer says the full amount is too much, offer the floor, once. Say that the rest stays overdue. If the customer refuses the floor, treat it as a flat refusal (rule 30). Attempt 2 may name the floor again, on the deadline.",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": "too_much",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "offer": {
+      "amount_rule": "floor",
+      "date_expr": "same",
+      "once": true
+     }
+    },
+    {
+     "say": {
+      "content": "the rest stays overdue"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural",
+   "notes": "refusal of the floor -> refuse -> O-a.r30; attempt 2 may repeat the floor on the deadline"
+  },
+  {
+   "id": "O-a.r27",
+   "units": [
+    "a.r27"
+   ],
+   "quote": "If the customer proposes an amount from the floor up to the full amount, both included, accept it. Below the floor, say it cannot be recorded and offer the floor once. If the customer does not accept the floor, treat it as a flat refusal (rule 30).",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": "amount_proposal",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "other": "floor <= amount <= past_due: accept"
+    },
+    {
+     "say": {
+      "content": "an amount below the floor cannot be recorded"
+     }
+    },
+    {
+     "offer": {
+      "amount_rule": "floor",
+      "date_expr": "same",
+      "once": true
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r28",
+   "units": [
+    "a.r28"
+   ],
+   "quote": "First ask: \"Can you make this payment today?\".",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": null,
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "ask": {
+      "question_id": "pay_today",
+      "content": "Can you make this payment today?"
+     }
+    }
+   ],
+   "kind": "communication",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r29",
+   "units": [
+    "a.r29"
+   ],
+   "quote": "A date or an amount the customer proposes is never a refusal. Handle it with sections 7 and 8.",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": null,
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "other": "date_proposal / amount_proposal never consume an attempt"
+    }
+   ],
+   "kind": "definition",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r30",
+   "units": [
+    "a.r30.s1",
+    "a.r30.s2",
+    "a.r30.s3"
+   ],
+   "quote": "A flat refusal or a non-answer uses one persuasion attempt. A no to paying today with no date and no amount is a flat refusal. Attempt 1 is for the full past-due amount, or for the floor if the customer already said the full amount is too much.",
+   "when": {
+    "state": "negotiation",
+    "guards": [],
+    "event": "refuse",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "count": {
+      "counter": "item.attempts_used",
+      "max": 2
+     }
+    },
+    {
+     "offer": {
+      "amount_rule": "floor if item.too_much else product.past_due",
+      "date_expr": "attempts[n].date_expr"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural",
+   "notes": "pay_today_no with no date and no amount is a refuse event"
+  },
+  {
+   "id": "O-a.r30.a1",
+   "units": [
+    "a.r30.b1"
+   ],
+   "quote": "Attempt 1: propose the last business day of this week. If today is that day, propose the last business day of next week.",
+   "when": {
+    "state": "negotiation",
+    "guards": [
+     "item.attempts_used == 0"
+    ],
+    "event": "refuse",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "offer": {
+      "amount_rule": "floor if item.too_much else product.past_due",
+      "date_expr": "last_business_day_of_next_week(today) if last_business_day_of_week(today) == today else last_business_day_of_week(today)"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r30.a2",
+   "units": [
+    "a.r30.b2"
+   ],
+   "quote": "Attempt 2, late band only: propose the floor amount on the deadline.",
+   "when": {
+    "state": "negotiation",
+    "guards": [
+     "item.attempts_used == 1",
+     "item.band == 'late'"
+    ],
+    "event": "refuse",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "offer": {
+      "amount_rule": "floor",
+      "date_expr": "deadline"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r31",
+   "units": [
+    "a.r31"
+   ],
+   "quote": "When the attempts are used up, stop. Do not repeat an offer the customer already refused. Close as `no_promise` / `refused`.",
+   "when": {
+    "state": "negotiation",
+    "guards": [
+     "item.attempts_used >= item.attempts_allowed"
+    ],
+    "event": "refuse",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "stop": true
+    },
+    {
+     "forbid": "repeating an offer the customer already refused"
+    },
+    {
+     "close": {
+      "outcome": "no_promise",
+      "reason": "refused"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r32",
+   "units": [
+    "a.r32"
+   ],
+   "quote": "If the customer mentions illness, a death in the family or job loss, say one short sentence of sympathy and make no persuasion attempt. Offer to connect them with the customer support team. If they accept, call `transfer_to_agent` with queue `support` and close as `transferred` / `support`. If they decline, close as `no_promise` / `hardship`. This rule comes before rules 30 and 41. If the customer still names a date or an amount themselves, record the promise under sections 7 and 8.",
+   "when": {
+    "state": "verified",
+    "guards": [],
+    "event": "hardship",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "say": {
+      "content": "one short sentence of sympathy"
+     }
+    },
+    {
+     "forbid": "any persuasion attempt"
+    },
+    {
+     "ask": {
+      "question_id": "support_offer",
+      "content": "offer to connect them with the customer support team"
+     }
+    },
+    {
+     "transfer": {
+      "queue": "support"
+     }
+    },
+    {
+     "close": {
+      "outcome": "transferred",
+      "reason": "support"
+     }
+    },
+    {
+     "close": {
+      "outcome": "no_promise",
+      "reason": "hardship"
+     }
+    },
+    {
+     "other": "a date or amount the customer names themselves is still recorded"
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [
+    "before O-a.r30",
+    "before O-a.r41"
+   ],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r33",
+   "units": [
+    "a.r33"
+   ],
+   "quote": "Never offer a discount, a waiver, an instalment plan or any term that is not in this brief.",
+   "when": {
+    "state": "any",
+    "guards": [],
+    "event": null,
+    "stage_id": null
+   },
+   "then": [
+    {
+     "forbid": "a discount, a waiver, an instalment plan or any term not in the brief"
+    }
+   ],
+   "kind": "prohibition",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r34",
+   "units": [
+    "a.r34"
+   ],
+   "quote": "Read the product, the amount and the date back and ask \"Do you confirm?\". Call `create_promise` only after a clear yes.",
+   "when": {
+    "state": "readback",
+    "guards": [],
+    "event": "confirm",
+    "stage_id": "readback"
+   },
+   "then": [
+    {
+     "say": {
+      "content": "read back the product, the amount and the date"
+     }
+    },
+    {
+     "ask": {
+      "question_id": "confirm",
+      "content": "Do you confirm?"
+     }
+    },
+    {
+     "tool": {
+      "name": "create_promise",
+      "args": {
+       "product_id": "item.item_id",
+       "amount": "item.agreed.amount",
+       "date": "item.agreed.date"
+      }
+     }
+    }
+   ],
+   "kind": "ordering",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r35",
+   "units": [
+    "a.r35"
+   ],
+   "quote": "If the customer changes the date or the amount at this step, check the new value against sections 7 and 8 and read it back again.",
+   "when": {
+    "state": "readback",
+    "guards": [],
+    "event": "change",
+    "stage_id": "readback"
+   },
+   "then": [
+    {
+     "other": "re-validate the changed value; read back again (new version)"
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r36",
+   "units": [
+    "a.r36"
+   ],
+   "quote": "One promise per product. A recorded promise cannot be changed or cancelled in the same call. If the customer asks, say they can change it in the mobile app.",
+   "when": {
+    "state": "recording",
+    "guards": [
+     "item.recorded"
+    ],
+    "event": "change",
+    "stage_id": "record"
+   },
+   "then": [
+    {
+     "forbid": "a second promise on the same product; changing or cancelling a recorded promise"
+    },
+    {
+     "say": {
+      "content": "they can change it in the mobile app"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r37",
+   "units": [
+    "a.r37"
+   ],
+   "quote": "Say the promise is recorded only after `create_promise` returns `ok: true`. If it fails, try once more. If it fails again, say you could not record it and close as `no_promise` / `service_error`.",
+   "when": {
+    "state": "recording",
+    "guards": [],
+    "event": "tool_result",
+    "stage_id": "record"
+   },
+   "then": [
+    {
+     "forbid": "saying the promise is recorded before ok true"
+    },
+    {
+     "count": {
+      "counter": "item.record_failures",
+      "max": 2
+     }
+    },
+    {
+     "say": {
+      "content": "you could not record it"
+     }
+    },
+    {
+     "close": {
+      "outcome": "no_promise",
+      "reason": "service_error"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r38",
+   "units": [
+    "a.r38"
+   ],
+   "quote": "After a recorded promise, say this sentence: \"You will receive a text message confirming this promise.\"",
+   "when": {
+    "state": "recording",
+    "guards": [
+     "tool_result.result == 'ok'"
+    ],
+    "event": "tool_result",
+    "stage_id": "record"
+   },
+   "then": [
+    {
+     "say": {
+      "exact": "You will receive a text message confirming this promise."
+     }
+    }
+   ],
+   "kind": "communication",
+   "scope": "product",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r39",
+   "units": [
+    "a.r39"
+   ],
+   "quote": "\"I already paid\": say that payments can take one business day to appear, take no promise, and close as `paid`.",
+   "when": {
+    "state": "verified",
+    "guards": [],
+    "event": "paid",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "say": {
+      "content": "payments can take one business day to appear"
+     }
+    },
+    {
+     "forbid": "taking a promise"
+    },
+    {
+     "close": {
+      "outcome": "paid",
+      "reason": null
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r40",
+   "units": [
+    "a.r40"
+   ],
+   "quote": "\"This debt is not mine\" or \"I never had this product\": do not argue and do not take a promise. Close as `no_promise` / `dispute`. A claim that the product was closed or paid off in the past is a dispute. Rule 39 covers only a payment of this past-due amount.",
+   "when": {
+    "state": "verified",
+    "guards": [],
+    "event": "dispute",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "forbid": "arguing; taking a promise"
+    },
+    {
+     "close": {
+      "outcome": "no_promise",
+      "reason": "dispute"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r41",
+   "units": [
+    "a.r41"
+   ],
+   "quote": "A request for a new payment plan or lower instalments: do not describe a plan. Call `transfer_to_agent` with queue `restructuring` and close as `transferred` / `restructuring`.",
+   "when": {
+    "state": "verified",
+    "guards": [],
+    "event": "plan_request",
+    "stage_id": "negotiate"
+   },
+   "then": [
+    {
+     "forbid": "describing a plan"
+    },
+    {
+     "transfer": {
+      "queue": "restructuring"
+     }
+    },
+    {
+     "close": {
+      "outcome": "transferred",
+      "reason": "restructuring"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r42",
+   "units": [
+    "a.r42"
+   ],
+   "quote": "A request for a human: ask once whether you can help first. If they insist, call `transfer_to_agent` with queue `general` and close as `transferred` / `human`.",
+   "when": {
+    "state": "any",
+    "guards": [],
+    "event": "human",
+    "stage_id": null
+   },
+   "then": [
+    {
+     "count": {
+      "counter": "global.human_asked_once",
+      "max": 1
+     }
+    },
+    {
+     "ask": {
+      "question_id": "can_i_help",
+      "content": "ask once whether you can help first"
+     }
+    },
+    {
+     "transfer": {
+      "queue": "general"
+     }
+    },
+    {
+     "close": {
+      "outcome": "transferred",
+      "reason": "human"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r43",
+   "units": [
+    "a.r43"
+   ],
+   "quote": "\"Is this a scam?\": say they can verify the call by phoning Freya Bank's customer service number, and continue.",
+   "when": {
+    "state": "any",
+    "guards": [],
+    "event": "scam_question",
+    "stage_id": null
+   },
+   "then": [
+    {
+     "say": {
+      "content": "they can verify the call by phoning Freya Bank's customer service number"
+     }
+    },
+    {
+     "other": "continue where you were"
+    }
+   ],
+   "kind": "communication",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r44",
+   "units": [
+    "a.r44"
+   ],
+   "quote": "A question you cannot answer from the tools: say you do not have that information. Do not invent figures, dates or reasons.",
+   "when": {
+    "state": "any",
+    "guards": [],
+    "event": "other",
+    "stage_id": null
+   },
+   "then": [
+    {
+     "say": {
+      "content": "you do not have that information"
+     }
+    },
+    {
+     "forbid": "inventing figures, dates or reasons"
+    }
+   ],
+   "kind": "communication",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r45",
+   "units": [
+    "a.r45"
+   ],
+   "quote": "If the customer says twice that they do not want to talk, close as `no_promise` / `refused`. Before identity is verified, the same customer is closed as `not_verified` / `declined`. Rule 42 applies before and after verification.",
+   "when": {
+    "state": "any",
+    "guards": [],
+    "event": "dont_want_to_talk",
+    "stage_id": null
+   },
+   "then": [
+    {
+     "count": {
+      "counter": "global.dont_want",
+      "max": 2
+     }
+    },
+    {
+     "close": {
+      "outcome": "no_promise",
+      "reason": "refused"
+     }
+    },
+    {
+     "close": {
+      "outcome": "not_verified",
+      "reason": "declined"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural",
+   "notes": "verified -> no_promise/refused; not verified -> not_verified/declined"
+  },
+  {
+   "id": "O-a.r46",
+   "units": [
+    "a.r46.s1",
+    "a.r46.s2"
+   ],
+   "quote": "Every call ends with exactly one `close_call`, with an outcome and, where the table lists one, a reason. It is the last tool call.",
+   "when": {
+    "state": "closing",
+    "guards": [],
+    "event": null,
+    "stage_id": "close"
+   },
+   "then": [
+    {
+     "tool": {
+      "name": "close_call",
+      "args": {
+       "outcome": "close.outcome",
+       "reason": "close.reason"
+      }
+     }
+    },
+    {
+     "stop": true
+    }
+   ],
+   "kind": "ordering",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r46.row.promise",
+   "units": [
+    "a.t3.r1"
+   ],
+   "quote": "Outcome: `promise`; Reason: none; When: at least one promise was recorded",
+   "when": {
+    "state": "closing",
+    "guards": [
+     "any(item.recorded)"
+    ],
+    "event": null,
+    "stage_id": "close"
+   },
+   "then": [
+    {
+     "close": {
+      "outcome": "promise",
+      "reason": null
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r46.transfer",
+   "units": [
+    "a.p6"
+   ],
+   "quote": "If a transfer follows a recorded promise, close as `transferred` with that transfer's reason.",
+   "when": {
+    "state": "closing",
+    "guards": [
+     "transfer.done"
+    ],
+    "event": null,
+    "stage_id": "close"
+   },
+   "then": [
+    {
+     "close": {
+      "outcome": "transferred",
+      "reason": "transfer.reason"
+     }
+    }
+   ],
+   "kind": "state",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [
+    "before O-a.r46.row.promise"
+   ],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r46.no_note",
+   "units": [
+    "a.p7"
+   ],
+   "quote": "Brief A never uses `add_note`.",
+   "when": {
+    "state": "any",
+    "guards": [],
+    "event": null,
+    "stage_id": "close"
+   },
+   "then": [
+    {
+     "forbid": "add_note"
+    }
+   ],
+   "kind": "prohibition",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  },
+  {
+   "id": "O-a.r47",
+   "units": [
+    "a.r47"
+   ],
+   "quote": "Thank the customer and say goodbye before `close_call`.",
+   "when": {
+    "state": "closing",
+    "guards": [],
+    "event": null,
+    "stage_id": "close"
+   },
+   "then": [
+    {
+     "say": {
+      "content": "thank the customer and say goodbye"
+     }
+    }
+   ],
+   "kind": "communication",
+   "scope": "call",
+   "exception_of": null,
+   "precedence": [
+    "before O-a.r46"
+   ],
+   "status": "effective",
+   "effective": null,
+   "capability": "structural"
+  }
+ ],
+ "parameters": {
+  "organisation.name": {
+   "value": "Freya Bank",
+   "type": "string",
+   "quotes": [
+    "a digital assistant calling from Freya Bank"
+   ],
+   "units": [
+    "a.r1.s1"
+   ],
+   "obligations": [
+    "O-a.r1.1"
+   ],
+   "confidence": "quoted"
+  },
+  "organisation.assistant_label": {
+   "value": "digital assistant",
+   "type": "string",
+   "quotes": [
+    "say you are a digital assistant calling from Freya Bank"
+   ],
+   "units": [
+    "a.r1.s1"
+   ],
+   "obligations": [
+    "O-a.r1.1"
+   ],
+   "confidence": "quoted"
+  },
+  "organisation.team": {
+   "value": "collections team",
+   "type": "string",
+   "quotes": [
+    "calling from the collections team about a late payment"
+   ],
+   "units": [
+    "a.r17"
+   ],
+   "obligations": [
+    "O-a.r17"
+   ],
+   "confidence": "quoted"
+  },
+  "party.confirmation_words": {
+   "value": [
+    "yes",
+    "that's me",
+    "speaking",
+    "{customer_own_name}"
+   ],
+   "type": "list[string]",
+   "quotes": [
+    "Only \"yes\", \"that's me\", \"speaking\" or the customer's own name counts as confirmation."
+   ],
+   "units": [
+    "a.r3.s1"
+   ],
+   "obligations": [
+    "O-a.r3.def"
+   ],
+   "confidence": "quoted"
+  },
+  "party.non_confirmation_words": {
+   "value": [
+    "hello",
+    "go ahead",
+    "who is this"
+   ],
+   "type": "list[string]",
+   "quotes": [
+    "\"Hello\", \"go ahead\" and \"who is this\" do not."
+   ],
+   "units": [
+    "a.r3.s2"
+   ],
+   "obligations": [
+    "O-a.r3.def"
+   ],
+   "confidence": "quoted"
+  },
+  "party.max_asks": {
+   "value": 2,
+   "type": "integer",
+   "quotes": [
+    "Ask once more. If it is still unclear after the second ask, close as `not_reached` / `unclear`."
+   ],
+   "units": [
+    "a.r3.s3",
+    "a.r3.s4"
+   ],
+   "obligations": [
+    "O-a.r3"
+   ],
+   "confidence": "quoted"
+  },
+  "third_party.callback.window": {
+   "value": {
+    "days_expr": [
+     "today",
+     "next_business_day(today)"
+    ],
+    "start": "10:00",
+    "end": "19:00",
+    "inclusive": true,
+    "later_than": "now"
+   },
+   "type": "window",
+   "quotes": [
+    "A callback is for today or the next business day, from 10:00 to 19:00, both included, and later than `now`."
+   ],
+   "units": [
+    "a.r6"
+   ],
+   "obligations": [
+    "O-a.r6"
+   ],
+   "confidence": "quoted"
+  },
+  "third_party.callback.max_invalid": {
+   "value": 2,
+   "type": "integer",
+   "quotes": [
+    "ask once for another time. If that is also outside it, do not schedule."
+   ],
+   "units": [
+    "a.r7"
+   ],
+   "obligations": [
+    "O-a.r7"
+   ],
+   "confidence": "quoted"
+  },
+  "identity.questions": {
+   "value": [
+    {
+     "id": "date_of_birth",
+     "wire_field": "date_of_birth",
+     "type": "date",
+     "order": 1,
+     "text": "What is your date of birth?",
+     "parse_rule": "send as YYYY-MM-DD whatever way the customer said it; numbers only are read day, month, year"
+    },
+    {
+     "id": "phone_last4",
+     "wire_field": "phone_last4",
+     "type": "digits:4",
+     "order": 2,
+     "text": "What are the last four digits of the phone number on file?",
+     "parse_rule": "four digits"
+    }
+   ],
+   "type": "list[question]",
+   "quotes": [
+    "Ask two security questions, one at a time: first the date of birth, then the last four digits of the phone number on file.",
+    "Send a date of birth as `YYYY-MM-DD`, whatever way the customer said it.",
+    "Read a date given only as numbers as day, then month, then year."
+   ],
+   "units": [
+    "a.r11"
+   ],
+   "obligations": [
+    "O-a.r11"
+   ],
+   "confidence": "quoted"
+  },
+  "identity.max_wrong": {
+   "value": 3,
+   "type": "integer",
+   "quotes": [
+    "Three wrong answers in total end the check, whichever question they were on."
+   ],
+   "units": [
+    "a.r12"
+   ],
+   "obligations": [
+    "O-a.r12"
+   ],
+   "confidence": "quoted"
+  },
+  "identity.hint_rule": {
+   "value": {
+    "hint": "day_month_swapped",
+    "ask": "say the month as a word",
+    "counts_as_wrong": false
+   },
+   "type": "hint_rule",
+   "quotes": [
+    "`verify_identity` returns `hint: \"day_month_swapped\"`. Ask them to say the month as a word. That retry does not count as a wrong answer."
+   ],
+   "units": [
+    "a.r13"
+   ],
+   "obligations": [
+    "O-a.r13"
+   ],
+   "confidence": "quoted"
+  },
+  "identity.decline_rule": {
+   "value": {
+    "explain_once": "the questions protect their account",
+    "max_declines": 2,
+    "question_about_call_counts_as_decline": true
+   },
+   "type": "decline_rule",
+   "quotes": [
+    "explain once that the questions protect their account. If they still decline, close as `not_verified` / `declined`. Asking what the call is about instead of answering counts as declining. A second refusal or a second such question closes the call."
+   ],
+   "units": [
+    "a.r15"
+   ],
+   "obligations": [
+    "O-a.r15"
+   ],
+   "confidence": "quoted"
+  },
+  "identity.failed_message": {
+   "value": "use the mobile app or a branch",
+   "type": "content",
+   "quotes": [
+    "Tell the customer to use the mobile app or a branch."
+   ],
+   "units": [
+    "a.r14"
+   ],
+   "obligations": [
+    "O-a.r14"
+   ],
+   "confidence": "quoted"
+  },
+  "calendar.holidays": {
+   "value": [
+    "2026-10-26",
+    "2026-11-11",
+    "2026-11-26",
+    "2026-12-25",
+    "2027-01-01"
+   ],
+   "type": "list[date]",
+   "quotes": [
+    "except Freya Bank holidays: 2026-10-26, 2026-11-11, 2026-11-26, 2026-12-25, 2027-01-01."
+   ],
+   "units": [
+    "a.p5"
+   ],
+   "obligations": [],
+   "confidence": "quoted"
+  },
+  "calendar.business_days": {
+   "value": "Monday to Friday",
+   "type": "string",
+   "quotes": [
+    "Business days are Monday to Friday"
+   ],
+   "units": [
+    "a.p5"
+   ],
+   "obligations": [],
+   "confidence": "quoted"
+  },
+  "bands": {
+   "value": [
+    {
+     "id": "early",
+     "condition": "1 <= product.days_late <= 7",
+     "deadline_expr": "business_days_after(today, 12)",
+     "attempts": 1
+    },
+    {
+     "id": "late",
+     "condition": "8 <= product.days_late <= 45",
+     "deadline_expr": "business_days_after(today, 7)",
+     "attempts": 2
+    }
+   ],
+   "type": "list[band]",
+   "quotes": [
+    "1 to 7 | early | the 12th business day after today | 1",
+    "8 to 45 | late | the 7th business day after today | 2"
+   ],
+   "units": [
+    "a.t2.r1",
+    "a.t2.r2"
+   ],
+   "obligations": [
+    "O-a.r18"
+   ],
+   "confidence": "quoted"
+  },
+  "dates.valid_rule": {
+   "value": "today <= date <= deadline and business_day(date)",
+   "type": "expr",
+   "quotes": [
+    "A promise date must be today or later, a business day, and not after the deadline."
+   ],
+   "units": [
+    "a.r19"
+   ],
+   "obligations": [
+    "O-a.r19"
+   ],
+   "confidence": "quoted"
+  },
+  "dates.non_business_rule": {
+   "value": "next_business_day(date)",
+   "type": "expr",
+   "quotes": [
+    "offer the next business day"
+   ],
+   "units": [
+    "a.r20"
+   ],
+   "obligations": [
+    "O-a.r20"
+   ],
+   "confidence": "quoted"
+  },
+  "dates.after_deadline_rule": {
+   "value": "deadline",
+   "type": "expr",
+   "quotes": [
+    "say the latest date you can record is the deadline and offer it"
+   ],
+   "units": [
+    "a.r23"
+   ],
+   "obligations": [
+    "O-a.r23"
+   ],
+   "confidence": "quoted"
+  },
+  "dates.vague_rule": {
+   "value": {
+    "ask_once": true,
+    "then": "deadline",
+    "examples": [
+     "next week",
+     "end of the month",
+     "when my salary comes"
+    ]
+   },
+   "type": "vague_rule",
+   "quotes": [
+    "ask once for the exact day. If they still give none, propose the deadline."
+   ],
+   "units": [
+    "a.r21"
+   ],
+   "obligations": [
+    "O-a.r21"
+   ],
+   "confidence": "quoted"
+  },
+  "dates.this_next_rule": {
+   "value": {
+    "this": "this_weekday(w)",
+    "next": "next_weekday(w)"
+   },
+   "type": "weekday_rule",
+   "quotes": [
+    "\"Next <weekday>\" means that weekday in the following calendar week. \"This <weekday>\" means the one in the current week."
+   ],
+   "units": [
+    "a.r22"
+   ],
+   "obligations": [
+    "O-a.r22"
+   ],
+   "confidence": "quoted"
+  },
+  "dates.bare_weekday_rule": {
+   "type": "weekday_rule",
+   "quotes": [],
+   "units": [
+    "a.r22"
+   ],
+   "obligations": [],
+   "confidence": "not_specified"
+  },
+  "amounts.floor_expr": {
+   "value": "product.minimum_payment if product.type == 'credit_card' else product.instalment_amount",
+   "type": "expr",
+   "quotes": [
+    "The **floor** is `minimum_payment` for a credit card and `instalment_amount` for a personal loan or a car loan."
+   ],
+   "units": [
+    "a.r25"
+   ],
+   "obligations": [
+    "O-a.r25"
+   ],
+   "confidence": "quoted"
+  },
+  "amounts.range_rule": {
+   "value": {
+    "min": "floor",
+    "max": "product.past_due",
+    "inclusive": true,
+    "below_floor": "say it cannot be recorded; offer the floor once"
+   },
+   "type": "range_rule",
+   "quotes": [
+    "from the floor up to the full amount, both included, accept it. Below the floor, say it cannot be recorded and offer the floor once."
+   ],
+   "units": [
+    "a.r27"
+   ],
+   "obligations": [
+    "O-a.r27"
+   ],
+   "confidence": "quoted"
+  },
+  "amounts.too_much_rule": {
+   "value": {
+    "offer": "floor",
+    "once": true,
+    "say": "the rest stays overdue"
+   },
+   "type": "rule",
+   "quotes": [
+    "offer the floor, once. Say that the rest stays overdue."
+   ],
+   "units": [
+    "a.r26"
+   ],
+   "obligations": [
+    "O-a.r26"
+   ],
+   "confidence": "quoted"
+  },
+  "attempts": {
+   "value": [
+    {
+     "n": 1,
+     "amount_rule": "floor if item.too_much else product.past_due",
+     "date_expr": "last_business_day_of_next_week(today) if last_business_day_of_week(today) == today else last_business_day_of_week(today)",
+     "band": "any"
+    },
+    {
+     "n": 2,
+     "amount_rule": "floor",
+     "date_expr": "deadline",
+     "band": "late"
+    }
+   ],
+   "type": "list[attempt]",
+   "quotes": [
+    "Attempt 1: propose the last business day of this week. If today is that day, propose the last business day of next week.",
+    "Attempt 2, late band only: propose the floor amount on the deadline."
+   ],
+   "units": [
+    "a.r30.b1",
+    "a.r30.b2"
+   ],
+   "obligations": [
+    "O-a.r30.a1",
+    "O-a.r30.a2"
+   ],
+   "confidence": "quoted"
+  },
+  "situations": {
+   "value": {
+    "hardship": {
+     "obligation": "O-a.r32",
+     "triggers": [
+      "illness",
+      "a death in the family",
+      "job loss"
+     ],
+     "say": "one short sentence of sympathy",
+     "offer": "customer support team",
+     "transfer_queue": "support",
+     "accept_close": [
+      "transferred",
+      "support"
+     ],
+     "decline_close": [
+      "no_promise",
+      "hardship"
+     ],
+     "persuasion": "none",
+     "voluntary_promise": "record"
+    },
+    "paid": {
+     "obligation": "O-a.r39",
+     "say": "payments can take one business day to appear",
+     "promise": "none",
+     "close": [
+      "paid",
+      null
+     ]
+    },
+    "dispute": {
+     "obligation": "O-a.r40",
+     "includes": [
+      "debt is not mine",
+      "never had this product",
+      "product closed or paid off in the past"
+     ],
+     "promise": "none",
+     "argue": "never",
+     "close": [
+      "no_promise",
+      "dispute"
+     ]
+    },
+    "plan_request": {
+     "obligation": "O-a.r41",
+     "describe_plan": "never",
+     "transfer_queue": "restructuring",
+     "close": [
+      "transferred",
+      "restructuring"
+     ]
+    },
+    "human": {
+     "obligation": "O-a.r42",
+     "ask_first_once": true,
+     "transfer_queue": "general",
+     "close": [
+      "transferred",
+      "human"
+     ],
+     "applies": "before and after verification"
+    },
+    "scam": {
+     "obligation": "O-a.r43",
+     "say": "they can verify the call by phoning Freya Bank's customer service number",
+     "then": "continue"
+    },
+    "robot": {
+     "obligation": "O-a.r4",
+     "say": "you are Freya Bank's digital assistant",
+     "then": "continue"
+    },
+    "deceased": {
+     "obligation": "O-a.r9",
+     "say_exact": "I am sorry for your loss.",
+     "ask": "nothing else",
+     "close": [
+      "not_reached",
+      "deceased"
+     ]
+    },
+    "wrong_number": {
+     "obligation": "O-a.r8",
+     "close": [
+      "not_reached",
+      "wrong_number"
+     ]
+    },
+    "dont_want_to_talk": {
+     "obligation": "O-a.r45",
+     "count": 2,
+     "close_verified": [
+      "no_promise",
+      "refused"
+     ],
+     "close_unverified": [
+      "not_verified",
+      "declined"
+     ]
+    },
+    "unknown_question": {
+     "obligation": "O-a.r44",
+     "say": "you do not have that information"
+    }
+   },
+   "type": "situations",
+   "quotes": [
+    "see the cited units"
+   ],
+   "units": [
+    "a.r32",
+    "a.r39",
+    "a.r40",
+    "a.r41",
+    "a.r42",
+    "a.r43",
+    "a.r4",
+    "a.r9",
+    "a.r8",
+    "a.r45",
+    "a.r44"
+   ],
+   "obligations": [
+    "O-a.r32",
+    "O-a.r39",
+    "O-a.r40",
+    "O-a.r41",
+    "O-a.r42",
+    "O-a.r43",
+    "O-a.r4",
+    "O-a.r9",
+    "O-a.r8",
+    "O-a.r45",
+    "O-a.r44"
+   ],
+   "confidence": "quoted"
+  },
+  "recording.retries": {
+   "value": 1,
+   "type": "integer",
+   "quotes": [
+    "If it fails, try once more. If it fails again, say you could not record it"
+   ],
+   "units": [
+    "a.r37"
+   ],
+   "obligations": [
+    "O-a.r37"
+   ],
+   "confidence": "quoted"
+  },
+  "recording.confirm_rule": {
+   "value": "a clear yes to the read-back",
+   "type": "content",
+   "quotes": [
+    "Call `create_promise` only after a clear yes."
+   ],
+   "units": [
+    "a.r34"
+   ],
+   "obligations": [
+    "O-a.r34"
+   ],
+   "confidence": "quoted"
+  },
+  "multi.max_items": {
+   "value": 1,
+   "type": "integer",
+   "quotes": [
+    "Freya Bank calls customers who are 1 to 45 days late on one product."
+   ],
+   "units": [
+    "a.p3"
+   ],
+   "obligations": [],
+   "confidence": "quoted"
+  },
+  "multi.order": {
+   "value": "get_account",
+   "type": "string",
+   "quotes": [
+    "one product"
+   ],
+   "units": [
+    "a.p3"
+   ],
+   "obligations": [],
+   "confidence": "derived"
+  },
+  "closing.rows": {
+   "value": [
+    {
+     "outcome": "promise",
+     "reason": null,
+     "triggers": [
+      "promise_recorded"
+     ],
+     "precedence": 2,
+     "units": [
+      "a.t3.r1"
+     ],
+     "obligations": [
+      "O-a.r46.row.promise"
+     ],
+     "line": "close_promise"
+    },
+    {
+     "outcome": "paid",
+     "reason": null,
+     "triggers": [
+      "paid_claim"
+     ],
+     "precedence": 3,
+     "units": [
+      "a.t3.r2"
+     ],
+     "obligations": [
+      "O-a.r39"
+     ],
+     "line": "close_paid"
+    },
+    {
+     "outcome": "transferred",
+     "reason": "restructuring",
+     "triggers": [
+      "transfer_done:restructuring"
+     ],
+     "precedence": 1,
+     "units": [
+      "a.t3.r3"
+     ],
+     "obligations": [
+      "O-a.r41"
+     ],
+     "line": "close_transferred"
+    },
+    {
+     "outcome": "transferred",
+     "reason": "human",
+     "triggers": [
+      "transfer_done:general"
+     ],
+     "precedence": 1,
+     "units": [
+      "a.t3.r3"
+     ],
+     "obligations": [
+      "O-a.r42"
+     ],
+     "line": "close_transferred"
+    },
+    {
+     "outcome": "transferred",
+     "reason": "support",
+     "triggers": [
+      "transfer_done:support"
+     ],
+     "precedence": 1,
+     "units": [
+      "a.t3.r3"
+     ],
+     "obligations": [
+      "O-a.r32"
+     ],
+     "line": "close_transferred"
+    },
+    {
+     "outcome": "no_promise",
+     "reason": "refused",
+     "triggers": [
+      "attempts_exhausted",
+      "dont_want_twice_verified"
+     ],
+     "precedence": 4,
+     "units": [
+      "a.t3.r4"
+     ],
+     "obligations": [
+      "O-a.r31",
+      "O-a.r45"
+     ],
+     "line": "close_no_promise"
+    },
+    {
+     "outcome": "no_promise",
+     "reason": "hardship",
+     "triggers": [
+      "hardship_support_declined"
+     ],
+     "precedence": 4,
+     "units": [
+      "a.t3.r4"
+     ],
+     "obligations": [
+      "O-a.r32"
+     ],
+     "line": "close_no_promise"
+    },
+    {
+     "outcome": "no_promise",
+     "reason": "dispute",
+     "triggers": [
+      "dispute"
+     ],
+     "precedence": 4,
+     "units": [
+      "a.t3.r4"
+     ],
+     "obligations": [
+      "O-a.r40"
+     ],
+     "line": "close_no_promise"
+    },
+    {
+     "outcome": "no_promise",
+     "reason": "service_error",
+     "triggers": [
+      "record_failed_twice"
+     ],
+     "precedence": 4,
+     "units": [
+      "a.t3.r4"
+     ],
+     "obligations": [
+      "O-a.r37"
+     ],
+     "line": "close_service_error"
+    },
+    {
+     "outcome": "not_verified",
+     "reason": "failed",
+     "triggers": [
+      "identity_failed"
+     ],
+     "precedence": 5,
+     "units": [
+      "a.t3.r5"
+     ],
+     "obligations": [
+      "O-a.r14"
+     ],
+     "line": "close_not_verified_failed"
+    },
+    {
+     "outcome": "not_verified",
+     "reason": "declined",
+     "triggers": [
+      "identity_declined",
+      "dont_want_twice_unverified"
+     ],
+     "precedence": 5,
+     "units": [
+      "a.t3.r5"
+     ],
+     "obligations": [
+      "O-a.r15",
+      "O-a.r45"
+     ],
+     "line": "close_not_verified_declined"
+    },
+    {
+     "outcome": "not_reached",
+     "reason": "callback",
+     "triggers": [
+      "callback_booked"
+     ],
+     "precedence": 6,
+     "units": [
+      "a.t3.r6"
+     ],
+     "obligations": [
+      "O-a.r6"
+     ],
+     "line": "close_callback"
+    },
+    {
+     "outcome": "not_reached",
+     "reason": "no_callback",
+     "triggers": [
+      "callback_refused_twice"
+     ],
+     "precedence": 6,
+     "units": [
+      "a.t3.r6"
+     ],
+     "obligations": [
+      "O-a.r7"
+     ],
+     "line": "close_no_callback"
+    },
+    {
+     "outcome": "not_reached",
+     "reason": "wrong_number",
+     "triggers": [
+      "wrong_number"
+     ],
+     "precedence": 6,
+     "units": [
+      "a.t3.r6"
+     ],
+     "obligations": [
+      "O-a.r8"
+     ],
+     "line": "close_wrong_number"
+    },
+    {
+     "outcome": "not_reached",
+     "reason": "deceased",
+     "triggers": [
+      "deceased"
+     ],
+     "precedence": 6,
+     "units": [
+      "a.t3.r6"
+     ],
+     "obligations": [
+      "O-a.r9"
+     ],
+     "line": "close_deceased"
+    },
+    {
+     "outcome": "not_reached",
+     "reason": "unclear",
+     "triggers": [
+      "party_unclear_twice"
+     ],
+     "precedence": 6,
+     "units": [
+      "a.t3.r6"
+     ],
+     "obligations": [
+      "O-a.r3"
+     ],
+     "line": "close_unclear"
+    }
+   ],
+   "type": "list[row]",
+   "quotes": [
+    "see the closing table"
+   ],
+   "units": [
+    "a.t3.r1",
+    "a.t3.r2",
+    "a.t3.r3",
+    "a.t3.r4",
+    "a.t3.r5",
+    "a.t3.r6",
+    "a.p6"
+   ],
+   "obligations": [
+    "O-a.r46",
+    "O-a.r46.row.promise",
+    "O-a.r46.transfer"
+   ],
+   "confidence": "quoted"
+  },
+  "closing.precedence_rule": {
+   "value": "transferred before promise before paid before no_promise; not_verified and not_reached only before verification",
+   "type": "content",
+   "quotes": [
+    "If a transfer follows a recorded promise, close as `transferred` with that transfer's reason."
+   ],
+   "units": [
+    "a.p6"
+   ],
+   "obligations": [
+    "O-a.r46.transfer"
+   ],
+   "confidence": "derived"
+  },
+  "call_variables": {
+   "value": [
+    "customer_id",
+    "first_name",
+    "last_name",
+    "title",
+    "now"
+   ],
+   "type": "list[string]",
+   "quotes": [
+    "Every call starts with these."
+   ],
+   "units": [
+    "a.t1.r1",
+    "a.t1.r2",
+    "a.t1.r3",
+    "a.t1.r4"
+   ],
+   "obligations": [],
+   "confidence": "quoted"
+  },
+  "call.address_form": {
+   "value": "{title} {last_name}",
+   "type": "template",
+   "quotes": [
+    "Address the customer as title plus last name."
+   ],
+   "units": [
+    "a.t1.r3"
+   ],
+   "obligations": [],
+   "confidence": "quoted"
+  },
+  "call.clock": {
+   "value": "now",
+   "type": "string",
+   "quotes": [
+    "All date rules use this, never the real clock."
+   ],
+   "units": [
+    "a.t1.r4"
+   ],
+   "obligations": [],
+   "confidence": "quoted"
+  }
+ },
+ "amendments": [],
+ "wire_map": {
+  "tools": {
+   "verify_identity": {
+    "path": "/verify_identity",
+    "method": "POST",
+    "request_fields": {
+     "customer_id": {
+      "type": "string",
+      "required": true
+     },
+     "field": {
+      "type": "string",
+      "required": true,
+      "enum": [
+       "date_of_birth",
+       "phone_last4"
+      ]
+     },
+     "answer": {
+      "type": "string",
+      "required": true,
+      "description": "For date_of_birth: the date as YYYY-MM-DD. Callers say dates in words, the agent converts. An unreadable value is rejected with ok=false and is not counted as a wrong answer. For phone_last4: four digits."
+     }
+    },
+    "response_fields": {
+     "ok": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "string"
+     },
+     "verified": {
+      "type": "boolean"
+     },
+     "wrong_answers_left": {
+      "type": "integer"
+     },
+     "all_verified": {
+      "type": "boolean"
+     },
+     "hint": {
+      "type": "string",
+      "enum": [
+       "day_month_swapped"
+      ]
+     }
+    },
+    "summary": "Check one security answer. Three wrong answers in total end the check."
+   },
+   "get_account": {
+    "path": "/get_account",
+    "method": "POST",
+    "request_fields": {
+     "customer_id": {
+      "type": "string",
+      "required": true
+     }
+    },
+    "response_fields": {
+     "ok": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "string"
+     },
+     "products": {
+      "type": "array",
+      "items": {
+       "product_id": {
+        "type": "string"
+       },
+       "type": {
+        "type": "string",
+        "enum": [
+         "credit_card",
+         "personal_loan",
+         "car_loan"
+        ]
+       },
+       "card_last4": {
+        "type": "string"
+       },
+       "past_due": {
+        "type": "number"
+       },
+       "days_late": {
+        "type": "integer"
+       },
+       "minimum_payment": {
+        "type": "number"
+       },
+       "instalment_amount": {
+        "type": "number"
+       }
+      }
+     }
+    },
+    "summary": "The late products. Refused until both questions are passed."
+   },
+   "create_promise": {
+    "path": "/create_promise",
+    "method": "POST",
+    "request_fields": {
+     "customer_id": {
+      "type": "string",
+      "required": true
+     },
+     "product_id": {
+      "type": "string",
+      "required": true
+     },
+     "amount": {
+      "type": "number",
+      "required": true
+     },
+     "date": {
+      "type": "string",
+      "required": true,
+      "format": "date"
+     }
+    },
+    "response_fields": {
+     "ok": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "string"
+     },
+     "promise_id": {
+      "type": "string"
+     }
+    },
+    "summary": "Record a payment promise. One per product."
+   },
+   "add_note": {
+    "path": "/add_note",
+    "method": "POST",
+    "request_fields": {
+     "customer_id": {
+      "type": "string",
+      "required": true
+     },
+     "product_id": {
+      "type": "string",
+      "required": true
+     },
+     "reason": {
+      "type": "string",
+      "required": true,
+      "enum": [
+       "refused",
+       "hardship",
+       "dispute",
+       "paid",
+       "service_error"
+      ]
+     },
+     "text": {
+      "type": "string",
+      "required": false
+     }
+    },
+    "response_fields": {
+     "ok": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "string"
+     }
+    },
+    "summary": "Brief B: record why a product ended without a promise."
+   },
+   "schedule_callback": {
+    "path": "/schedule_callback",
+    "method": "POST",
+    "request_fields": {
+     "customer_id": {
+      "type": "string",
+      "required": true
+     },
+     "date": {
+      "type": "string",
+      "required": true,
+      "format": "date"
+     },
+     "time": {
+      "type": "string",
+      "required": true,
+      "description": "HH:MM"
+     }
+    },
+    "response_fields": {
+     "ok": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "string"
+     }
+    },
+    "summary": "Book a callback."
+   },
+   "transfer_to_agent": {
+    "path": "/transfer_to_agent",
+    "method": "POST",
+    "request_fields": {
+     "customer_id": {
+      "type": "string",
+      "required": true
+     },
+     "queue": {
+      "type": "string",
+      "required": true,
+      "enum": [
+       "restructuring",
+       "general",
+       "support"
+      ]
+     }
+    },
+    "response_fields": {
+     "ok": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "string"
+     }
+    },
+    "summary": "Hand the call to a person."
+   },
+   "close_call": {
+    "path": "/close_call",
+    "method": "POST",
+    "request_fields": {
+     "customer_id": {
+      "type": "string",
+      "required": true
+     },
+     "outcome": {
+      "type": "string",
+      "required": true,
+      "enum": [
+       "promise",
+       "paid",
+       "transferred",
+       "no_promise",
+       "not_verified",
+       "not_reached"
+      ]
+     },
+     "reason": {
+      "type": "string",
+      "required": false,
+      "description": "Required for every outcome except promise and paid. See the table in the brief."
+     }
+    },
+    "response_fields": {
+     "ok": {
+      "type": "boolean"
+     },
+     "error": {
+      "type": "string"
+     }
+    },
+    "summary": "End the call. Always the last tool call. Nothing is accepted after it."
+   },
+   "_server": {
+    "path": "https://freya-bank-mock.freyavoice.workers.dev/v1",
+    "method": "BASE"
+   }
+  },
+  "concepts": {
+   "identity.date_of_birth": {
+    "tool": "verify_identity",
+    "field": "field",
+    "wire": "date_of_birth",
+    "units": [
+     "a.r11"
+    ]
+   },
+   "identity.phone_last4": {
+    "tool": "verify_identity",
+    "field": "field",
+    "wire": "phone_last4",
+    "units": [
+     "a.r11"
+    ]
+   },
+   "identity.answer": {
+    "tool": "verify_identity",
+    "field": "answer",
+    "wire": "answer",
+    "units": [
+     "a.r11"
+    ]
+   },
+   "identity.hint.day_month_swapped": {
+    "tool": "verify_identity",
+    "field": "hint",
+    "wire": "day_month_swapped",
+    "units": [
+     "a.r13"
+    ]
+   },
+   "identity.verified": {
+    "tool": "verify_identity",
+    "field": "verified",
+    "wire": "verified",
+    "units": [
+     "a.r12"
+    ]
+   },
+   "identity.all_verified": {
+    "tool": "verify_identity",
+    "field": "all_verified",
+    "wire": "all_verified",
+    "units": [
+     "a.r16"
+    ]
+   },
+   "identity.wrong_answers_left": {
+    "tool": "verify_identity",
+    "field": "wrong_answers_left",
+    "wire": "wrong_answers_left",
+    "units": [
+     "a.r12"
+    ]
+   },
+   "product.list": {
+    "tool": "get_account",
+    "field": "products",
+    "wire": "products",
+    "units": [
+     "a.r16"
+    ]
+   },
+   "product.id": {
+    "tool": "get_account",
+    "field": "products[].product_id",
+    "wire": "product_id",
+    "units": [
+     "a.r34"
+    ]
+   },
+   "product.type": {
+    "tool": "get_account",
+    "field": "products[].type",
+    "wire": "type",
+    "units": [
+     "a.r17"
+    ]
+   },
+   "product.card_last4": {
+    "tool": "get_account",
+    "field": "products[].card_last4",
+    "wire": "card_last4",
+    "units": [
+     "a.r17"
+    ]
+   },
+   "product.past_due": {
+    "tool": "get_account",
+    "field": "products[].past_due",
+    "wire": "past_due",
+    "units": [
+     "a.r17"
+    ]
+   },
+   "product.days_late": {
+    "tool": "get_account",
+    "field": "products[].days_late",
+    "wire": "days_late",
+    "units": [
+     "a.r17",
+     "a.r18"
+    ]
+   },
+   "product.minimum_payment": {
+    "tool": "get_account",
+    "field": "products[].minimum_payment",
+    "wire": "minimum_payment",
+    "units": [
+     "a.r25"
+    ]
+   },
+   "product.instalment_amount": {
+    "tool": "get_account",
+    "field": "products[].instalment_amount",
+    "wire": "instalment_amount",
+    "units": [
+     "a.r25"
+    ]
+   },
+   "promise.product_id": {
+    "tool": "create_promise",
+    "field": "product_id",
+    "wire": "product_id",
+    "units": [
+     "a.r34"
+    ]
+   },
+   "promise.amount": {
+    "tool": "create_promise",
+    "field": "amount",
+    "wire": "amount",
+    "units": [
+     "a.r34"
+    ]
+   },
+   "promise.date": {
+    "tool": "create_promise",
+    "field": "date",
+    "wire": "date",
+    "units": [
+     "a.r34"
+    ]
+   },
+   "promise.ok": {
+    "tool": "create_promise",
+    "field": "ok",
+    "wire": "ok",
+    "units": [
+     "a.r37"
+    ]
+   },
+   "callback.date": {
+    "tool": "schedule_callback",
+    "field": "date",
+    "wire": "date",
+    "units": [
+     "a.r6"
+    ]
+   },
+   "callback.time": {
+    "tool": "schedule_callback",
+    "field": "time",
+    "wire": "time",
+    "units": [
+     "a.r6"
+    ]
+   },
+   "transfer.queue": {
+    "tool": "transfer_to_agent",
+    "field": "queue",
+    "wire": "queue",
+    "units": [
+     "a.r41",
+     "a.r42",
+     "a.r32"
+    ]
+   },
+   "close.outcome": {
+    "tool": "close_call",
+    "field": "outcome",
+    "wire": "outcome",
+    "units": [
+     "a.r46"
+    ]
+   },
+   "close.reason": {
+    "tool": "close_call",
+    "field": "reason",
+    "wire": "reason",
+    "units": [
+     "a.r46"
+    ]
+   }
+  },
+  "enums": {
+   "verify_identity.field.date_of_birth": {
+    "obligations": [
+     "O-a.r11"
+    ]
+   },
+   "verify_identity.field.phone_last4": {
+    "obligations": [
+     "O-a.r11"
+    ]
+   },
+   "verify_identity.hint.day_month_swapped": {
+    "obligations": [
+     "O-a.r13"
+    ]
+   },
+   "get_account.products.type.credit_card": {
+    "obligations": [
+     "O-a.r17",
+     "O-a.r25"
+    ]
+   },
+   "get_account.products.type.personal_loan": {
+    "obligations": [
+     "O-a.r17",
+     "O-a.r25"
+    ]
+   },
+   "get_account.products.type.car_loan": {
+    "obligations": [
+     "O-a.r17",
+     "O-a.r25"
+    ]
+   },
+   "transfer_to_agent.queue.restructuring": {
+    "obligations": [
+     "O-a.r41"
+    ]
+   },
+   "transfer_to_agent.queue.general": {
+    "obligations": [
+     "O-a.r42"
+    ]
+   },
+   "transfer_to_agent.queue.support": {
+    "obligations": [
+     "O-a.r32"
+    ]
+   },
+   "close_call.outcome.promise": {
+    "obligations": [
+     "O-a.r46.row.promise"
+    ]
+   },
+   "close_call.outcome.paid": {
+    "obligations": [
+     "O-a.r39"
+    ]
+   },
+   "close_call.outcome.transferred": {
+    "obligations": [
+     "O-a.r41",
+     "O-a.r42",
+     "O-a.r32",
+     "O-a.r46.transfer"
+    ]
+   },
+   "close_call.outcome.no_promise": {
+    "obligations": [
+     "O-a.r31",
+     "O-a.r45",
+     "O-a.r32",
+     "O-a.r40",
+     "O-a.r37"
+    ]
+   },
+   "close_call.outcome.not_verified": {
+    "obligations": [
+     "O-a.r14",
+     "O-a.r15",
+     "O-a.r45"
+    ]
+   },
+   "close_call.outcome.not_reached": {
+    "obligations": [
+     "O-a.r6",
+     "O-a.r7",
+     "O-a.r8",
+     "O-a.r9",
+     "O-a.r3"
+    ]
+   },
+   "add_note.reason.refused": {
+    "unused": "Brief A never uses add_note (a.p10)"
+   },
+   "add_note.reason.hardship": {
+    "unused": "Brief A never uses add_note (a.p10)"
+   },
+   "add_note.reason.dispute": {
+    "unused": "Brief A never uses add_note (a.p10)"
+   },
+   "add_note.reason.paid": {
+    "unused": "Brief A never uses add_note (a.p10)"
+   },
+   "add_note.reason.service_error": {
+    "unused": "Brief A never uses add_note (a.p10)"
+   }
+  }
+ },
+ "phrases": [
+  {
+   "id": "opening",
+   "kind": "mandatory",
+   "text": "Hello, this is a digital assistant calling from Freya Bank. This call is recorded.",
+   "exact": false,
+   "obligation": "O-a.r1.1",
+   "when": "first sentence of the call"
+  },
+  {
+   "id": "party_question",
+   "kind": "mandatory",
+   "text": "Am I speaking with {title} {last_name}?",
+   "exact": true,
+   "obligation": "O-a.r2",
+   "when": "after the opening; again on the second ask"
+  },
+  {
+   "id": "robot_answer",
+   "kind": "mandatory",
+   "text": "I am Freya Bank's digital assistant.",
+   "exact": false,
+   "obligation": "O-a.r4",
+   "when": "customer asks whether you are a robot or an AI"
+  },
+  {
+   "id": "callback_question",
+   "kind": "mandatory",
+   "text": "When can {title} {last_name} be reached?",
+   "exact": false,
+   "obligation": "O-a.r5",
+   "when": "someone else answers"
+  },
+  {
+   "id": "sorry_loss",
+   "kind": "mandatory",
+   "text": "I am sorry for your loss.",
+   "exact": true,
+   "obligation": "O-a.r9",
+   "when": "the person says the customer has died"
+  },
+  {
+   "id": "ask_date_of_birth",
+   "kind": "mandatory",
+   "text": "Before I continue, I need to ask you two security questions. What is your date of birth?",
+   "exact": false,
+   "obligation": "O-a.r11",
+   "when": "first identity question"
+  },
+  {
+   "id": "ask_phone_last4",
+   "kind": "mandatory",
+   "text": "Thank you. What are the last four digits of the phone number on file?",
+   "exact": false,
+   "obligation": "O-a.r11",
+   "when": "second identity question"
+  },
+  {
+   "id": "month_as_word",
+   "kind": "mandatory",
+   "text": "Could you say your date of birth again, with the month as a word?",
+   "exact": false,
+   "obligation": "O-a.r13",
+   "when": "verify_identity returned hint day_month_swapped"
+  },
+  {
+   "id": "questions_protect",
+   "kind": "mandatory",
+   "text": "These questions protect your account. I can explain the reason for the call once they are done.",
+   "exact": false,
+   "obligation": "O-a.r15",
+   "when": "first decline during identity"
+  },
+  {
+   "id": "use_app_or_branch",
+   "kind": "mandatory",
+   "text": "I could not verify your identity, so I cannot continue with this call. Please use the mobile app or visit a branch.",
+   "exact": false,
+   "obligation": "O-a.r14",
+   "when": "third wrong answer"
+  },
+  {
+   "id": "disclosure",
+   "kind": "mandatory",
+   "text": "I am calling from the collections team about a late payment.",
+   "exact": false,
+   "obligation": "O-a.r17",
+   "when": "right after verification, before any question"
+  },
+  {
+   "id": "pay_today",
+   "kind": "mandatory",
+   "text": "Can you make this payment today?",
+   "exact": true,
+   "obligation": "O-a.r28",
+   "when": "first question after the disclosure"
+  },
+  {
+   "id": "rest_overdue",
+   "kind": "mandatory",
+   "text": "The rest stays overdue.",
+   "exact": false,
+   "obligation": "O-a.r26",
+   "when": "the floor is offered after too much"
+  },
+  {
+   "id": "below_floor",
+   "kind": "mandatory",
+   "text": "An amount below the minimum cannot be recorded.",
+   "exact": false,
+   "obligation": "O-a.r27",
+   "when": "amount below the floor"
+  },
+  {
+   "id": "latest_is_deadline",
+   "kind": "mandatory",
+   "text": "The latest date I can record is {deadline}.",
+   "exact": false,
+   "obligation": "O-a.r23",
+   "when": "date after the deadline"
+  },
+  {
+   "id": "do_you_confirm",
+   "kind": "mandatory",
+   "text": "Do you confirm?",
+   "exact": true,
+   "obligation": "O-a.r34",
+   "when": "after the read-back"
+  },
+  {
+   "id": "text_message",
+   "kind": "mandatory",
+   "text": "You will receive a text message confirming this promise.",
+   "exact": true,
+   "obligation": "O-a.r38",
+   "when": "after create_promise returned ok true"
+  },
+  {
+   "id": "promise_recorded",
+   "kind": "mandatory",
+   "text": "Your promise is recorded.",
+   "exact": false,
+   "obligation": "O-a.r37",
+   "when": "only after create_promise returned ok true"
+  },
+  {
+   "id": "could_not_record",
+   "kind": "mandatory",
+   "text": "I am sorry, I could not record your promise because of a technical problem.",
+   "exact": false,
+   "obligation": "O-a.r37",
+   "when": "create_promise failed twice"
+  },
+  {
+   "id": "change_in_app",
+   "kind": "mandatory",
+   "text": "A recorded promise cannot be changed in this call. You can change it in the mobile app.",
+   "exact": false,
+   "obligation": "O-a.r36",
+   "when": "customer asks to change or cancel a recorded promise"
+  },
+  {
+   "id": "paid_takes_day",
+   "kind": "mandatory",
+   "text": "Payments can take one business day to appear.",
+   "exact": false,
+   "obligation": "O-a.r39",
+   "when": "customer says they already paid"
+  },
+  {
+   "id": "sympathy",
+   "kind": "mandatory",
+   "text": "I am sorry to hear that.",
+   "exact": false,
+   "obligation": "O-a.r32",
+   "when": "illness, a death in the family or job loss"
+  },
+  {
+   "id": "support_offer",
+   "kind": "mandatory",
+   "text": "Would you like me to connect you with our customer support team?",
+   "exact": false,
+   "obligation": "O-a.r32",
+   "when": "after the sympathy sentence"
+  },
+  {
+   "id": "can_i_help",
+   "kind": "mandatory",
+   "text": "Is there something I can help you with first?",
+   "exact": false,
+   "obligation": "O-a.r42",
+   "when": "customer asks for a human, first time"
+  },
+  {
+   "id": "scam_answer",
+   "kind": "mandatory",
+   "text": "You can verify this call by phoning Freya Bank's customer service number.",
+   "exact": false,
+   "obligation": "O-a.r43",
+   "when": "customer asks whether this is a scam"
+  },
+  {
+   "id": "no_information",
+   "kind": "mandatory",
+   "text": "I do not have that information.",
+   "exact": false,
+   "obligation": "O-a.r44",
+   "when": "a question the tools cannot answer"
+  },
+  {
+   "id": "thanks_goodbye",
+   "kind": "mandatory",
+   "text": "Thank you, goodbye.",
+   "exact": false,
+   "obligation": "O-a.r47",
+   "when": "before close_call"
+  },
+  {
+   "id": "close_promise",
+   "kind": "mandatory",
+   "text": "Thank you for your time.",
+   "exact": false,
+   "obligation": "O-a.r47",
+   "when": "closing line for outcome promise"
+  },
+  {
+   "id": "close_paid",
+   "kind": "mandatory",
+   "text": "Thank you for letting me know.",
+   "exact": false,
+   "obligation": "O-a.r39",
+   "when": "closing line for outcome paid"
+  },
+  {
+   "id": "close_transferred",
+   "kind": "mandatory",
+   "text": "I am transferring you to a colleague now.",
+   "exact": false,
+   "obligation": "O-a.r42",
+   "when": "closing line for outcome transferred"
+  },
+  {
+   "id": "close_no_promise",
+   "kind": "mandatory",
+   "text": "I understand.",
+   "exact": false,
+   "obligation": "O-a.r31",
+   "when": "closing line for outcome no_promise"
+  },
+  {
+   "id": "close_service_error",
+   "kind": "mandatory",
+   "text": "I am sorry, I could not record your promise because of a technical problem.",
+   "exact": false,
+   "obligation": "O-a.r37",
+   "when": "closing line for no_promise / service_error"
+  },
+  {
+   "id": "close_not_verified_failed",
+   "kind": "mandatory",
+   "text": "I could not verify your identity, so I cannot continue with this call. Please use the mobile app or visit a branch.",
+   "exact": false,
+   "obligation": "O-a.r14",
+   "when": "closing line for not_verified / failed"
+  },
+  {
+   "id": "close_not_verified_declined",
+   "kind": "mandatory",
+   "text": "I understand. I cannot continue without the security questions.",
+   "exact": false,
+   "obligation": "O-a.r15",
+   "when": "closing line for not_verified / declined"
+  },
+  {
+   "id": "close_callback",
+   "kind": "mandatory",
+   "text": "Thank you, we will call back at that time.",
+   "exact": false,
+   "obligation": "O-a.r6",
+   "when": "closing line for not_reached / callback"
+  },
+  {
+   "id": "close_no_callback",
+   "kind": "mandatory",
+   "text": "I understand, I will not schedule a callback.",
+   "exact": false,
+   "obligation": "O-a.r7",
+   "when": "closing line for not_reached / no_callback"
+  },
+  {
+   "id": "close_wrong_number",
+   "kind": "mandatory",
+   "text": "I apologise for the inconvenience.",
+   "exact": false,
+   "obligation": "O-a.r8",
+   "when": "closing line for not_reached / wrong_number"
+  },
+  {
+   "id": "close_deceased",
+   "kind": "mandatory",
+   "text": "I am sorry for your loss.",
+   "exact": true,
+   "obligation": "O-a.r9",
+   "when": "closing line for not_reached / deceased"
+  },
+  {
+   "id": "close_unclear",
+   "kind": "mandatory",
+   "text": "I am sorry, I could not confirm who I am speaking with.",
+   "exact": false,
+   "obligation": "O-a.r3",
+   "when": "closing line for not_reached / unclear"
+  },
+  {
+   "id": "forbid_pre_verification_words",
+   "kind": "forbidden",
+   "text": "collections; debt; payment; the product name",
+   "exact": true,
+   "obligation": "O-a.r1.2",
+   "when": "before identity is verified, to everyone including relatives"
+  },
+  {
+   "id": "forbid_reason_third_party",
+   "kind": "forbidden",
+   "text": "why you are calling",
+   "exact": false,
+   "obligation": "O-a.r5",
+   "when": "someone else answers"
+  },
+  {
+   "id": "forbid_how_much",
+   "kind": "forbidden",
+   "text": "how much can you pay?",
+   "exact": true,
+   "obligation": "O-a.r24",
+   "when": "always"
+  },
+  {
+   "id": "forbid_terms",
+   "kind": "forbidden",
+   "text": "a discount, a waiver, an instalment plan or any term that is not in this brief",
+   "exact": false,
+   "obligation": "O-a.r33",
+   "when": "always"
+  },
+  {
+   "id": "forbid_recorded_claim",
+   "kind": "forbidden",
+   "text": "recorded",
+   "exact": true,
+   "obligation": "O-a.r37",
+   "when": "before create_promise returned ok true"
+  },
+  {
+   "id": "forbid_repeat_refused",
+   "kind": "forbidden",
+   "text": "an offer the customer already refused",
+   "exact": false,
+   "obligation": "O-a.r31",
+   "when": "negotiation"
+  },
+  {
+   "id": "forbid_invent",
+   "kind": "forbidden",
+   "text": "invented figures, dates or reasons",
+   "exact": false,
+   "obligation": "O-a.r44",
+   "when": "always"
+  }
+ ],
+ "examples": [
+  {
+   "unit": "a.r22",
+   "input": {
+    "now": "2026-10-16T11:00",
+    "text": "next Friday"
+   },
+   "expected": "2026-10-23"
+  },
+  {
+   "unit": "a.r11",
+   "input": {
+    "text": "3/4/1985"
+   },
+   "expected": "1985-04-03"
+  },
+  {
+   "unit": "a.r30.b1",
+   "input": {
+    "now": "2026-10-14T11:00"
+   },
+   "expected": "2026-10-16"
+  },
+  {
+   "unit": "a.r30.b1",
+   "input": {
+    "now": "2026-10-16T11:00"
+   },
+   "expected": "2026-10-23"
+  },
+  {
+   "unit": "a.t2.r1",
+   "input": {
+    "now": "2026-10-14T11:00",
+    "days_late": 6
+   },
+   "expected": {
+    "band": "early",
+    "deadline": "2026-11-02",
+    "attempts": 1
+   }
+  },
+  {
+   "unit": "a.t2.r2",
+   "input": {
+    "now": "2026-10-14T11:00",
+    "days_late": 14
+   },
+   "expected": {
+    "band": "late",
+    "deadline": "2026-10-23",
+    "attempts": 2
+   }
+  },
+  {
+   "unit": "a.r6",
+   "input": {
+    "now": "2026-10-14T11:00",
+    "date": "2026-10-14",
+    "time": "10:30"
+   },
+   "expected": false
+  },
+  {
+   "unit": "a.r6",
+   "input": {
+    "now": "2026-10-14T11:00",
+    "date": "2026-10-15",
+    "time": "19:00"
+   },
+   "expected": true
+  }
+ ],
+ "open_questions": [
+  {
+   "topic": "bare weekday",
+   "readings": [
+    "the next such day from today",
+    "this week's day per rule 22"
+   ],
+   "taken": "the next such day strictly after today",
+   "rule": "a.r22 is silent on a weekday said without this/next"
+  },
+  {
+   "topic": "closing precedence",
+   "readings": [
+    "table order",
+    "transferred > promise > paid > no_promise"
+   ],
+   "taken": "transferred first (a.p9), then promise, then paid, then no_promise; not_verified and not_reached only before verification",
+   "rule": "a.p6 and a.t3.r1"
+  },
+  {
+   "topic": "turn cap",
+   "readings": [
+    "no rule"
+   ],
+   "taken": "say goodbye and end the call without close_call; our scorer counts it as FAIL",
+   "rule": "none in the brief"
+  },
+  {
+   "topic": "date in the past",
+   "readings": [
+    "treat as invalid, ask again",
+    "treat as flat refusal"
+   ],
+   "taken": "say it cannot be recorded and ask for a date from today; no attempt used",
+   "rule": "a.r19 (today or later), a.r29 (a date is never a refusal)"
+  },
+  {
+   "topic": "hardship before verification",
+   "readings": [
+    "rule 32 applies any time",
+    "rule 32 applies after verification only"
+   ],
+   "taken": "sympathy sentence any time; the support offer and the hardship close only after verification; before it the identity check continues",
+   "rule": "a.r32 sits in section 9 (getting the promise)"
+  },
+  {
+   "topic": "pay-today yes",
+   "readings": [
+    "record at once",
+    "read back first"
+   ],
+   "taken": "a yes to paying today is an agreed promise for the full amount today and goes to the read-back",
+   "rule": "a.r34 applies to every promise"
+  }
+ ],
+ "plan": [
+  {
+   "id": "party",
+   "type": "party",
+   "params": {},
+   "obligations": [
+    "O-a.r1.1",
+    "O-a.r2",
+    "O-a.r3",
+    "O-a.r3.q",
+    "O-a.r5",
+    "O-a.r6",
+    "O-a.r7",
+    "O-a.r8",
+    "O-a.r9",
+    "O-a.r10"
+   ],
+   "units": [
+    "a.r1",
+    "a.r2",
+    "a.r3"
+   ],
+   "per_item": false,
+   "gates": []
+  },
+  {
+   "id": "verify",
+   "type": "verify",
+   "params": {
+    "questions": "identity.questions"
+   },
+   "obligations": [
+    "O-a.r11",
+    "O-a.r12",
+    "O-a.r13",
+    "O-a.r14",
+    "O-a.r15"
+   ],
+   "units": [
+    "a.r11"
+   ],
+   "per_item": false,
+   "gates": [
+    "fetch",
+    "disclose",
+    "negotiate",
+    "readback",
+    "record"
+   ]
+  },
+  {
+   "id": "fetch",
+   "type": "fetch",
+   "params": {
+    "tool": "get_account"
+   },
+   "obligations": [
+    "O-a.r16"
+   ],
+   "units": [
+    "a.r16"
+   ],
+   "per_item": false,
+   "gates": []
+  },
+  {
+   "id": "disclose",
+   "type": "disclose",
+   "params": {},
+   "obligations": [
+    "O-a.r17"
+   ],
+   "units": [
+    "a.r17"
+   ],
+   "per_item": true,
+   "gates": []
+  },
+  {
+   "id": "negotiate",
+   "type": "negotiate",
+   "params": {},
+   "obligations": [
+    "O-a.r18",
+    "O-a.r19",
+    "O-a.r20",
+    "O-a.r21",
+    "O-a.r22",
+    "O-a.r23",
+    "O-a.r24",
+    "O-a.r25",
+    "O-a.r26",
+    "O-a.r27",
+    "O-a.r28",
+    "O-a.r29",
+    "O-a.r30",
+    "O-a.r30.a1",
+    "O-a.r30.a2",
+    "O-a.r31",
+    "O-a.r32"
+   ],
+   "units": [
+    "a.r28",
+    "a.r30"
+   ],
+   "per_item": true,
+   "gates": []
+  },
+  {
+   "id": "readback",
+   "type": "readback",
+   "params": {},
+   "obligations": [
+    "O-a.r34",
+    "O-a.r35"
+   ],
+   "units": [
+    "a.r34"
+   ],
+   "per_item": false,
+   "gates": []
+  },
+  {
+   "id": "record",
+   "type": "record",
+   "params": {
+    "tool": "create_promise",
+    "retries": "recording.retries"
+   },
+   "obligations": [
+    "O-a.r36",
+    "O-a.r37",
+    "O-a.r38"
+   ],
+   "units": [
+    "a.r37"
+   ],
+   "per_item": true,
+   "gates": []
+  },
+  {
+   "id": "close",
+   "type": "close",
+   "params": {
+    "tool": "close_call",
+    "rows": "closing.rows"
+   },
+   "obligations": [
+    "O-a.r46",
+    "O-a.r46.row.promise",
+    "O-a.r46.transfer",
+    "O-a.r47"
+   ],
+   "units": [
+    "a.r46",
+    "a.r47"
+   ],
+   "per_item": false,
+   "gates": []
+  }
+ ]
+}
