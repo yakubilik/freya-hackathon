@@ -13,7 +13,7 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from builder.engine.snippet import render  # noqa: E402
+from builder.engine.snippet import pack, render  # noqa: E402
 from builder.engine.step import step, new_state  # noqa: E402
 
 TABLE_A = json.load(open(ROOT / "fixtures" / "tables" / "brief-a.json"))
@@ -171,3 +171,24 @@ def test_render_rejects_double_braces_in_its_own_source(monkeypatch):
     monkeypatch.setattr(snippet, "_MAIN", snippet._MAIN + "\nX = '{{bad}}'\n")
     with pytest.raises(ValueError):
         render(TABLE_A)
+
+
+@pytest.mark.parametrize("table", [TABLE_A, TABLE_B], ids=["A", "B"])
+def test_packed_snippet_is_small_and_behaves_like_the_plain_one(table):
+    """The emitter ships pack(render(table)): under 60 KB (the platform caps code plus variables at 128 KiB and the
+    variables grow every turn), brace-free, standard library only, and the same outputs as the plain source."""
+    plain, packed = render(table), pack(render(table))
+    assert len(packed) < 60000, len(packed)
+    assert "{{" not in packed and "}}" not in packed
+    imported = {a.name.split(".")[0] for node in ast.walk(ast.parse(packed)) if isinstance(node, ast.Import) for a in node.names}
+    assert imported <= {"base64", "zlib"}, imported
+    for events in ([], [ev("party_confirmed")]):
+        a, b = dict(CALL), dict(CALL)
+        a["engine_events"], b["engine_events"] = json.dumps(events), json.dumps(events)
+        exec(plain, {"vars": a})
+        exec(packed, {"vars": b})
+        assert a == b
+    # the engine's names are visible to code appended after the packed block (the emitter's epilogue needs them)
+    ns = {"vars": dict(CALL)}
+    exec(packed + "\nvars['probe'] = str(callable(step)) + str(callable(new_state))\n", ns)
+    assert ns["vars"]["probe"] == "TrueTrue"

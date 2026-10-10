@@ -46,6 +46,7 @@ def _norm(text):
     s = (text or "").lower().strip()
     s = s.replace("\u2019", "'").replace("-", " ")
     s = re.sub(r"[^\w\s:/.'ü]", " ", s)
+    s = re.sub(r"(?<!\d)\.|\.(?!\d)", " ", s)  # keep the dot only between digits ("14.03.1988", "4.50"); "1988." is a sentence end
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
@@ -549,6 +550,11 @@ def parse_identity_date(text, parse_rule="day_month_year"):
         return _finish_dob(res)
     tokens = s.split(" ")
     day = month = year = None
+    span = _year_in_words_span(tokens)
+    if span:
+        # "nineteen ninety three": the year's words must not be read again as a day ("three")
+        year, a, b = span
+        tokens = tokens[:a] + tokens[b:]
     for i, t in enumerate(tokens):
         if t in MONTHS:
             month = MONTHS[t]
@@ -558,7 +564,8 @@ def parse_identity_date(text, parse_rule="day_month_year"):
             continue
         if day is None:
             val, used = _ordinal_words(tokens, i)
-            if val is not None and 1 <= val <= 31 and t not in ("nineteen", "twenty") or (ORDINAL_SUFFIX.match(t)):
+            # "twenty" alone may start a year in words; "twenty-eighth" / "twenty eight April" (two tokens) is a day
+            if val is not None and 1 <= val <= 31 and (t not in ("nineteen", "twenty") or used == 2) or ORDINAL_SUFFIX.match(t):
                 if t in TENS and used == 1 and month is None:
                     # "twenty" could start a year in words; keep simple: treat as day only if an ordinal follows
                     pass
@@ -579,17 +586,24 @@ def parse_identity_date(text, parse_rule="day_month_year"):
     return _finish_dob(res)
 
 
-def _year_in_words(tokens):
+def _year_in_words_span(tokens):
+    """(year, start, end) of a year said in words ('nineteen ninety three' -> (1993, i, i + 3)), or None."""
     for i in range(len(tokens) - 1):
         if tokens[i] in ("nineteen", "twenty", "eighteen") and i + 1 < len(tokens):
-            first = UNITS[tokens[i]]
+            first = UNITS.get(tokens[i]) or TENS.get(tokens[i])   # "twenty" is in TENS; "twenty-eighth of April" starts here too
             rest = _small_groups(tokens[i + 1:i + 3])
             if rest:
                 if len(rest) >= 1 and rest[0] >= 10:
-                    return first * 100 + rest[0]
+                    used = 2 if (tokens[i + 1] in TENS and i + 2 < len(tokens) and tokens[i + 2] in UNITS and UNITS[tokens[i + 2]] < 10) else 1
+                    return first * 100 + rest[0], i, i + 1 + used
                 if tokens[i + 1] == "hundred":
-                    return first * 100
+                    return first * 100, i, i + 2
     return None
+
+
+def _year_in_words(tokens):
+    span = _year_in_words_span(tokens)
+    return span[0] if span else None
 
 
 def _finish_dob(res):

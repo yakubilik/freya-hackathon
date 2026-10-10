@@ -92,7 +92,13 @@ try:
     _engine_main(vars)
 except Exception as _exc:  # noqa: BLE001 - a code node must never raise
     try:
-        _engine_fallback(vars, "The engine could not apply the last reply (" + type(_exc).__name__ + "); ask the customer to repeat.")
+        # an instruction for the dialogue model, nothing it could read out (a platform run echoed "the engine could not
+        # apply your last reply" to the customer, 2026-10-10); the error class goes to engine_unsupported
+        _engine_fallback(vars, "Say you did not catch that and ask the customer to repeat their last answer.")
+        try:
+            vars["engine_unsupported"] = json.dumps(["engine_error:" + type(_exc).__name__])
+        except Exception:  # noqa: BLE001
+            pass
     except Exception:  # noqa: BLE001
         pass
 '''
@@ -299,6 +305,35 @@ def engine_table(table):
     phrases = [{f: ph[f] for f in ("id", "kind", "text", "exact") if f in ph} for ph in table.get("phrases") or []
                if isinstance(ph, dict) and ph.get("kind") == "mandatory" and ph.get("id")]
     return {"parameters": params, "phrases": phrases}
+
+
+_PACK_HEADER = ('"""Freya call engine, rendered by builder/engine/snippet.py (zlib + base64 packed; the plain source is '
+                'render(table)). Standard library only. Do not edit."""\n')
+
+
+def pack(src):
+    """`src` as a short code node: the plain source zlib-compressed, base64-encoded and exec'd into the node's own
+    namespace, so the names it defines stay visible to code appended after it. A code node's code plus the call's
+    variables must fit in 128 KiB and the variables grow with every turn (about 28 KB after five turns, measured
+    2026-10-10); the plain engine is about 100 KB, packed about 36 KB. base64 has no braces, so no {{ or }}."""
+    import base64
+    import zlib
+    blob = base64.b64encode(zlib.compress(src.encode("utf-8"), 9)).decode("ascii")
+    out = (_PACK_HEADER + "import base64, zlib\n"
+           + "exec(zlib.decompress(base64.b64decode('" + blob + "')).decode('utf-8'), globals())\n")
+    compile(out, "<engine-snippet-packed>", "exec")
+    return out
+
+
+_PACKED = re.compile(r"exec\(zlib\.decompress\(base64\.b64decode\('([A-Za-z0-9+/=]+)'\)\)\.decode\('utf-8'\), globals\(\)\)\n")
+
+
+def unpack(src):
+    """`src` with every pack() block replaced by the plain source it carries (for static readers such as the
+    emitter's walk); unchanged when nothing is packed."""
+    import base64
+    import zlib
+    return _PACKED.sub(lambda m: zlib.decompress(base64.b64decode(m.group(1))).decode("utf-8"), src)
 
 
 def render(table):

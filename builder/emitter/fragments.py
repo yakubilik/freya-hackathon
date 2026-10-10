@@ -8,14 +8,18 @@ Runtime contract (one call turn):
 
     conversation node S / S_wait --(any extraction slot set)--> S_observe (code: snapshot + clear, engine_events)
         --> engine (code: engine snippet + emitter epilogue) --(engine_next + flags)--> one of
-            S_say (tts of verbatim lines) -> S (llm entry: content) | S_wait (silent)
+            S (llm entry: head line, content, tail line); S_say (tts) -> S_wait (silent) is emitted but never
+            routed: on the platform a tts code node that passes through to a silent conversation node ends the turn
+            at the code node, and the next customer message re-runs the passthrough and hangs the chat (measured
+            2026-10-10, version 4)
             w_<tool> (baked api_request) -> write_result (code: tool_result event) -> engine
             close_<outcome>_<reason> (baked close_call, tts goodbye) -> write_result -> engine -> end
 
 The epilogue appended to the engine snippet turns the engine outputs into speech and routing variables:
-`say_tts` (verbatim sentences in the order the engine produced them, up to the first content instruction),
-`say_content` (what the dialogue model must convey in its own words), `say_tail_line` (verbatim sentences that
-follow content, spoken word for word by the model), `close_text`, `speech_buf` (lines produced during writes,
+`say_head_line` (verbatim sentences the engine produced before its first content instruction, spoken word for
+word by the model at the start of its message), `say_content` (what the dialogue model must convey in its own
+words), `say_tail_line` (verbatim sentences that follow content, spoken word for word by the model), `say_tts`
+(always "" now, kept for the S_say route), `close_text`, `speech_buf` (lines produced during writes,
 carried to the next speaking node), `write_tool` / `wa_<tool>__<field>` (the first due write, baked into its
 node), `last_stage`.
 """
@@ -24,6 +28,7 @@ from __future__ import annotations
 import json
 import re
 import urllib.parse
+
 
 # --------------------------------------------------------------------------------------------------------------
 # vocabulary shared with the engine (builder/engine/step.py)
@@ -66,7 +71,8 @@ KIND_HELP = {
     "pay_today_yes": "yes to doing it today",
     "pay_today_no": "no to doing it today",
     "date_proposal": "names a day (their words for the day in date)",
-    "amount_proposal": "names an amount they can manage (digits in amount, day words in date if a day is named too)",
+    "amount_proposal": "names an amount they can manage (digits in amount, day words in date if a day is named too); "
+                       "asking for a discount or a lower total names no amount and is 'other'",
     "too_much": "says the amount is too much for them",
     "refuse": "refuses the proposal, or gives a non-answer such as 'I will have to see'",
     "accept_offer": "accepts the proposal that was just made",
@@ -76,7 +82,7 @@ KIND_HELP = {
     "change": "changes the amount or the day of something already agreed",
     "paid": "says it is already paid",
     "dispute": "says it is not theirs, they never had the product, or it was closed or paid off in the past",
-    "plan_request": "asks to split the amount or to spread it over months",
+    "plan_request": "asks to split the amount or to spread it over months (a discount, waiver or lower total is not a plan: 'other')",
     "question_back": "asks a question back (who is calling, why, what it is about)",
     "robot_question": "asks whether you are a robot or an AI",
     "scam_question": "asks whether this is a scam",
@@ -86,8 +92,26 @@ KIND_HELP = {
     "other": "anything else, including small talk, greetings and unclear replies",
 }
 
-ENTRY_PROMPT = ("Say this to the customer now, in one or two short sentences of your own: {{say_content}}\n"
+ENTRY_PROMPT = ("{{say_head_line}}\nSay this to the customer now, in one or two short sentences of your own: {{say_content}}\n"
                 "{{say_tail_line}}\nDo not add anything else and do not call any tool.")
+HEAD_PREFIX = "Start your message with exactly these words:"
+# The close node has no model turn: its tts can only speak sentences. The engine's content lines are instructions for
+# a model; these are the ones that can come up at a close, by the engine's phrase id (the table's wording of a non-exact
+# phrase varies by brief), as the sentence the tts says instead. Any other instruction is dropped there (the goodbye is
+# always said).
+CLOSE_SPOKEN = {
+    "thanks_goodbye": "Thank you, goodbye.",
+    "could_not_record": "I could not record the promise because of a technical problem.",
+    "promise_recorded": "The promise is recorded.",
+    "text_message": "You will receive a text message confirming the promise.",
+    "rest_overdue": "The rest stays overdue.",
+    "paid_takes_day": "Payments can take one business day to appear.",
+    "change_in_app": "A recorded promise cannot be changed in this call; it can be changed in the mobile app.",
+    "sympathy": "I am sorry for your loss.",
+    "no_information": "I do not have that information.",
+    "use_app_or_branch": "I could not verify your identity, so I cannot go further on this call. Please use the mobile app or visit a branch.",
+    "questions_protect": "The security questions protect your account.",
+}
 TAIL_PREFIX = "Finish your message with exactly these words:"
 GOODBYE = "Thank you, goodbye."
 REPEAT = "Ask the customer to repeat what they said."
@@ -97,7 +121,10 @@ STAGE_TASK = {
               "Say nothing about why you are calling or about any account, to anyone. Only the person's own "
               "confirmation counts."),
     "callback": ("STEP: someone other than {{title}} {{last_name}} answered. Do not say why you are calling and ask them "
-                 "no security questions. Find out when {{title}} {{last_name}} can be reached: a day and a time."),
+                 "no security questions. If they ask what the call is about, say only that it is a personal matter you can "
+                 "discuss with {{title}} {{last_name}} alone: no overview, no hint, no 'limited information'. Deal with "
+                 "nobody else about the matter, whatever they offer. Find out when {{title}} {{last_name}} can be reached: a day "
+                 "and a time."),
     "identity": ("STEP: security questions. The person said they are {{title}} {{last_name}} but is not verified yet. "
                  "Ask only the question in the instruction, one at a time, and never answer it for them. Say nothing "
                  "about why you are calling or about any account until the questions are done."),
@@ -314,7 +341,7 @@ def setup(ctx, first):
     names = []
     for stage in ctx.stages:
         names += slot_vars(ctx, stage)
-    names += ["say_tts", "say_content", "say_tail_line", "close_text", "write_tool", "write_item", "write_args",
+    names += ["say_tts", "say_head_line", "say_content", "say_tail_line", "close_text", "write_tool", "write_item", "write_args",
               "wr_json", "wr_body", "engine_events"]
     for tool in ctx.write_tools:
         for key in ENGINE_ARGS[tool]:
@@ -352,7 +379,9 @@ def extraction_schema(ctx, stage):
                 desc = ("What the customer's last message does. One of:\n" + "\n".join(help_lines)) if first else \
                        ("Only when the same last message also does another thing, not already in %s_reply%d: one more value "
                         "from the same list. Empty otherwise." % (node, k - 1))
-                out.append({"name": name, "type": "string", "enum_values": list(kinds), "description": desc, "min_confidence": 0.5})
+                # "" is in the enum so the dispatcher's clearing write (vars[name] = '') passes the platform's schema
+                # validation; the transitions test `not_equals ""`, so a cleared slot never fires a route.
+                out.append({"name": name, "type": "string", "enum_values": list(kinds) + [""], "description": desc, "min_confidence": 0.5})
             elif f == "item":
                 out.append({"name": name, "type": "string", "min_confidence": 0.5,
                             "description": "For %s_reply%d: the customer's words for the one product it is about (for example "
@@ -372,7 +401,8 @@ def extraction_schema(ctx, stage):
             elif f == "words":
                 out.append({"name": name, "type": "string", "min_confidence": 0.5,
                             "description": ("For %s_reply%d: the customer's exact words for this part of the reply. For an "
-                                            "answer to a security question, everything they said as the answer, unchanged." % (node, k))})
+                                            "answer to a security question, everything they said as the answer, unchanged; "
+                                            "never leave it empty when the reply is an answer." % (node, k))})
     return out
 
 
@@ -425,26 +455,40 @@ def _ob_item(words):
     return words
 
 
+_FIELDS = ('words', 'amount', 'date', 'time', 'item')
+
 try:
+    vals = [dict((f, _ob_val(s.get(f))) for f in _FIELDS) for s in _SLOTS]
+    kinds = [_ob_val(s.get('reply')) for s in _SLOTS]
+    # the extractor sometimes files the value of the one reply under another slot (seen on the platform 2026-10-10:
+    # identity_reply1 = id_answer with identity_words2 = 4471): a slot with a reply and no value adopts the value of
+    # a slot without a reply
+    for f in _FIELDS:
+        for i in range(len(_SLOTS)):
+            if kinds[i] and not vals[i][f]:
+                for j in range(len(_SLOTS)):
+                    if not kinds[j] and vals[j][f]:
+                        vals[i][f], vals[j][f] = vals[j][f], ''
+                        break
     evs = []
-    for slot in _SLOTS:
-        kind = _ob_val(slot.get('reply'))
+    for i in range(len(_SLOTS)):
+        kind = kinds[i]
         if not kind:
             continue
         if kind not in _KINDS:
             kind = 'other'
         amount = None
-        a = _ob_val(slot.get('amount')).replace(',', '')
+        a = vals[i]['amount'].replace(',', '')
         if a:
             try:
                 amount = float(a)
             except ValueError:
                 amount = None
-        words = _ob_val(slot.get('words')) or None
+        words = vals[i]['words'] or None
         if a and amount is None and not words:
             words = a
-        ev = dict(kind=kind, item=_ob_item(_ob_val(slot.get('item'))), amount=amount,
-                  date_text=_ob_val(slot.get('date')) or None, time_text=_ob_val(slot.get('time')) or None,
+        ev = dict(kind=kind, item=_ob_item(vals[i]['item']), amount=amount,
+                  date_text=vals[i]['date'] or None, time_text=vals[i]['time'] or None,
                   text=words, span=None, qid=None)
         evs.append(ev)
     vars['engine_events'] = json.dumps(evs)
@@ -640,23 +684,22 @@ def _emit_segments(pre, v):
     log = []
     ok = False
     try:
-        o_say, o_line, o_phrase, o_main = g.get('_say'), g.get('_line'), g.get('_phrase'), g.get('_engine_main')
-        if o_say and o_line and o_phrase and o_main:
+        o_say, o_line, o_main = g.get('_say'), g.get('_line'), g.get('_engine_main')
+        if o_say and o_line and o_main:
             def w_say(C, st, pid):
                 nm = len(C['mandatory'])
                 nl = len(C['lines'])
                 o_say(C, st, pid)
-                known = o_phrase(C, pid) is not None
                 for t in C['mandatory'][nm:]:
-                    log.append(['v', t, 'm'])
+                    log.append(['v', t, 'm', pid])
                 for t in C['lines'][nl:]:
-                    log.append(['v' if known else 'i', t, 'l'])
+                    log.append(['i', t, 'l', pid])   # a non-exact table phrase is an instruction, not a sentence
 
             def w_line(C, text):
                 nl = len(C['lines'])
                 o_line(C, text)
                 for t in C['lines'][nl:]:
-                    log.append(['i', t, 'l'])
+                    log.append(['i', t, 'l', ''])
             g['_say'] = w_say
             g['_line'] = w_line
             try:
@@ -671,18 +714,18 @@ def _emit_segments(pre, v):
         ok = False
     v['speech_source'] = 'engine' if ok else 'fallback'
     if ok:
-        return [[x[0], x[1]] for x in log]
+        return [[x[0], x[1], x[3]] for x in log]   # kind, text, phrase id ('' for a free line)
     segs = []
     mand = [x for x in str(v.get('mandatory_lines') or '').split('\\n') if x.strip()]
     for m in mand:
         if not m.strip().endswith('?'):
-            segs.append(['v', m])
+            segs.append(['v', m, ''])
     sn = str(v.get('say_next') or '').strip()
     if sn:
-        segs.append(['i', sn])
+        segs.append(['i', sn, ''])
     for m in mand:
         if m.strip().endswith('?'):
-            segs.append(['v', m])
+            segs.append(['v', m, ''])
     return segs
 
 
@@ -700,14 +743,24 @@ def _emit_route(v, pre):
     writes = _emit_json(v, 'engine_writes', [])
     buf = _emit_json(v, 'speech_buf', [])
     segs = _emit_segments(pre, v)
-    for k in ('write_tool', 'write_item', 'write_args', 'wr_json', 'wr_body', 'say_tts', 'say_content', 'say_tail_line'):
+    for k in ('write_tool', 'write_item', 'write_args', 'wr_json', 'wr_body', 'say_tts', 'say_head_line', 'say_content', 'say_tail_line'):
         v[k] = ''
     if nxt == 'end':
         v['speech_buf'] = '[]'
         return
     if nxt == 'close':
-        text = ' '.join([s[1] for s in buf + segs if s[0] == 'v'])
-        v['close_text'] = text or cfg['goodbye']
+        # no model turn before the close node: its tts speaks the verbatim lines (exact phrases, read-backs) and, for a
+        # content line, the sentence EMIT_CFG['close_spoken'] gives for its phrase id; other instructions are not
+        # spoken (measured 2026-10-10: the tts read "Thank the customer and say goodbye" to the customer). One goodbye.
+        parts = []
+        for s in buf + segs:
+            t = s[1] if s[0] == 'v' else cfg['close_spoken'].get(s[2] if len(s) > 2 else '', '')
+            if t and t not in parts:
+                parts.append(t)
+        text = ' '.join(parts)
+        if 'goodbye' not in text.lower():
+            text = (text + ' ' + cfg['goodbye']).strip()
+        v['close_text'] = text
         v['speech_buf'] = '[]'
         v['write_tool'] = cfg['close_tool']
         w = writes[0] if writes and isinstance(writes[0], dict) else dict()
@@ -736,7 +789,7 @@ def _emit_route(v, pre):
     allsegs = buf + segs
     rb = str(v.get('readback_text') or '').strip()
     if nxt == 'readback' and rb:
-        allsegs = buf + [['v', rb]] + segs
+        allsegs = buf + [['v', rb, '']] + segs
     tts, content, tail = [], [], []
     seen_i = False
     for s in allsegs:
@@ -747,9 +800,12 @@ def _emit_route(v, pre):
             tail.append(s[1])
         else:
             tts.append(s[1])
-    if not tts and not content:
+    if not content:
         content.append(str(v.get('what_to_do_next') or '') or cfg['repeat'])
-    v['say_tts'] = ' '.join(tts)
+    # every verbatim line goes through the dialogue model (head or tail line), never as tts of the S_say code node:
+    # on the platform that node ends the turn and the next customer message re-runs its passthrough (2026-10-10)
+    v['say_tts'] = ''
+    v['say_head_line'] = (cfg['head_prefix'] + ' "' + ' '.join(tts) + '"') if tts else ''
     v['say_content'] = ' '.join(content)
     v['say_tail_line'] = (cfg['tail_prefix'] + ' "' + ' '.join(tail) + '"') if tail else ''
     v['last_stage'] = stage
@@ -762,6 +818,7 @@ except Exception:
     try:
         vars['engine_next'] = 'clarify'
         vars['say_tts'] = ''
+        vars['say_head_line'] = ''
         vars['say_tail_line'] = ''
         vars['say_content'] = EMIT_CFG['repeat']
         vars['write_tool'] = ''
@@ -773,7 +830,7 @@ except Exception:
 def engine_node(ctx, snippet, routes):
     """The single engine code node: snapshot of vars, the engine snippet, the emitter epilogue; routes on engine_next."""
     cfg = {"stages": [s for s in ctx.stages], "first_stage": "party", "goodbye": GOODBYE, "repeat": REPEAT,
-           "tail_prefix": TAIL_PREFIX, "close_tool": CLOSE_TOOL, "write_stage": {t: WRITE_STAGE[t] for t in ctx.write_tools},
+           "head_prefix": HEAD_PREFIX, "tail_prefix": TAIL_PREFIX, "close_spoken": CLOSE_SPOKEN, "close_tool": CLOSE_TOOL, "write_stage": {t: WRITE_STAGE[t] for t in ctx.write_tools},
            "write_vars": {t: {k: write_var(t, ctx.field_map.get(t, {}).get(k, k)) for k in ENGINE_ARGS[t]} for t in ctx.write_tools}}
     prologue = "_EMIT_PRE = dict(vars)\n"
     if "import base64\n" in snippet:

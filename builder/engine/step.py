@@ -1716,7 +1716,12 @@ def _step(state, events, table, now):
                     cust = [e for e in cust if e["kind"] not in ("accept_offer", "confirm")]
                 elif no:
                     _support_answer(C, st, False)
-                    cust = [e for e in cust if e["kind"] not in ("refuse", "deny", "pay_today_no", "other")]
+                    # the decline closes the hardship path; a plan request in the same breath ("no transfer, but can I get
+                    # a discount?") must not turn into the transfer they just declined (platform PUB-05, 2026-10-10)
+                    # "I do not want to be transferred" is the answer to the offer, not a wish to end the conversation
+                    cust = [e for e in cust if e["kind"] not in ("refuse", "deny", "pay_today_no", "other", "plan_request", "too_much", "dont_want_to_talk")
+                            and not (e["kind"] == "amount_proposal" and e.get("amount") is None)
+                            and not (e["kind"] == "date_proposal" and not e.get("date_text"))]
             elif st.get("pending") == "can_i_help":
                 if "human" in kinds:
                     pass
@@ -1727,7 +1732,11 @@ def _step(state, events, table, now):
             kinds = set(e["kind"] for e in cust)
             if "hardship" in kinds:
                 _handle_hardship(C, st, None, cust)
-                cust = [e for e in cust if e["kind"] != "plan_request"]
+                # "I lost my job and cannot pay anything" is the hardship, not a refusal to negotiate: the same turn's
+                # no / too much / plan request do not note the item as refused or start a transfer (platform PUB-05)
+                cust = [e for e in cust if e["kind"] not in ("plan_request", "pay_today_no", "refuse", "too_much")
+                        and not (e["kind"] == "amount_proposal" and e.get("amount") is None)
+                        and not (e["kind"] == "date_proposal" and not e.get("date_text"))]
                 kinds = set(e["kind"] for e in cust)
             if "human" in kinds:
                 _handle_human(C, st, None)

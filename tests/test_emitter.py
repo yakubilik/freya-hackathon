@@ -82,13 +82,11 @@ def test_close_nodes_one_per_row_reason_absent_when_none():
     assert "reason" not in wf["nodes"]["close_promise_none"]["pre_actions"][0]["function"]["parameters"]["properties"]["body"]["properties"]
 
 
-def test_mandatory_exact_phrases_are_spoken_by_tts(bank, workflows):
-    """Exact phrases with no model content before them are fixed tts lines of action nodes, not model output."""
+def test_verbatim_lines_reach_the_model_word_for_word(bank, workflows):
+    """Exact phrases are never tts of the passthrough S_say node (on the platform that node ends the turn and the next
+    customer message hangs the chat, measured 2026-10-10): they reach the dialogue model as the head line (before its
+    content) or the tail line (after it), word for word. A non-exact table phrase is content, not a sentence."""
     wf = workflows["A"]
-
-    def tts_text(rec):
-        return " ".join(t["text"] for t in rec["transcript"]
-                        if t["role"] == "assistant" and wf["nodes"][t["node"]]["node_type"] != "conversation")
 
     def phrase(pid, **fill):
         text = next(p["text"] for p in TABLE_A["phrases"] if p["id"] == pid)
@@ -97,21 +95,20 @@ def test_mandatory_exact_phrases_are_spoken_by_tts(bank, workflows):
         return text
 
     case = PUBLIC["PUB-01"]
-    rec, _ = run(bank, workflows, "PUB-01", verified(case) + [[E("pay_today_yes")], [E("confirm")]])
-    spoken = tts_text(rec)
-    v = case["variables"]
-    for pid in ("party_question", "do_you_confirm", "text_message"):
-        assert phrase(pid, title=v["title"], last_name=v["last_name"]) in spoken, pid
-    rec, _ = run(bank, workflows, "EXT-013", [[E("party_other"), E("party_deceased")]])
-    assert phrase("sorry_loss") in tts_text(rec)
-    # an exact phrase after model content is handed to the model word for word
     session = open_bank_session(bank, customer=case)
     sim = Simulator(wf, variables=dict(session["variables"]))
     sim.start()
-    for b in verified(case):
+    assert sim.current == "greeting" and sim.table["say_tts"] == "" and sim.table["speech_source"] == "engine"
+    assert "digital assistant" in sim.table["say_content"] and sim.table["say_head_line"] == ""
+    verbatim = [sim.table["say_tail_line"]]
+    for b in verified(case) + [[E("pay_today_yes")], [E("confirm")]]:
         sim.turn({"say": "x", "extract": extract_for(sim.current, b)})
-    assert sim.current == "negotiate" and phrase("pay_today") in sim.table["say_tail_line"]
-    assert sim.table["speech_source"] == "engine"
+        assert sim.table.get("say_tts", "") == ""
+        verbatim += [sim.table.get("say_head_line", ""), sim.table.get("say_tail_line", ""), sim.table.get("close_text", "")]
+    spoken = " ".join(verbatim)
+    v = case["variables"]
+    for pid in ("party_question", "do_you_confirm", "text_message"):
+        assert phrase(pid, title=v["title"], last_name=v["last_name"]) in spoken, pid
 
 
 def test_cli_writes_and_walks(tmp_path):
@@ -348,3 +345,31 @@ def test_chat_route_without_setup(bank, workflows):
     case = PUBLIC["PUB-10"]
     rec, led = run(bank, workflows, "PUB-10", SCENARIOS["PUB-10"](case), skip_initial_code=True)
     assert led["outcome"] == case["expected"]["outcome"] and len(led["promises"]) == 1
+
+
+
+def test_dispatcher_pairs_a_reply_with_the_words_filed_under_another_slot(workflows):
+    """Seen on the platform 2026-10-10: identity_reply1 = id_answer, identity_words1 empty, identity_words2 = 4471.
+    The dispatcher gives the reply the orphan words; a value next to its own reply stays where it is."""
+    code = workflows["A"]["nodes"]["identity_observe"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+    v = {"identity_reply1": "id_answer", "identity_words1": "", "identity_reply2": "", "identity_words2": "4471", "engine_state": ""}
+    exec(code, {"vars": v})
+    evs = json.loads(v["engine_events"])
+    assert [(e["kind"], e["text"]) for e in evs] == [("id_answer", "4471")]
+    assert v["identity_words2"] == "" and v["identity_reply1"] == ""
+    v = {"identity_reply1": "id_answer", "identity_words1": "14 March 1988", "identity_reply2": "question_back",
+         "identity_words2": "why do you need that", "engine_state": ""}
+    exec(code, {"vars": v})
+    assert [(e["kind"], e["text"]) for e in json.loads(v["engine_events"])] == [("id_answer", "14 March 1988"), ("question_back", "why do you need that")]
+
+
+
+def test_close_tts_speaks_sentences_not_instructions(bank, workflows):
+    """Seen on the platform 2026-10-10 (PUB-02): the close node's tts read "Thank the customer and say goodbye." At a
+    close the engine's content lines are instructions; the tts says their sentence form, or nothing, plus one goodbye."""
+    case = PUBLIC["PUB-02"]
+    rec, led = run(bank, workflows, "PUB-02", [[E("party_other")], [E("callback_offer", date="tomorrow", time="around eleven")]])
+    closing = [t["text"] for t in rec["transcript"] if t["role"] == "assistant" and t["node"].startswith("close_")]
+    assert closing and all("customer" not in c.lower() and "say goodbye" not in c.lower() for c in closing), closing
+    assert closing[-1].lower().count("goodbye") == 1
+    assert led["outcome"] == "not_reached" and led["reason"] == "callback"

@@ -21,7 +21,7 @@ import pathlib
 import sys
 import urllib.parse
 
-from builder.engine.snippet import render
+from builder.engine.snippet import pack, render
 from builder.readers.api_file import parse_api
 from . import fragments as F
 from .fragments import EmitError
@@ -142,7 +142,7 @@ def emit(table, api, *, variant="final", bank_url=None, model_config=None):
         if t not in api["tools"]:
             raise EmitError("the tool API file has no %r, which this table needs" % t)
     ctx.write_tools = write_tools
-    snippet = render(table)
+    snippet = pack(render(table))
 
     frags = {"setup": F.setup(ctx, "party")}
     order = ["setup"]

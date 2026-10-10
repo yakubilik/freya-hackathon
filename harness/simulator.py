@@ -45,7 +45,9 @@ import urllib.request
 import uuid
 
 PLACEHOLDER = re.compile(r"\{\{\s*([^{}:\s]+)\s*(?::\s*(json))?\s*\}\}")
-SAFE_MODULES = ("json", "re", "datetime")
+# measured on the platform 2026-10-10 (probe code node): json, re, datetime, zlib and base64 import fine, and exec,
+# compile and eval are available; the engine node ships zlib + base64 packed and exec's its plain source
+SAFE_MODULES = ("json", "re", "datetime", "zlib", "base64")
 # modules the standard library pulls in behind the safe ones (datetime.strftime imports `time`); never os, sys, socket...
 SUPPORT_MODULES = ("time", "math", "_strptime", "calendar", "locale", "_datetime", "copy", "decimal", "string")
 DROP = object()  # an engine-run field whose single placeholder did not resolve
@@ -216,9 +218,10 @@ class _SandboxImport:
 
 
 def run_snippet(code: str, names: dict):
-    """exec `code` with `names` as globals in a sandbox where only json, re and datetime can be imported."""
+    """exec `code` with `names` as globals in a sandbox that allows what the platform allows: json, re, datetime,
+    zlib, base64, and the exec/compile/eval builtins (measured 2026-10-10); no open, no input."""
     builtins = dict(vars(__builtins__)) if not isinstance(__builtins__, dict) else dict(__builtins__)
-    for k in ("open", "exec", "eval", "compile", "input", "exit", "quit", "breakpoint", "help"):
+    for k in ("open", "input", "exit", "quit", "breakpoint", "help"):
         builtins.pop(k, None)
     builtins["__import__"] = _SandboxImport()
     g = {"__builtins__": builtins, "__name__": "__freya_snippet__"}

@@ -911,3 +911,56 @@ def test_state_is_json_and_input_state_untouched():
     assert json.dumps(st0, sort_keys=True) == frozen
     json.dumps(st1)
     assert st1["rev"] == 1 and st1["stage"] == "identity"
+
+
+def test_answers_with_sentence_ending_dots(base):
+    """Transcribed speech ends in a full stop: '14 March 1988.' and '4471.' must parse like the bare answers (seen on the platform, PUB-01)."""
+    from builder.engine.dates import parse_identity_date, parse_digits
+    assert parse_identity_date("14 March 1988.", "day_month_year")["value"] == "1988-03-14"
+    assert parse_identity_date("14.03.1988.", "day_month_year")["value"] == "1988-03-14"
+    assert parse_digits("4471.", 4) == {"status": "complete", "value": "4471"}
+    assert parse_digits("It is 44 71.", 4) == {"status": "complete", "value": "4471"}
+    check(base, "EXT-023", [[E("party_confirmed")], [E("id_answer", text="14 March 1988.")], [E("id_answer", text="4471.")], [E("pay_today_yes")], [E("confirm")]])
+
+
+
+def test_pub05_decline_of_support_with_a_plan_request_in_the_same_turn_closes_hardship(base):
+    """Platform run 2026-10-10: "I don't want to be transferred. Can you give me a discount?" came as refuse +
+    plan_request and the engine transferred to restructuring. The decline closes the hardship path."""
+    st, led, calls, log = check(base, "PUB-05", [[E("party_confirmed")], [E("id_answer", text="9 September 1990")],
+                                                  [E("id_answer", text="8846")], [E("hardship"), E("pay_today_no")],
+                                                  [E("refuse"), E("plan_request")]])
+    assert "transfer_to_agent" not in [c["tool"] for c in led["calls"]]
+
+
+
+def test_day_in_words_starting_with_twenty_does_not_crash_the_year_parser():
+    """Platform PUB-08 and PUB-10 (2026-10-10): "The twenty-eighth of April nineteen ninety-three." raised KeyError
+    ('twenty') in _year_in_words and the engine fell back every turn."""
+    from builder.engine.dates import parse_identity_date
+    assert parse_identity_date("The twenty-eighth of April nineteen ninety-three.", "day_month_year")["value"] == "1993-04-28"
+    assert parse_identity_date("Twenty-third of February nineteen eighty-nine.", "day_month_year")["value"] == "1989-02-23"
+    assert parse_identity_date("twenty-eight April nineteen ninety-three.", "day_month_year")["value"] == "1993-04-28"
+    assert parse_identity_date("nineteen ninety three", "day_month_year")["parts"] == {"year": 1993}
+    assert parse_identity_date("twenty first of June twenty ten", "day_month_year")["value"] == "2010-06-21"
+    assert parse_identity_date("thirtieth of May two thousand and one", "day_month_year")["value"] in ("2001-05-30", None)
+
+
+
+def test_pub05_decline_of_support_with_a_discount_ask_closes_hardship(base):
+    """Platform run 2026-10-10 (v12): "no transfer, is there any discount?" came as amount_proposal (no amount) + refuse;
+    the engine then asked for the amount three times and closed as refused instead of hardship."""
+    st, led, calls, log = check(base, "PUB-05", [[E("party_confirmed")], [E("id_answer", text="9 September 1990")],
+                                                  [E("id_answer", text="8846")], [E("hardship"), E("pay_today_no"), E("amount_proposal")],
+                                                  [E("amount_proposal"), E("refuse")]])
+    assert "transfer_to_agent" not in [c["tool"] for c in led["calls"]]
+
+
+
+def test_pub05_decline_of_support_said_as_dont_want_closes_hardship(base):
+    """Platform run 2026-10-10 (v13): "I do not want to be transferred." came as dont_want_to_talk; the decline was
+    registered but the event also ran the dont-want path and noted the item as refused."""
+    st, led, calls, log = check(base, "PUB-05", [[E("party_confirmed")], [E("id_answer", text="9 September 1990")],
+                                                  [E("id_answer", text="8846")], [E("hardship"), E("pay_today_no"), E("amount_proposal")],
+                                                  [E("dont_want_to_talk")]])
+    assert "transfer_to_agent" not in [c["tool"] for c in led["calls"]]

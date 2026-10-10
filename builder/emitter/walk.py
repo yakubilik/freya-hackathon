@@ -24,6 +24,7 @@ import re
 import sys
 import urllib.parse
 
+from builder.engine.snippet import unpack
 from builder.readers.api_file import parse_api
 from .fragments import ENGINE_MARKER, STAGE_NODE, CLOSE_TOOL
 
@@ -79,7 +80,7 @@ def _codes(node):
     for fn in _functions(node):
         props = ((fn.get("function") or {}).get("parameters") or {}).get("properties") or {}
         if isinstance(props.get("code"), dict) and isinstance(props["code"].get("default"), str):
-            out.append(("code", props["code"]["default"]))
+            out.append(("code", unpack(props["code"]["default"])))   # the engine node ships packed
         for hook in ("pre_process_code", "post_process_code"):
             if isinstance(fn.get(hook), str) and fn[hook].strip():
                 out.append((hook, fn[hook]))
