@@ -1,7 +1,7 @@
 """Render the engine as one self-contained Python source string for a Freya code node.
 
-`render(table)` inlines calendar.py, dates.py, step.py and the rule table (base64 of its JSON, so the
-source never contains `{{` or `}}` whatever the table says), then a main block that reads and writes the
+`render(table)` inlines calendar.py, dates.py, step.py and the rule table (its JSON as a string literal with
+every brace written as \\x7b / \\x7d, so the source never contains `{{` or `}}` whatever the table says), then a main block that reads and writes the
 workflow variables:
 
   reads   vars["engine_state"]  (JSON string; may be missing -> a fresh state seeded from the call variables)
@@ -16,7 +16,6 @@ The snippet never raises: the main block is wrapped and on any error writes a fa
 (`engine_next = "clarify"`, a plain `what_to_do_next`, `ask_clarify = "true"`). It uses the standard
 library only and runs under `exec(src, {"vars": vars})`.
 """
-import base64
 import json
 import pathlib
 import re
@@ -29,7 +28,7 @@ _MAIN = '''
 # ---------------------------------------------------------------------------------------------
 # Freya code node entry point
 
-TABLE = json.loads(base64.b64decode(TABLE_B64).decode("utf-8"))
+TABLE = json.loads(TABLE_JSON)
 _STRING_KEYS = ("engine_next", "say_next", "readback_text", "what_to_do_next", "close_outcome", "close_reason")
 
 
@@ -106,14 +105,14 @@ def render(table):
     if not isinstance(table, dict):
         raise ValueError("render needs the rule table as a dict")
     table_json = json.dumps(table, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
-    b64 = base64.b64encode(table_json.encode("utf-8")).decode("ascii")
+    literal = repr(table_json).replace("{", "\\x7b").replace("}", "\\x7d")
     parts = [
         '"""Freya call engine, rendered by builder/engine/snippet.py. Standard library only. Do not edit."""\n',
-        "import base64\nimport json\nimport re\n",
+        "import json\nimport re\n",
         "\n# ===== calendar.py =====\n", _module_source("calendar"),
         "\n# ===== dates.py =====\n", _module_source("dates"),
         "\n# ===== step.py =====\n", _module_source("step"),
-        "\n# ===== rule table =====\n", "TABLE_B64 = " + repr(b64) + "\n",
+        "\n# ===== rule table =====\n", "TABLE_JSON = " + literal + "\n",
         _MAIN,
     ]
     src = "".join(parts)
