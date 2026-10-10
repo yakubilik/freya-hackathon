@@ -15,3 +15,11 @@ __pycache__/
 
 # Local env file from the kit
 env.sh
+
+# Bank runtime files
+bank/.pid
+bank/.url
+bank/.log
+bank/.tunnel.*
+# Builder runs
+/runs/
