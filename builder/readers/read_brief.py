@@ -49,6 +49,12 @@ class Trace:
     def add(self, usage: dict):
         line = {"model": usage.get("model"), "purpose": usage.get("purpose"), "tokens": usage.get("tokens"),
                 "seconds": usage.get("seconds"), "backend": usage.get("backend")}
+        detail = usage.get("detail") if isinstance(usage.get("detail"), dict) else {}
+        # cost and the token breakdown, when the backend reports them (the Claude SDK does): the rules ask for a
+        # trace of every model call, and the cost of a build is part of what we measure
+        for k in ("cost_usd", "input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"):
+            if detail.get(k) is not None:
+                line[k] = detail[k]
         with self.lock:
             self.calls.append(line)
             with self.path.open("a") as fh:

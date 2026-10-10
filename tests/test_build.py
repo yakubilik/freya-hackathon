@@ -35,7 +35,7 @@ class Clock:
 def test_schedule_reservations_and_caps():
     c = Clock()
     s = build.Schedule(1800, clock=c)
-    assert s.budget("read") == build.READ_MAX_S                       # capped at 13 minutes
+    assert s.budget("read") == build.READ_MAX_S                       # capped at 17 minutes
     c.t = 1500                                                        # 300 s left
     assert s.budget("read") == 0                                      # 360 s are reserved after the reading
     assert s.budget("deploy") == pytest.approx(180)

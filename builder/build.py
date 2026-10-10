@@ -48,7 +48,10 @@ EVERY_PATH_STATES = {"any", "pre_verification", "closing"}
 EVERY_PATH_STAGES = {"party", "close"}
 
 TOTAL_S = 1800
-READ_MAX_S = 780
+# measured 2026-10-10 on the public briefs: R1 took 511 s (A) and 626 s (B), adjudication 150 to 175 s; Brief B ended
+# its reading 4 s before a 780 s cap. 1020 s leaves the deploy (180), the export reserve (180) and a platform test
+# (at least 360) inside the 1800 s run.
+READ_MAX_S = 1020
 EMIT_DEPLOY_S = 180
 EXPORT_RESERVE_S = 180
 # measured 2026-10-10: "Code and data for code_exec total N bytes, over the 131072-byte limit a sandboxed process
