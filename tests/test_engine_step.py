@@ -964,3 +964,21 @@ def test_pub05_decline_of_support_said_as_dont_want_closes_hardship(base):
                                                   [E("id_answer", text="8846")], [E("hardship"), E("pay_today_no"), E("amount_proposal")],
                                                   [E("dont_want_to_talk")]])
     assert "transfer_to_agent" not in [c["tool"] for c in led["calls"]]
+
+
+
+def test_percentages_are_not_amounts():
+    """Platform EXT-042 (2026-10-10): "a twenty percent discount" was read as 20.00, below the floor, and the engine made
+    a floor offer the brief does not allow at that point."""
+    from builder.engine.dates import resolve_amount_cents
+    for t in ("twenty percent", "a twenty percent discount", "20%", "I will only pay with a 20 per cent discount"):
+        assert resolve_amount_cents(t) is None, t
+    assert resolve_amount_cents("two hundred") == 20000 and resolve_amount_cents("200.50") == 20050
+
+
+
+def test_ext053_dont_know_exactly_comes_as_refuse(base):
+    """Platform EXT-053 (2026-10-10): "I do not know exactly" after the exact-day question was extracted as refuse; the
+    engine made a persuasion offer for Friday instead of proposing the deadline."""
+    check(base, "EXT-053", verified(EXTENDED["EXT-053"]) + [[E("pay_today_no"), E("vague_period", date="when my salary comes in")],
+                                                           [E("refuse")], [E("accept_offer")], [E("confirm")]])

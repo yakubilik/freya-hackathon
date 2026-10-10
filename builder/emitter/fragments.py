@@ -61,7 +61,8 @@ STAGE_FIELDS = {"party": ["reply", "date", "time", "words"], "callback": ["reply
                 "readback": ["reply", "item", "amount", "date", "words"]}
 
 KIND_HELP = {
-    "party_confirmed": "the person confirms they are the customer asked for. Only these count: {confirm_words}",
+    "party_confirmed": "the person confirms they are the customer asked for. Only these count: {confirm_words}. "
+                       "'Hello?', 'go ahead', 'okay', 'yes?' as a prompt to continue are not confirmations: other",
     "party_other": "the person says they are someone else (a relative, a colleague, anyone who is not the customer)",
     "party_wrong_number": "the person says this number does not belong to the customer",
     "party_deceased": "the person says the customer has died",
@@ -118,7 +119,8 @@ REPEAT = "Ask the customer to repeat what they said."
 
 STAGE_TASK = {
     "party": ("STEP: find out whether the person on the line is {{title}} {{last_name}}. Nobody is verified yet. "
-              "Say nothing about why you are calling or about any account, to anyone. Only the person's own "
+              "Say nothing about why you are calling or about any account, to anyone. You may always say who you are "
+              "(Freya Bank's digital assistant) when asked; that is not account information. Only the person's own "
               "confirmation counts."),
     "callback": ("STEP: someone other than {{title}} {{last_name}} answered. Do not say why you are calling and ask them "
                  "no security questions. If they ask what the call is about, say only that it is a personal matter you can "
@@ -142,7 +144,9 @@ SYSTEM_PROMPT = (
     "Keep every turn to one or two short sentences and ask one question at a time.\n"
     "Rules for every step:\n"
     "- What to say is decided for you in the current step. Never decide amounts, days, outcomes or next steps yourself.\n"
-    "- Never claim that something was done in the bank's systems unless your current step says it was.\n"
+    "- Never claim that something was done in the bank's systems unless your current step says it was. You cannot take "
+    "money, charge a card or process anything: never say money was taken or processed, never ask for card or banking "
+    "details. The bank only records when the customer will pay.\n"
     "- Never offer a reduction, a waiver, an arrangement or any term your current step does not give you.\n"
     "- If asked something your step does not answer, say you do not have that information.\n"
     "- No tool call is allowed. Never end a turn with nothing.")
@@ -399,7 +403,9 @@ def extraction_schema(ctx, stage):
                             "description": "For %s_reply%d: the customer's own words for the time, unchanged (for example "
                                            "'around eleven'). Empty if none." % (node, k)})
             elif f == "words":
-                out.append({"name": name, "type": "string", "min_confidence": 0.5,
+                # no confidence floor: an answer with its words left out costs a whole turn (the engine must ask again),
+                # and the platform's extractor sometimes left them out for a two-part message (EXT-027, 2026-10-10)
+                out.append({"name": name, "type": "string", "min_confidence": 0.0,
                             "description": ("For %s_reply%d: the customer's exact words for this part of the reply. For an "
                                             "answer to a security question, everything they said as the answer, unchanged; "
                                             "never leave it empty when the reply is an answer." % (node, k))})
@@ -452,7 +458,9 @@ def _ob_item(words):
             tie = True
     if best is not None and not tie:
         return best
-    return words
+    # no product matched ("the full amount", "it"): no item, so the engine applies the event to the current or to all
+    # open items. Handing the words through as an item id made the engine drop the event (platform EXT-006, 2026-10-10).
+    return None
 
 
 _FIELDS = ('words', 'amount', 'date', 'time', 'item')

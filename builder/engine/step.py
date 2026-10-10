@@ -1004,6 +1004,7 @@ def _identity_events(C, st, evs):
                 ident["state"] = "declined"
                 _trigger(C, st, "identity_declined")
             else:
+                st["identity"]["protect_said"] = True
                 _say(C, st, "questions_protect")
                 st["pending"] = "identity"
 
@@ -1094,6 +1095,10 @@ def _negotiate_events(C, st, evs):
         has_proposal = key in proposal_items or None in proposal_items or (key is None and bool(proposal_items))
         for e in group:
             k = e["kind"]
+            if k in ("refuse", "deny") and st.get("pending") == "exact_day" and not e.get("date_text") and e.get("amount") is None:
+                # "I do not know exactly" after the one question for the exact day: still no day, so the vague rule's
+                # second step (propose the deadline), not a refusal with a persuasion offer (platform EXT-053, 2026-10-10)
+                k = "vague_period"
             if k == "amount_proposal" or (k == "change" and e.get("amount") is not None):
                 for it in _targets_for(st, e, current_only=True):
                     cents = _amount_of(e)
@@ -1667,6 +1672,13 @@ def _answer_lines(C, st, evs):
                 _line(C, "Answer only from the account facts you were given; otherwise say you do not have that information. Then continue.")
             elif st["stage"] == "callback":
                 _line(C, "Do not say why you are calling; say nothing beyond the opening. Then continue.")
+            elif st["stage"] == "identity":
+                # "first tell me what this is about": the one explanation the brief allows before verification is that
+                # the questions protect the account (platform EXT-032, 2026-10-10); said once per call
+                if not st["identity"].get("protect_said"):
+                    st["identity"]["protect_said"] = True
+                    _say(C, st, "questions_protect")
+                _line(C, "Say nothing about why you are calling or about the account. Then continue.")
             else:
                 _line(C, "Answer briefly without revealing anything about the account, then continue.")
             C["understood"] = True

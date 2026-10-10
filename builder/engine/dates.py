@@ -123,6 +123,9 @@ def resolve_amount_cents(text):
     if isinstance(text, (int, float)):
         return int(round(float(text) * 100))
     raw = str(text).lower()
+    # a percentage is a discount or a share, not an amount of money ("a twenty percent discount", "20%": platform EXT-042)
+    if re.search(r"\bper ?cent\b|%", raw):
+        return None
     # digits first, on the raw text so that "1,250.00" and "455,50" keep their separators
     m = re.search(r"(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)(?:[.,](\d{1,2}))?(?![\d,])", raw)
     if m:

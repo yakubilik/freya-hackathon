@@ -373,3 +373,18 @@ def test_close_tts_speaks_sentences_not_instructions(bank, workflows):
     assert closing and all("customer" not in c.lower() and "say goodbye" not in c.lower() for c in closing), closing
     assert closing[-1].lower().count("goodbye") == 1
     assert led["outcome"] == "not_reached" and led["reason"] == "callback"
+
+
+def test_dispatcher_drops_product_words_that_match_no_product(workflows):
+    """Platform EXT-006 (2026-10-10): negotiate_item1 = "the full amount" went through as an item id, the engine found no
+    such item and dropped the pay-today-yes. Words that match no product mean no item."""
+    code = workflows["A"]["nodes"]["negotiate_observe"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+    state = json.dumps({"items": [{"item_id": "p1", "product": {"type": "personal_loan"}}]})
+    v = {"negotiate_reply1": "pay_today_yes", "negotiate_item1": "the full amount", "negotiate_amount1": "780",
+         "negotiate_date1": "today", "negotiate_words1": "I can pay the full amount today.", "engine_state": state}
+    exec(code, {"vars": v})
+    evs = json.loads(v["engine_events"])
+    assert len(evs) == 1 and evs[0]["kind"] == "pay_today_yes" and evs[0]["item"] is None and evs[0]["amount"] == 780.0
+    v = {"negotiate_reply1": "date_proposal", "negotiate_item1": "the loan", "negotiate_date1": "Friday", "engine_state": state}
+    exec(code, {"vars": v})
+    assert json.loads(v["engine_events"])[0]["item"] == "p1"
