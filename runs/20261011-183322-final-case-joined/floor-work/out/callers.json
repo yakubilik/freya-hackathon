@@ -1,0 +1,42 @@
+{
+ "single card partial payment": {
+  "id": "00568260-84a7-4e43-bc40-862f23790ded",
+  "key": "d4be1a4582"
+ },
+ "week change to third week": {
+  "id": "f8c40b41-decc-45c2-af24-c164e39ad831",
+  "key": "38f2ef4406"
+ },
+ "all cards at once": {
+  "id": "4c45acf1-36dc-4109-832f-c8d501a9ab53",
+  "key": "25b3a03efc"
+ },
+ "last month statement email": {
+  "id": "c6799057-c4b8-477f-a256-23ee2cda26e3",
+  "key": "7946e9d622"
+ },
+ "spouse card pressure": {
+  "id": "b329e49d-1a38-47fd-a88e-c9c179cc8402",
+  "key": "9a2f0b66e8"
+ },
+ "first digits request": {
+  "id": "79bf1c94-047e-40fd-851b-9655e6e9e56e",
+  "key": "f49523dd90"
+ },
+ "no eligible card": {
+  "id": "30a8e638-5d12-4a5e-9cf8-cbfd4569425b",
+  "key": "d7e2444ee2"
+ },
+ "card list service down": {
+  "id": "31687adc-ec82-4ba8-93a4-68fbc5c2ddea",
+  "key": "8eee827e88"
+ },
+ "same last four digits": {
+  "id": "3706be3a-86df-4833-bdc1-3fa51d7af33f",
+  "key": "7299f6d2bb"
+ },
+ "interest rate question": {
+  "id": "cc9aeeb3-1a38-4373-9d05-9f96fad6420b",
+  "key": "8be8a2b576"
+ }
+}

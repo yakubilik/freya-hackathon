@@ -1,0 +1,6 @@
+{"n": 1, "callers": 6, "passed": 4, "simulation_id": "546d46a2-c760-4be1-b0e6-e69af0ac2b59", "status": "completed", "seconds": 55.6, "failed": ["all cards at once", "first digits request"]}
+{"n": 2, "callers": 6, "passed": 5, "simulation_id": "4ebcf35c-2e85-40bc-82e3-fd9dfb4ab4fb", "status": "completed", "seconds": 33.6, "failed": ["first digits request"]}
+{"n": 3, "callers": 6, "passed": 6, "simulation_id": "0531a68b-23c9-4cf7-8621-7a805d42ba86", "status": "completed", "seconds": 55.6, "failed": []}
+{"n": 4, "callers": 4, "passed": 2, "simulation_id": "1186d0d8-2a10-4666-93b7-e1573e4e39ec", "status": "completed", "seconds": 57.5, "failed": ["no eligible card", "same last four digits"]}
+{"n": 5, "callers": 4, "passed": 2, "simulation_id": "108fe2f7-6ce5-4c79-a9fa-46837cc2a18e", "status": "completed", "seconds": 210.5, "failed": ["same last four digits", "interest rate question"]}
+{"n": 6, "callers": 4, "passed": 4, "simulation_id": "7c920429-ac26-4f63-b7c4-9dffb3a804d5", "status": "completed", "seconds": 43.8, "failed": []}

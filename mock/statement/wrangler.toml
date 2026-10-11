@@ -1,0 +1,9 @@
+# freya-statement-mock: our copy of Freya Bank's statement services for the final case. Stateless replay of
+# test-environment/test-customers.json (status + body per customer, card and week). Free plan, no bindings.
+name = "freya-statement-mock"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[observability]
+enabled = true

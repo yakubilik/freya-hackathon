@@ -33,7 +33,7 @@ The builder reads a bank's brief and its tool API file and creates a phone agent
 Run: `python3 builder/build.py final/final-case https://freya-statement-mock.yakuupkeskin.workers.dev 2>&1 | tee traces/final.log`
 (`final/final-case` is the case folder as published; the mock is `mock/statement/`, a Cloudflare Worker that replays the
 case's test customers). Submitted: `submission/final.workflow.json` (the export of that run's agent), `traces/final.log`
-(that run's trace) and the run directory `runs/<run_id>/` with the floor's Claude session logs (`floor-session.jsonl`,
+(that run's trace) and the run directory `runs/20261011-183322-final-case-joined/` with the floor's Claude session logs (`floor-session.jsonl`,
 `floor-fix-session.jsonl`), the second-family review (`floor-work/out/review.md`) and its own simulation results.
 
 Why the builder changed after the case opened. The kit and the event page described each hidden brief as one Markdown
@@ -49,6 +49,11 @@ opened adapt the input path only:
   Claude fix session, as the reader's R1/R4 always did) and tests its own agent with bounded platform simulations of
   callers it writes from the case folder, as the kit's example builder tested its agents.
 - `5b738d3`: wording only (a skill rule and a test fixture made neutral).
+- `7026c42`: the floor may run up to 6 simulations (live ones took 0.5-1 min); skill: no example values in fields
+  the model fills. **The submitted agent was built by this commit** (run `runs/20261011-183322-final-case-joined`,
+  trace `traces/final.log`, agent `ee825e04`, version 18).
+- `9f2c42a`, `76d5dbb` (after the submitted run, used only by later runs that were not submitted): `R4_MODEL` chooses
+  the second family's model; a self-test simulation refused because another one is running waits for the slot.
 
 Reader, engine and emitter are unchanged. No rule, value, name, path or sentence from the case is in the builder; the
 tests of these changes use invented data. `bfae95e` and `c2f22c0` (stop early when the Freya or Claude keys are

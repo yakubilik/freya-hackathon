@@ -1,0 +1,8 @@
+{
+ "mock_url": "https://freya-statement-mock.yakuupkeskin.workers.dev",
+ "slot": "final-case-joined-floor",
+ "state_file": "/Users/dilarakilic/projects/freya-hackathon/builder/.freya-agents.json",
+ "deadline_epoch": 1791745192.0322938,
+ "sims_max": 6,
+ "sims_log": "/Users/dilarakilic/projects/freya-hackathon/runs/20261011-183322-final-case-joined/floor-sims.jsonl"
+}

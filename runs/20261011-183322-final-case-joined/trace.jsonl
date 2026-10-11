@@ -1,0 +1,23 @@
+{"at": "2026-10-11T18:33:22Z", "t": 0.5, "kind": "info"}
+{"at": "2026-10-11T18:33:22Z", "t": 0.5, "kind": "info"}
+{"at": "2026-10-11T18:33:22Z", "t": 0.5, "kind": "info"}
+{"at": "2026-10-11T18:33:22Z", "t": 0.5, "kind": "info"}
+{"at": "2026-10-11T18:33:22Z", "t": 0.5, "kind": "error"}
+{"at": "2026-10-11T18:33:22Z", "t": 0.5, "kind": "stage", "stage": "floor", "budget_s": 1619.5}
+{"at": "2026-10-11T18:33:22Z", "t": 0.5, "kind": "info"}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "model", "model": "claude-opus-5-5", "purpose": "case floor: read the case folder, build the agent with its tools on the mock, check and save it", "tokens": null, "seconds": 1125.0, "detail": "done: 43 turns, 962 s, $3.04."}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "info"}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "model", "model": "gpt-6-astra", "purpose": "floor review: second-family audit of the saved workflow against the case documents", "tokens": 122, "seconds": 73.9, "detail": "ok", "backend": "codex"}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "info"}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "model", "model": "claude-opus-5-5", "purpose": "floor fix: apply the verified review findings", "tokens": null, "seconds": 87.6, "detail": "finished, saved again", "backend": null}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "info"}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "test", "tier": "0", "name": "floor simulation 1 of the saved phone agent (6 simulated callers)", "result": "FAIL", "detail": "4 / 6 passed, simulation 546d46a2-c760-4be1-b0e6-e69af0ac2b59, status completed, 55.6 s; failed: all cards at once, first digits request"}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "test", "tier": "0", "name": "floor simulation 2 of the saved phone agent (6 simulated callers)", "result": "FAIL", "detail": "5 / 6 passed, simulation 4ebcf35c-2e85-40bc-82e3-fd9dfb4ab4fb, status completed, 33.6 s; failed: first digits request"}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "test", "tier": "0", "name": "floor simulation 3 of the saved phone agent (6 simulated callers)", "result": "PASS", "detail": "6 / 6 passed, simulation 0531a68b-23c9-4cf7-8621-7a805d42ba86, status completed, 55.6 s"}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "test", "tier": "0", "name": "floor simulation 4 of the saved phone agent (4 simulated callers)", "result": "FAIL", "detail": "2 / 4 passed, simulation 1186d0d8-2a10-4666-93b7-e1573e4e39ec, status completed, 57.5 s; failed: no eligible card, same last four digits"}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "test", "tier": "0", "name": "floor simulation 5 of the saved phone agent (4 simulated callers)", "result": "FAIL", "detail": "2 / 4 passed, simulation 108fe2f7-6ce5-4c79-a9fa-46837cc2a18e, status completed, 210.5 s; failed: same last four digits, interest rate question"}
+{"at": "2026-10-11T18:52:07Z", "t": 1125.5, "kind": "test", "tier": "0", "name": "floor simulation 6 of the saved phone agent (4 simulated callers)", "result": "PASS", "detail": "4 / 4 passed, simulation 7c920429-ac26-4f63-b7c4-9dffb3a804d5, status completed, 43.8 s"}
+{"at": "2026-10-11T18:52:08Z", "t": 1125.9, "kind": "info"}
+{"at": "2026-10-11T18:52:08Z", "t": 1125.9, "kind": "stage", "stage": "floor", "status": "ok", "seconds": 1125.4}
+{"at": "2026-10-11T18:52:08Z", "t": 1125.9, "kind": "info"}
+{"at": "2026-10-11T18:52:08Z", "t": 1125.9, "kind": "info"}

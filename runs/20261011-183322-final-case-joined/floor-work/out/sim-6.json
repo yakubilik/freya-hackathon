@@ -1,0 +1,678 @@
+{
+ "simulation_id": "7c920429-ac26-4f63-b7c4-9dffb3a804d5",
+ "status": "completed",
+ "callers": [
+  {
+   "name": "no eligible card",
+   "outcome": "pass",
+   "reason": "Asistan, belirtilen başarı kriterlerini tam olarak karşılamıştır. \n1. 'Ekstre borcunu sorgulayabileceğiniz uygun bir kredi kartınız bulunmuyor' ifadesini kullanmıştır.\n2. 'Sizi ana menüye aktarıyorum' diyerek yönlendirme yapmıştır.\n3. Herhangi bir borç veya kart bilgisi uydurmamıştır (API hatası sonrası doğru bilgi vermiştir).\n4. Müşteri temsilcisine aktarma yapmamıştır.\n5. Çağrı asistan tarafından doğru bir şekilde sonlandırılmıştır.",
+   "tools": [
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "93821776"
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "end_call",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "message": "Call ended"
+     }
+    }
+   ],
+   "ended": "assistant-ended-call",
+   "transcript": "Assistant (0.3s): Ekstre borcunu sorgulayabileceğiniz uygun bir kredi kartınız bulunmuyor. Sizi ana menüye aktarıyorum."
+  },
+  {
+   "name": "card list service down",
+   "outcome": "pass",
+   "reason": "All criteria met. The card service (cards.list) failed with a technical error (FBE00099). The assistant correctly stated that it could not perform the operation and was transferring the customer to a representative, as seen in message 0. It did not return to the main menu or invent any debt information. The call ended properly via the assistant.",
+   "tools": [
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "97073972"
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "97073972"
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "end_call",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "message": "Call ended"
+     }
+    }
+   ],
+   "ended": "assistant-ended-call",
+   "transcript": "Assistant (2.3s): Şu anda işleminizi gerçekleştiremiyorum, sizi müşteri temsilcimize aktarıyorum."
+  },
+  {
+   "name": "same last four digits",
+   "outcome": "pass",
+   "reason": "The assistant successfully followed all success criteria: it identified multiple cards and sequentially asked for the last 4 digits, last 6 digits, and then the full card number as required ([Message 2], [Message 4], [Message 6]). It correctly refrained from stating more than the last 4 digits of the card number in its responses. According to the system events, it retrieved the balance for the specific 'Yıldız Pratik' card ending in 4253 ([System Event] api_call for card 545000******4253). Finally, it redirected the user to the main menu and ended the call appropriately ([Message 12] and [System Event] end_call).",
+   "tools": [
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "92030487"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cards": [
+         {
+          "cardNumber": "540000******4253",
+          "cardNumberLast4": "4253",
+          "productName": "Yıldız Pratik",
+          "status": "A",
+          "isMainCard": true
+         },
+         {
+          "cardNumber": "545000******4253",
+          "cardNumberLast4": "4253",
+          "productName": "Yıldız Pratik",
+          "status": "A",
+          "isMainCard": true
+         },
+         {
+          "cardNumber": "540000******6184",
+          "cardNumberLast4": "6184",
+          "productName": "Yıldız Pratik",
+          "status": "A",
+          "isMainCard": true
+         },
+         {
+          "cardNumber": "540000******8870",
+          "cardNumberLast4": "8870",
+          "productName": "Yıldız Tasarım",
+          "status": "A",
+          "isMainCard": true
+         }
+        ],
+        "validCardsCount": 4,
+        "exitState": "MULTI_CARD"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0332",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0332",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:48:28 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=FZ3juSiqZgxGJ9upNvfvqqGIMf70KmUdwbpkl2yK2jFlxHei%2F2lsVv17TaSSIAHTcZYBhgep%2BnKozr8RPlUkoWXKL9ZSk0POP0OoMY8KTfizmwdZqYcSPzLLTr4j98cujP4d1Hacg2LTOwV%2BmMuzJ0pKHMwmC6HXcTSwNJ4BOPU%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a4900a0ad8fedc8a-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.balance",
+     "method": "POST",
+     "body": {
+      "cardNumber": "545000******4253"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cardNumber": "5450********4253",
+        "cardNumberLast4": "4253",
+        "productName": "Yıldız Pratik",
+        "statementDate": "05.10.2026",
+        "lastPayDate": "15.10.2026",
+        "nextStatementDate": "05.11.2026",
+        "nextLastPayDate": "15.11.2026",
+        "debtTL": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 12500,
+         "minPayment": 5000,
+         "remainingDebt": 11500,
+         "remainingMinPayment": 4000,
+         "currentPeriodExpense": 0,
+         "totalDebt": 11500,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtUSD": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtEUR": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtGBP": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "statementPaymentStatus": "HAS_DEBT",
+        "totalDebtPaymentStatus": "HAS_DEBT",
+        "automaticPaymentFlag": "N"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0341",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0341",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:48:38 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=esegVdh4yQvqKzVT0rPCfjDNhRG7l%2BBo88eCSkHUMpziuB9rZwTVDNauXPMYycfTYWm4t1pyOugEkA2ExXC7UmZRyH4Yv729tb1GNFXOg6ZTu00B9ExxGf%2BzIsMrLaXPrY6gxqfIZxj91rDyPsv7olnmClRjG7UxTuV3jtItfcg%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a4900a486d285223-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/contact.email.get",
+     "method": "POST",
+     "body": {
+      "customerNo": "92030487",
+      "intAddressInfoType": "E"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "communicationType": "Both",
+        "ibanCountryCode": "90",
+        "ibanAreaCode": "500",
+        "ibanPhoneNum": "0000000",
+        "ibanEmail": "ilgaz.guler@freyabank.example",
+        "ttsEmail": "ilgaz.guler@freyabank.example",
+        "commGramType": "A",
+        "exitState": "Done"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0365",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0365",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:48:38 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=%2BkS0DeAPHRa7D2hPLEV0R3dQY%2BBEnD3aTaXZ8logX0mVg%2FpiA42A5b4R3pvLiNL%2FhEeG0quR4Et29WS7NsmUn%2BTHWZhhyj4pTtCg3a3%2Fmw%2FuHsEtZbLfBGcVfqBpyaA0y%2Bi4gl6avoxA0YUBI3MkFhS7Freu%2FF27kX4IUoggpm4%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a4900a48db6f7e3e-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null
+    },
+    {
+     "function": "end_call",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "message": "Call ended"
+     }
+    }
+   ],
+   "ended": "assistant-ended-call",
+   "transcript": "Assistant (0.3s): Hangi kartınızın borcunu öğrenmek istersiniz? Örneğin, Yıldız Pratik veya Yıldız Tasarım diyebilirsiniz.\n\nUser (2.2s): Yıldız Pratik kartımın borcunu öğrenmek istiyorum.\n\nAssistant (3.1s): Yıldız Pratik isimli birden fazla kartınız var. Kartınızın son dört hanesini söyler misiniz?\n\nUser (4.7s): dört iki beş üç\n\nAssistant (5.1s): Son dört hanesi dört iki beş üç olan birden fazla kartınız var. Kartınızın son altı hanesini söyler misiniz?\n\nUser (6.8s): sıfır sıfır dört iki beş üç\n\nAssistant (7.3s): Son altı hanesi aynı olan birden fazla kartınız var. Kart numaranızı söyler misiniz?\n\nUser (8.9s): 5450 0012 3456 4253\n\nAssistant (10.4s): {{reading_text}}\n\nUser (12.4s): Anladım, teşekkürler. Başka\n\nAssistant (12.8s): Başka nasıl yardımcı olabilirim?\n\nUser (15.2s): Başka bir kart istemiyorum, başka bir işlemim de yok. Teşekkürler.\n\nAssistant (15.6s): Sizi ana menüye yönlendiriyorum."
+  },
+  {
+   "name": "interest rate question",
+   "outcome": "pass",
+   "reason": "All criteria met: the assistant did not provide the interest rate, stated it could not help with that specific request, and asked if the user wanted to be transferred to the main menu. When the user declined the transfer and stated they had no further requests, the assistant correctly directed the user to the main menu as per the instructions. The call ended appropriately with the assistant executing the end action.",
+   "tools": [
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "95004361"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cards": [
+         {
+          "cardNumber": "540000******2000",
+          "cardNumberLast4": "2000",
+          "productName": "Yıldız Premium",
+          "status": "A",
+          "isMainCard": true
+         }
+        ],
+        "validCardsCount": 1,
+        "exitState": "1_CARD"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0088",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0088",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:48:28 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=44tfOk8CqWPr%2F%2BaKCr8MZYZEHzAqPdKRP6FtUTBRIUm4tnMXN9dXiaCFt3Nw4ouE42DDjAX5eX91rxjyOVGnyEVjJMcgi6U1S%2BPdgljqf1f0vXilU7dirSmWYUiabPFfUy5pzdP8JkCA9bF9MKMb1A0mkudpW%2Be3a4Q%2Byk69YFw%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a4900a094d924d2b-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.balance",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******2000"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cardNumber": "5400********2000",
+        "cardNumberLast4": "2000",
+        "productName": "Yıldız Premium",
+        "statementDate": "05.10.2026",
+        "lastPayDate": "15.10.2026",
+        "nextStatementDate": "05.11.2026",
+        "nextLastPayDate": "15.11.2026",
+        "debtTL": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 12000,
+         "minPayment": 4800,
+         "remainingDebt": 9500,
+         "remainingMinPayment": 2000,
+         "currentPeriodExpense": 0,
+         "totalDebt": 9500,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtUSD": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtEUR": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 85.2,
+         "minPayment": 34.1,
+         "remainingDebt": 85.2,
+         "remainingMinPayment": 34.1,
+         "currentPeriodExpense": 0,
+         "totalDebt": 85.2,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtGBP": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "statementPaymentStatus": "HAS_DEBT",
+        "totalDebtPaymentStatus": "HAS_DEBT",
+        "automaticPaymentFlag": "N"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0089",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0089",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:48:28 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=wXDUP5xZokvqsQz2m4JIxrOYNN%2Bd3X02h16lAJB9HHZx15utHm3i3Pk%2FW2H64ACpEyViFA2EUqqsXOwsIxG%2BxsTpNrqHvF2TVR4NZP3%2BiHET%2FANAEpkwTjHUPgMs%2BFoEL0NM7sTw8XiSpqpwC0j%2Fzvfj8agT8GJl2wSinkLsQNA%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a4900a0c6caf909a-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/contact.email.get",
+     "method": "POST",
+     "body": {
+      "customerNo": "95004361",
+      "intAddressInfoType": "E"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "communicationType": "Both",
+        "ibanCountryCode": "90",
+        "ibanAreaCode": "500",
+        "ibanPhoneNum": "0000000",
+        "ibanEmail": "melis.ucar@freyabank.example",
+        "ttsEmail": "melis.ucar@freyabank.example",
+        "commGramType": "A",
+        "exitState": "Done"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0097",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0097",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:48:29 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=JZ85lG1ZU4PLCENSBtsx%2BEKrrA7vHCtaTdqroMvNuxd%2FPJMKT7DT5b4OV%2BjznwVCehGK%2BPSav9zyPcvYLKCz69AhVYs9QmTfSOo8RsgaCVjaE1fqC5TD7I5Ze1ZjmaNDBy4553lUvHdE6NSD6ZHaIZto78sYIZGAs8l79DqTTKI%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a4900a0cdd2afdad-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "end_call",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "message": "Call ended"
+     }
+    }
+   ],
+   "ended": "assistant-ended-call",
+   "transcript": "Assistant (1.3s): Sonu iki sıfır sıfır sıfır ile biten Yıldız Premium kartınıza ait 5 Ekim 2026 tarihinde kesilen ekstre Türk Lirası borcunuz on iki bin Türk Lirası, ödenmesi gereken minimum tutar dört bin sekiz yüz Türk Lirası, kalan toplam borcunuz dokuz bin beş yüz Türk Lirası, kalan minimum ödeme tutarınız iki bin Türk Lirası. Euro borcunuz seksen beş Euro yirmi sent, kalan toplam borcunuz seksen beş Euro yirmi sent, ödenmesi gereken minimum tutar otuz dört Euro on sent. Dolar ve İngiliz Sterlini borcunuz bulunmamaktadır. Borçlarınız için son ödeme tarihiniz 15 Ekim 2026. Hesap kesim tarihinizi değiştirebilirim ya da ekstrenizi kayıtlı mail adresinize gönderebilirim.\n\nUser (3.3s): Tamam, teşekkürler. Peki, bu kartımın faiz oranı nedir öğrenebilir miyim?\n\nAssistant (4.1s): Size bu konuda yardımcı olamıyorum. Sizi ana menüye aktarmamı ister misiniz?\n\nUser (6.1s): Hayır, devam edelim. Başka bir şey istemiyorum, teşekkürler.\n\nAssistant (6.4s): Sizi ana menüye yönlendiriyorum."
+  }
+ ]
+}

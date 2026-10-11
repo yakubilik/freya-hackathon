@@ -1,0 +1,28 @@
+[
+ {
+  "name": "first",
+  "model": "claude-opus-5-5",
+  "purpose": "case floor: read the case folder, build the agent with its tools on the mock, check and save it",
+  "seconds": 963.3,
+  "outcome": "finished",
+  "log": "floor-session.jsonl"
+ },
+ {
+  "name": "review",
+  "model": "gpt-6-astra",
+  "backend": "codex",
+  "purpose": "floor review: second-family audit of the saved workflow against the case documents",
+  "seconds": 73.9,
+  "tokens": 122,
+  "outcome": "ok",
+  "review": "floor-work/out/review.md"
+ },
+ {
+  "name": "fix",
+  "model": "claude-opus-5-5",
+  "purpose": "floor fix: apply the verified review findings",
+  "seconds": 87.6,
+  "log": "floor-fix-session.jsonl",
+  "outcome": "finished, saved again"
+ }
+]

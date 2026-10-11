@@ -1,0 +1,131 @@
+{
+ "run_id": "20261011-183322-final-case-joined",
+ "brief_path": "final/final-case.joined.md",
+ "tools_path": null,
+ "case_dir": "final/final-case",
+ "mock_url": "https://freya-statement-mock.yakuupkeskin.workers.dev",
+ "contract_path": null,
+ "brief_hash": "d9788cca3a08a3cace16c457cd1b8b7ffac64a3b3a181a226a32f410d7e202bb",
+ "tools_hash": null,
+ "table_hash": "none",
+ "plan_hash": "none",
+ "source_commit": "7026c4274fc7fba4595b473ad9d169bf6fbb8ad7",
+ "variant": "final",
+ "slot": "final-case-joined-floor",
+ "workflow_id": "790026e5-5199-481a-986b-49b8682c4f93",
+ "agent_id": "ee825e04-dab1-4d12-af28-0dd539bebce9",
+ "version": 18,
+ "export_path": "submission/final-case-joined.workflow.json",
+ "export_hash": "2add407092a22510cd361ad90187098145f8702755e50d1ed5c9ba042e3563b8",
+ "bank_url": null,
+ "endpoint_check": null,
+ "variant_diff": null,
+ "model_config": null,
+ "tiers_run": [],
+ "fallback": "case",
+ "trigger": {
+  "id": "T0",
+  "reason": "no machine-readable contract (no .json/.yaml/.yml OpenAPI document with openapi/swagger/paths at the top); the reading is skipped, the floor reads the case folder and its contract itself"
+ },
+ "results": {
+  "PASS": 2,
+  "FAIL": 4,
+  "INVALID": 0,
+  "UNKNOWN": 0
+ },
+ "status": "ok (floor)",
+ "errors": [],
+ "stages": {
+  "floor": {
+   "start": 0.5,
+   "budget_s": 1619.5,
+   "end": 1125.9,
+   "seconds": 1125.4,
+   "status": "ok"
+  }
+ },
+ "model_calls": [
+  {
+   "model": "claude-opus-5-5",
+   "purpose": "case floor: read the case folder, build the agent with its tools on the mock, check and save it",
+   "tokens": null,
+   "seconds": 1125.0
+  },
+  {
+   "model": "gpt-6-astra",
+   "purpose": "floor review: second-family audit of the saved workflow against the case documents",
+   "tokens": 122,
+   "seconds": 73.9
+  },
+  {
+   "model": "claude-opus-5-5",
+   "purpose": "floor fix: apply the verified review findings",
+   "tokens": null,
+   "seconds": 87.6
+  }
+ ],
+ "tests": [
+  {
+   "tier": "0",
+   "name": "floor simulation 1 of the saved phone agent (6 simulated callers)",
+   "result": "FAIL",
+   "detail": "4 / 6 passed, simulation 546d46a2-c760-4be1-b0e6-e69af0ac2b59, status completed, 55.6 s; failed: all cards at once, first digits request"
+  },
+  {
+   "tier": "0",
+   "name": "floor simulation 2 of the saved phone agent (6 simulated callers)",
+   "result": "FAIL",
+   "detail": "5 / 6 passed, simulation 4ebcf35c-2e85-40bc-82e3-fd9dfb4ab4fb, status completed, 33.6 s; failed: first digits request"
+  },
+  {
+   "tier": "0",
+   "name": "floor simulation 3 of the saved phone agent (6 simulated callers)",
+   "result": "PASS",
+   "detail": "6 / 6 passed, simulation 0531a68b-23c9-4cf7-8621-7a805d42ba86, status completed, 55.6 s"
+  },
+  {
+   "tier": "0",
+   "name": "floor simulation 4 of the saved phone agent (4 simulated callers)",
+   "result": "FAIL",
+   "detail": "2 / 4 passed, simulation 1186d0d8-2a10-4666-93b7-e1573e4e39ec, status completed, 57.5 s; failed: no eligible card, same last four digits"
+  },
+  {
+   "tier": "0",
+   "name": "floor simulation 5 of the saved phone agent (4 simulated callers)",
+   "result": "FAIL",
+   "detail": "2 / 4 passed, simulation 108fe2f7-6ce5-4c79-a9fa-46837cc2a18e, status completed, 210.5 s; failed: same last four digits, interest rate question"
+  },
+  {
+   "tier": "0",
+   "name": "floor simulation 6 of the saved phone agent (4 simulated callers)",
+   "result": "PASS",
+   "detail": "4 / 4 passed, simulation 7c920429-ac26-4f63-b7c4-9dffb3a804d5, status completed, 43.8 s"
+  }
+ ],
+ "started": "2026-10-11T18:33:22Z",
+ "finished": "2026-10-11T18:52:08Z",
+ "brief_documents": [
+  "BRIEF.md",
+  "README.md",
+  "cloudflare-mock/README.md",
+  "cloudflare-mock/example/worker.js",
+  "cloudflare-mock/example/wrangler.toml",
+  "example-scenarios.md",
+  "sources/documents/2025-08-14-cards-faq.md",
+  "sources/documents/2026-09-10-ivr-prompt-sheet.md",
+  "sources/documents/2026-10-01-service-contract.md",
+  "sources/emails/2026-09-24-kickoff-questions.txt",
+  "sources/emails/2026-10-09-decisions-recap.txt",
+  "sources/emails/attachments/2026-09-02-statement-debt-analysis.md",
+  "sources/emails/attachments/2026-10-08-statement-debt-analysis.md",
+  "sources/meetings/2026-10-07-analysis-session-transcript.txt",
+  "sources/meetings/2026-10-10-follow-up-session-transcript.txt",
+  "test-environment/test-customers.md"
+ ],
+ "skipped_documents": [
+  "cloudflare-mock/example/example-response.json",
+  "statement-debt-call-flow.pdf",
+  "test-environment/test-customers.json"
+ ],
+ "elapsed_s": 1125.9
+}

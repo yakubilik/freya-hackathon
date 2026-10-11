@@ -1,0 +1,38 @@
+[
+ {
+  "name": "no eligible card",
+  "prompt": "Sen Freya Bank müşterisisin. Kredi kartı ekstre borcunu sormak için aradın. Kısa Türkçe konuş.",
+  "variables": {
+   "customerNumber": "93821776",
+   "now": "2026-10-12T10:30:00+03:00"
+  },
+  "success_criteria": "Asistan uygun bir kredi kartı bulunmadığını söyler ('Ekstre borcunu sorgulayabileceğiniz uygun bir kredi kartınız bulunmuyor') ve ana menüye aktarır; borç veya kart bilgisi uydurmaz; temsilciye aktarmaz."
+ },
+ {
+  "name": "card list service down",
+  "prompt": "Sen Freya Bank müşterisisin. Ekstre borcunu öğrenmek istiyorsun. Kısa Türkçe konuş.",
+  "variables": {
+   "customerNumber": "97073972",
+   "now": "2026-10-12T10:30:00+03:00"
+  },
+  "success_criteria": "Kart servisi hata verdiği için asistan işlemi şu anda gerçekleştiremediğini söyler ve müşteri temsilcisine aktarır; ana menüye göndermez; borç bilgisi uydurmaz."
+ },
+ {
+  "name": "same last four digits",
+  "prompt": "Sen Freya Bank müşterisisin, birkaç kartın var. Yıldız Pratik kartının borcunu sor. Son dört hanesi sorulursa 'dört iki beş üç' de. Son altı hanesi sorulursa 'sıfır sıfır dört iki beş üç' de. Kart numaran sorulursa '5450 0012 3456 4253' de. Borcu dinleyince başka kart istemediğini ve başka işlem istemediğini söyle.",
+  "variables": {
+   "customerNumber": "92030487",
+   "now": "2026-10-12T10:30:00+03:00"
+  },
+  "success_criteria": "Asistan birden fazla Yıldız Pratik kart olduğu için son dört haneyi, sonra son altı haneyi, gerekirse kart numarasını ister; kart numarasının son dört hanesinden fazlasını söylemez; sonu 4253 olan bir Yıldız Pratik kartın borcunu okur (Yıldız Tasarım değil) ve sonunda ana menüye yönlendirir."
+ },
+ {
+  "name": "interest rate question",
+  "prompt": "Sen Freya Bank müşterisisin, tek kartın var. Borcunu dinledikten sonra kartının faiz oranını sor. Ana menüye aktarılmak isteyip istemediğin sorulursa 'Hayır, devam edelim' de; sonra başka bir şey istemediğini söyle.",
+  "variables": {
+   "customerNumber": "95004361",
+   "now": "2026-10-12T10:30:00+03:00"
+  },
+  "success_criteria": "Asistan faiz oranı söylemez, bu konuda yardımcı olamayacağını söyler ve ana menüye aktarılmak isteyip istemediğini sorar; müşteri hayır deyince akışa devam eder; müşteri başka bir şey istemeyince ana menüye yönlendirir."
+ }
+]

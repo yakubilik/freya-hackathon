@@ -89,6 +89,26 @@
  "final-case-joined-floor": {
   "workflow_id": "790026e5-5199-481a-986b-49b8682c4f93",
   "agent_id": "ee825e04-dab1-4d12-af28-0dd539bebce9",
+  "version": 18
+ },
+ "final-fable": {
+  "workflow_id": "a30bf12f-afcf-45f6-84d5-c43c2190e958",
+  "agent_id": "d86d3054-45a9-42fc-a526-5b4ac8671182",
+  "version": 6
+ },
+ "final-sol": {
+  "workflow_id": "e6eae446-c869-43ac-8774-c3731f9e648a",
+  "agent_id": "2625b5c1-7ce6-41d1-97a8-24d388d8bb68",
+  "version": 9
+ },
+ "final-fable-sol": {
+  "workflow_id": "5ebbb105-eb6c-4cbc-be1a-dcc1dbfd4c2c",
+  "agent_id": "b09ecdd5-d01f-4f68-ba87-8da3fea88453",
   "version": 7
+ },
+ "final-opus-sol": {
+  "workflow_id": "033d1cc0-0b9c-4b42-9ca2-9ce58ec1ca51",
+  "agent_id": "17d376ff-6c3f-4c40-bdc5-6ce6924d9a1d",
+  "version": 10
  }
 }

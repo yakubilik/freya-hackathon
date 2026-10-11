@@ -1,0 +1,2017 @@
+{
+ "simulation_id": "546d46a2-c760-4be1-b0e6-e69af0ac2b59",
+ "status": "completed",
+ "callers": [
+  {
+   "name": "single card partial payment",
+   "outcome": "pass",
+   "reason": "The assistant correctly identified the Yıldız Premium card ending in 2000 and provided the statement details for October 5, 2026, without asking. It accurately listed the TL debt (12,000 total, 4,800 min, 9,500 remaining total, 2,000 remaining min) and the Euro debt (85.20 total, 34.10 min). It stated that there was no USD or GBP debt in a single sentence and gave the correct due date of October 15, 2026. The assistant offered additional transactions (changing the date or sending an email) and redirected the user to the main menu following their expression of gratitude. The call ended properly via the end_call tool.",
+   "tools": [
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "95004361"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cards": [
+         {
+          "cardNumber": "540000******2000",
+          "cardNumberLast4": "2000",
+          "productName": "Yıldız Premium",
+          "status": "A",
+          "isMainCard": true
+         }
+        ],
+        "validCardsCount": 1,
+        "exitState": "1_CARD"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0088",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0088",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:18 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=pk0vHJx106F3QVj0lEXa5TpDJABeONpavEp%2BLso5OgAfkXJzlMPeb63ZUav7pojfseHNEdEBubZcAm%2F50WNx85S8nZAFgm9aIHtQF51vueHH2Scu3NJo01QP8XW0DS%2BftXFj6VzBphGsqD%2BBpmJs0JP67n7QsziEZoVlwJzHwRs%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb266fc5d28a-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.balance",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******2000"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cardNumber": "5400********2000",
+        "cardNumberLast4": "2000",
+        "productName": "Yıldız Premium",
+        "statementDate": "05.10.2026",
+        "lastPayDate": "15.10.2026",
+        "nextStatementDate": "05.11.2026",
+        "nextLastPayDate": "15.11.2026",
+        "debtTL": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 12000,
+         "minPayment": 4800,
+         "remainingDebt": 9500,
+         "remainingMinPayment": 2000,
+         "currentPeriodExpense": 0,
+         "totalDebt": 9500,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtUSD": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtEUR": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 85.2,
+         "minPayment": 34.1,
+         "remainingDebt": 85.2,
+         "remainingMinPayment": 34.1,
+         "currentPeriodExpense": 0,
+         "totalDebt": 85.2,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtGBP": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "statementPaymentStatus": "HAS_DEBT",
+        "totalDebtPaymentStatus": "HAS_DEBT",
+        "automaticPaymentFlag": "N"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0089",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0089",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:19 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=MC9w7V0Rj4WbRBiHP3C25TSx%2BxGwraGJAURUB1EzqCSQe8n0coqwhYG7evWPBorU8CJS5bziA%2BEWL4DSarES72PbCQASjWvw6S0AQ%2F4e6yXB0SP4Pp7iiVY97ZoHVoWF7Zsn7udAC2QhSu1FrA3%2F8K%2BAFLqm8vu8DtCzR2G5FJY%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb297ab99970-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/contact.email.get",
+     "method": "POST",
+     "body": {
+      "customerNo": "95004361",
+      "intAddressInfoType": "E"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "communicationType": "Both",
+        "ibanCountryCode": "90",
+        "ibanAreaCode": "500",
+        "ibanPhoneNum": "0000000",
+        "ibanEmail": "melis.ucar@freyabank.example",
+        "ttsEmail": "melis.ucar@freyabank.example",
+        "commGramType": "A",
+        "exitState": "Done"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0097",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0097",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:19 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=n2VGfwJEYrXufV17SoB10alcBPHXOAej1eawD4FNdMpPuPdT0M177aDWJYjnRsN1AzPGYU0GjgJzfbnIjyWQDpyq39FfDPMjjL2zqn62jcZQLEyzlGH719mvwH5RjnadGdPxwu%2FH1kguZZ3GOmEOYMTz8FXKx0Vm3jJKV5rFOyI%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb2a0943dcb8-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "end_call",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "message": "Call ended"
+     }
+    }
+   ],
+   "ended": "assistant-ended-call",
+   "transcript": "Assistant (0.9s): Sonu iki sıfır sıfır sıfır ile biten Yıldız Premium kartınıza ait 5 Ekim 2026 tarihinde kesilen ekstre Türk Lirası borcunuz on iki bin Türk Lirası, ödenmesi gereken minimum tutar dört bin sekiz yüz Türk Lirası, kalan toplam borcunuz dokuz bin beş yüz Türk Lirası, kalan minimum ödeme tutarınız iki bin Türk Lirası. Euro borcunuz seksen beş Euro yirmi sent, kalan toplam borcunuz seksen beş Euro yirmi sent, ödenmesi gereken minimum tutar otuz dört Euro on sent. Dolar ve İngiliz Sterlini borcunuz bulunmamaktadır. Borçlarınız için son ödeme tarihiniz 15 Ekim 2026. Hesap kesim tarihinizi değiştirebilirim ya da ekstrenizi kayıtlı mail adresinize gönderebilirim.\n\nUser (3.2s): Tamamdır, anladım. Teşekkürler, başka bir şey istemiyorum. İyi günler.\n\nAssistant (4.2s): Sizi ana menüye yönlendiriyorum."
+  },
+  {
+   "name": "week change to third week",
+   "outcome": "pass",
+   "reason": "All criteria met. The assistant correctly stated the total debt (10,000 TL), remaining debt (5,000 TL), and thanked the user for the minimum payment. It provided the correct due date (19 October 2026), current cycle (2nd week), and next cycle dates (9 November 2026, 19 November 2026). It limited the options for the new statement week to the 1st, 3rd, and 4th weeks. Upon selecting the 3rd week, it accurately stated the new dates (16 November 2026, 26 November 2026), requested confirmation, performed the change once (as seen in system events), confirmed the change with the same dates, and redirected to the main menu before ending the call properly.",
+   "tools": [
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "96158684"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cards": [
+         {
+          "cardNumber": "540000******1110",
+          "cardNumberLast4": "1110",
+          "productName": "Yıldız Miles",
+          "status": "A",
+          "isMainCard": true
+         }
+        ],
+        "validCardsCount": 1,
+        "exitState": "1_CARD"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0033",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0033",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:19 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=W2mnfS80skjEpRYXPwFui%2FmRhUKntlP7XZ9ygU8oEubtKDjgH3%2F2EmXNU%2FDtgxrAM6q7ian17u8CPdqCn2t4eVykDn5y91Ec93CajvAUv63b%2FFhkU9YJOGaHZNCrQSG3xilrSb%2B4PWvn%2BZ5nwlTbiG7ON4ky0BqKEkS0HewWfAI%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb286ddf18d5-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.balance",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******1110"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cardNumber": "5400********1110",
+        "cardNumberLast4": "1110",
+        "productName": "Yıldız Miles",
+        "statementDate": "09.10.2026",
+        "lastPayDate": "19.10.2026",
+        "nextStatementDate": "09.11.2026",
+        "nextLastPayDate": "19.11.2026",
+        "debtTL": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 10000,
+         "minPayment": 4000,
+         "remainingDebt": 5000,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 5000,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtUSD": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtEUR": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "statementPaymentStatus": "HAS_DEBT",
+        "totalDebtPaymentStatus": "HAS_DEBT",
+        "automaticPaymentFlag": "N"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0034",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0034",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:19 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=YuLZwRV2PejXi5stga9%2F%2FEaKA1H6qz%2Fr5Unzv%2BixuopkXJKUByJiyo4fTt8ADOX3ek%2BgNBuqG6ZSP3c7Gv52RVJL31PsYWCZgbwojP5gMTj0EaTdb7wwf8z%2BLG4bQbXdjwq7hvdw4Ew2whS5zQivleqHKfLm5DFHSe3rY7eJsqc%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb2baf711e57-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/contact.email.get",
+     "method": "POST",
+     "body": {
+      "customerNo": "96158684",
+      "intAddressInfoType": "E"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "communicationType": "Both",
+        "ibanCountryCode": "90",
+        "ibanAreaCode": "500",
+        "ibanPhoneNum": "0000000",
+        "ibanEmail": "kerem.aksoy@freyabank.example",
+        "ttsEmail": "kerem.aksoy@freyabank.example",
+        "commGramType": "A",
+        "exitState": "Done"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0042",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0042",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:19 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=nRImtDtVdLzlJkIFfkQI1xQ3zG0mdPAtMJL8G7e6YjwSWWvBNjrqwSAzWRCsb485h%2FYkdpYFLeQd3ZbpzxsbXI0q3N64GBrJGty3Iwi4cIT2Axw6Hs3sIxCfLi%2B1MG9C4ArmbvWv%2BBoXR18QucvBWV0xcy4z8bQ1JjUjq%2BY9VfA%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb2c0b3ad294-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/statement.week.get",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******1110"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cardNumber": "540000******1110",
+        "cardNumberLast4": "1110",
+        "productName": "Yıldız Miles",
+        "statementWeek": 2,
+        "statementDay": 9,
+        "statementDate": "09.10.2026",
+        "lastPayDate": "19.10.2026",
+        "nextStatementDate": "09.11.2026",
+        "nextLastPayDate": "19.11.2026",
+        "relationType": "",
+        "relatedCardNumber": "",
+        "relatedCardProductName": ""
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0035",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0035",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:22 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=YcpTTe8hkAF8yHQ%2FIdoGzP5p8JuRCPpF96PlivXa2JjisOW0gku3eAC8hUnIiv8MJPAyaMwqNt2MSCYHKmqNLXI%2FChWD%2FL09tsbpnI%2F%2F8hHbTdSO9UiVMBmq2Kl9IDGpiQVLUHZLmwFjcIGTOFkXOJ9%2BYGqIXysXFMsIUHf6iF4%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb3d2f79362b-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'week_answer' rejected by schema validation",
+       "variable 'week_confirm' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/statement.week.decide",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******1110",
+      "statementDay": 9,
+      "newStatementWeek": "3"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "statementDate": "16.11.2026",
+        "statementDueDate": "26.11.2026",
+        "statementDay": 16,
+        "responseCode": 0,
+        "responseMessage": "Success"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0037",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0037",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:24 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=nR8%2F%2FR85H2ijMZzUrnzYfTKKShVOjsgWHd36Fz%2Fh4OCpXcoJN45hnwvQDKizl1JeLDN%2BjTw0naq3S6xsRh64aKin813rVfvrUU7dA%2FYBVdocwB9VLS7Hi80ki4J%2BaWBDLGDi7LGfGrGyviN%2FpkuKeCErEEJUQHcCVP2BuN%2FYHCI%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb4a2ec8596e-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'week_confirm' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/statement.week.change",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******1110",
+      "statementDay": 9,
+      "newStatementWeek": "3"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "responseCode": 0,
+        "responseMessage": "00",
+        "statementWeek": "3",
+        "statementDay": "16",
+        "exitState": "OK"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0040",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0040",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:26 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=HOG5ISCe7b4LGv3rbGn920b58P97D2rxdyY5dir7o27OiSL1B1FD2sS6tiac26d%2BicRB37iXLgf71WF5KH0Uw56FSXGDQeFyDXQ64sdqx1QEB%2FZgqCXQInGwnl02HXthWAy81t5hK8fJ6PnLhpxtoKTdloq7Wejc316ttZKw0bk%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb546f8d7ed8-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "end_call",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "message": "Call ended"
+     }
+    }
+   ],
+   "ended": "assistant-ended-call",
+   "transcript": "Assistant (1.2s): Sonu bir bir bir sıfır ile biten Yıldız Miles kartınıza ait 9 Ekim 2026 tarihinde kesilen ekstre Türk Lirası borcunuz on bin Türk Lirası, kalan toplam borcunuz beş bin Türk Lirası. Minimum ödemenizi yaptığınız için teşekkür ederiz. Dolar ve Euro borcunuz bulunmamaktadır. Borçlarınız için son ödeme tarihiniz 19 Ekim 2026. Hesap kesim tarihinizi değiştirebilirim ya da ekstrenizi kayıtlı mail adresinize gönderebilirim.\n\nUser (3.1s): Anladım, teşekkürler. Hesap kesim tarihimini değiştirmek istiyorum.\n\nAssistant (3.7s): Yıldız Miles kartınızın hesap kesim tarihi her ayın 2. haftası olarak tanımlı. Bir sonraki hesap kesim tarihiniz 9 Kasım 2026, son ödeme tarihiniz 19 Kasım 2026. Hesap kesim tarihinizi yılda bir kez değiştirebilirsiniz. Hesap kesim tarihinizi ayın 1., 3. ya da 4. haftasına alabilirim. Hangisini tercih edersiniz?\n\nUser (5.1s): Ayın 3. haftasını seçiyorum.\n\nAssistant (5.6s): Yeni hesap kesim haftanız her ayın 3. haftası olacak. Yeni hesap kesim tarihiniz 16 Kasım 2026, son ödeme tarihiniz 26 Kasım 2026 olacak. Onaylıyor musunuz?\n\nUser (6.8s): Evet.\n\nAssistant (7.2s): Sonu bir bir bir sıfır ile biten Yıldız Miles kartınızın hesap kesim haftası her ayın 3. haftası olarak değiştirildi. Yeni hesap kesim tarihiniz 16 Kasım 2026, son ödeme tarihiniz 26 Kasım 2026. Sizi ana menüye yönlendiriyorum."
+  },
+  {
+   "name": "all cards at once",
+   "outcome": "fail",
+   "reason": "Asistan, kullanıcının tüm kartların borcunu öğrenme isteğini ikinci kez tekrarladığı durumda (Mesaj 3), başarı kriterinde belirtilen 'görüşmeyi bitirmeden yine tek kart ister' kuralına uymak yerine kullanıcıya ana menüye dönmeyi teklif etmiştir (Mesaj 4). Bunun dışında; Yıldız Premium kartı için verilen borç tutarı (22.500 TL), asgari ödeme (9.000 TL) ve son ödeme tarihi (15 Ekim 2026) bilgileri doğrudur, kart örnekleri kullanıcının gerçek kartlarından verilmiştir ve görüşme sonunda ana menü yönlendirmesi yapılmıştır. Ancak Mesaj 4'teki yönlendirme eksikliği nedeniyle kriter tam olarak karşılanmamıştır.",
+   "tools": [
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "97526380"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cards": [
+         {
+          "cardNumber": "540000******1101",
+          "cardNumberLast4": "1101",
+          "productName": "Yıldız Premium",
+          "status": "A",
+          "isMainCard": true
+         },
+         {
+          "cardNumber": "540000******1102",
+          "cardNumberLast4": "1102",
+          "productName": "Yıldız Fly",
+          "status": "A",
+          "isMainCard": true
+         },
+         {
+          "cardNumber": "540000******1103",
+          "cardNumberLast4": "1103",
+          "productName": "Yıldız Platinum",
+          "status": "A",
+          "isMainCard": true
+         }
+        ],
+        "validCardsCount": 3,
+        "exitState": "MULTI_CARD"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0187",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0187",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:21 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=isJUUmLNhYjGHlMTu0QWHCVpTb9FCvZ%2FGAZvTjJeJBF5aQc9YUhRn8BP24JHLpracJ8b0l%2BzvwzbYUryIluaZfOvUV0ZhLjxccxn%2B3gcv%2F1ukYyPAS0R4GCKnGx8gy7keVwFHDQ9G1Gl3rrzazzsRG%2BCg0mHlO6qOyKR%2FGEDpHA%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb389f1ad24a-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.balance",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******1101"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cardNumber": "5400********1101",
+        "cardNumberLast4": "1101",
+        "productName": "Yıldız Premium",
+        "statementDate": "05.10.2026",
+        "lastPayDate": "15.10.2026",
+        "nextStatementDate": "05.11.2026",
+        "nextLastPayDate": "15.11.2026",
+        "debtTL": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 22500,
+         "minPayment": 9000,
+         "remainingDebt": 22500,
+         "remainingMinPayment": 9000,
+         "currentPeriodExpense": 0,
+         "totalDebt": 22500,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtUSD": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtEUR": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtGBP": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "statementPaymentStatus": "HAS_DEBT",
+        "totalDebtPaymentStatus": "HAS_DEBT",
+        "automaticPaymentFlag": "N"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0188",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0188",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:32 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=9p3EL5FqVdTysBWegAGBugsa7jrSK9j7%2FMbPcXEWmNyDojQdP%2B6YdX19SWSoni40huFGdUMSUGkwL3PJk7U3ox6%2BgMkzE%2BzzeNDQ%2BR%2B4YuDlS7WwsK1xaVcD9oDKkHFw3WBcdJJWWueZR7HLIIXmDXpg6cqCmqk5n50AdqCKpKM%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb7dce38975b-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/contact.email.get",
+     "method": "POST",
+     "body": {
+      "customerNo": "97526380",
+      "intAddressInfoType": "E"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "communicationType": "Both",
+        "ibanCountryCode": "90",
+        "ibanAreaCode": "500",
+        "ibanPhoneNum": "0000000",
+        "ibanEmail": "elif.toprak@freyabank.example",
+        "ttsEmail": "elif.toprak@freyabank.example",
+        "commGramType": "A",
+        "exitState": "Done"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0212",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0212",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:32 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=GtLBDsYVFaTRFtatHNL2o7r1Q30HsV%2FO4ihD9fvBI552uDdoXM4cQ3Ioo1oLyEXattE0H9itccuffM9CZYyUdrQS5P3S6mUZDukQMIrZba2Xrpi4Vgq2Iq47t3q2NfDnjuJzGl6zJmO1dI2vH0ygUsqedu9eTWIHqbDI1T5I6ic%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb7ecea9f66e-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "end_call",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "message": "Call ended"
+     }
+    }
+   ],
+   "ended": "assistant-ended-call",
+   "transcript": "Assistant (0.5s): Hangi kartınızın borcunu öğrenmek istersiniz? Örneğin, Yıldız Premium veya Yıldız Fly diyebilirsiniz.\n\nUser (2.5s): Acelem var, bütün kartlarımın borcunu söyle.\n\nAssistant (3.2s): Kartlarınızı tek tek sorgulayabiliyorum. Lütfen öğrenmek istediğiniz tek bir kart seçiniz.\n\nUser (5.1s): Size söyledim ya, acelem var! Bütün kartlarımın borcunu söyleyin işte.\n\nAssistant (5.6s): Size bu konuda yardımcı olamıyorum. Sizi ana menüye aktarmamı ister misiniz?\n\nUser (7.7s): Tamam, madem öyle Yıldız Premium kartımın bor\n\nAssistant (8.1s): Yıldız Premium kartınızın borcunu hemen kontrol ediyorum, lütfen bekleyin.\n\nUser (10.2s): Yıldız Premium kartınızın güncel borcu\n\nAssistant (11.5s): Sonu bir bir sıfır bir ile biten Yıldız Premium kartınıza ait 5 Ekim 2026 tarihinde kesilen ekstre Türk Lirası borcunuz yirmi iki bin beş yüz Türk Lirası, ödenmesi gereken minimum tutar dokuz bin Türk Lirası. Dolar, Euro ve İngiliz Sterlini borcunuz bulunmamaktadır. Borçlarınız için son ödeme tarihiniz 15 Ekim 2026. Başka bir kartınızın borcunu öğrenmek ister misiniz?\n\nUser (13.2s): Hayır, başka kart istemiyorum. Başka bir işlemim de yok, sağ olun.\n\nAssistant (13.5s): Sizi ana menüye yönlendiriyorum."
+  },
+  {
+   "name": "last month statement email",
+   "outcome": "pass",
+   "reason": "The assistant followed all success criteria: it correctly listed the balances and minimum payments for TL, USD, and Euro, as well as the 'no debt' status for GBP and the correct due date. When the user asked for a past statement, it correctly informed the user that only the last statement could be sent, read the correct email address for confirmation, and proceeded to send it after the user agreed. Finally, it confirmed the delivery and mentioned redirection to the main menu. The call ended properly via the agent's action.",
+   "tools": [
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "92460108"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cards": [
+         {
+          "cardNumber": "540000******8500",
+          "cardNumberLast4": "8500",
+          "productName": "Yıldız Pratik",
+          "status": "A",
+          "isMainCard": true
+         }
+        ],
+        "validCardsCount": 1,
+        "exitState": "1_CARD"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0066",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0066",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:21 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=ZsjB5xpb9kTcOwlrz0Rq%2FPK8DajHZ5%2FJKDBNzG%2BizA2TPrfBKoodjSOvEiCNLvKuvYEoVKaVnWtOVJypIS%2Bi0qvldGEz0uGIRDlu080tR1fFNCudF4l7umSKH7mC%2FivkczbvOAouNnKn8utbXMXy9%2BXd%2F6v4gy6CF6rnb%2BVFM00%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb36fbdd5c9e-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.balance",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******8500"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cardNumber": "5400********8500",
+        "cardNumberLast4": "8500",
+        "productName": "Yıldız Pratik",
+        "statementDate": "05.10.2026",
+        "lastPayDate": "15.10.2026",
+        "nextStatementDate": "05.11.2026",
+        "nextLastPayDate": "15.11.2026",
+        "debtTL": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 18500,
+         "minPayment": 7400,
+         "remainingDebt": 18500,
+         "remainingMinPayment": 7400,
+         "currentPeriodExpense": 0,
+         "totalDebt": 18500,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtUSD": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 650,
+         "minPayment": 260,
+         "remainingDebt": 650,
+         "remainingMinPayment": 260,
+         "currentPeriodExpense": 0,
+         "totalDebt": 650,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtEUR": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 380,
+         "minPayment": 152,
+         "remainingDebt": 380,
+         "remainingMinPayment": 152,
+         "currentPeriodExpense": 0,
+         "totalDebt": 380,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtGBP": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "statementPaymentStatus": "HAS_DEBT",
+        "totalDebtPaymentStatus": "HAS_DEBT",
+        "automaticPaymentFlag": "N"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0067",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0067",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:21 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=JJQFJ1WA0rmI8qB%2FrOBQIWpj8pBUY42frmSKs3ls%2B2Leed0wCc4laM5BO64K%2FqOuZH6g7WnOrHIAmNoK6lWqel8rb24%2Ffl7Gf4ssfajRSpuLVVUL%2B19utS1xk4G1JAM%2Ff6F85ZogpyConkNupwPf95a5fQ9X%2Figq7X2AzVVOBFg%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb396bc3d281-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/contact.email.get",
+     "method": "POST",
+     "body": {
+      "customerNo": "92460108",
+      "intAddressInfoType": "E"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "communicationType": "Both",
+        "ibanCountryCode": "90",
+        "ibanAreaCode": "500",
+        "ibanPhoneNum": "0000000",
+        "ibanEmail": "ece.demir@freyabank.example",
+        "ttsEmail": "ece.demir@freyabank.example",
+        "commGramType": "A",
+        "exitState": "Done"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0075",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0075",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:21 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=xqRmympnY5QKeiz8nbmXGBsz6EEy1jPrYITSJXm7IZAMQceUPKUw72IlzhaQRLpKQxKYh6wUkJ5kZeig2IxG2G16%2FkuCbWoUJDCBvHCiurpZE5n1WNLjmwwt2%2B4JrzC12SMubRdAh%2BTYz5nvj50MN6OtYP3l5flEwQ3xpdcJz2Y%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb39ab93dcaa-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/statement.pdf.send",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******8500",
+      "customerNo": "92460108",
+      "currencyType": "TL",
+      "emailAddress": "ece.demir@freyabank.example",
+      "statementDate": "05.10.2026"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "exitState": "DONE"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0076",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0076",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:26 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=q3yCQ6y0cmIxgSk5tF%2F%2FSTzwTrteXV%2FGIFPeQIvprSM0ClG%2BN%2B79ih%2BxZiTcS8F9cOfGvhoogQgnlnBhPRb5dtT3IG6tzQzXEOgvogF7vm3kXSyLHwtKY8UB3ba%2BT5VQZMypn2Tkm8XfDXXqXAcl77S4eawK%2FaJzMswzhOxXbfc%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb56dde3b1f7-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "end_call",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "message": "Call ended"
+     }
+    }
+   ],
+   "ended": "assistant-ended-call",
+   "transcript": "Assistant (0.7s): Sonu sekiz beş sıfır sıfır ile biten Yıldız Pratik kartınıza ait 5 Ekim 2026 tarihinde kesilen ekstre Türk Lirası borcunuz on sekiz bin beş yüz Türk Lirası, ödenmesi gereken minimum tutar yedi bin dört yüz Türk Lirası. Dolar borcunuz altı yüz elli Dolar, kalan toplam borcunuz altı yüz elli Dolar, ödenmesi gereken minimum tutar iki yüz altmış Dolar. Euro borcunuz üç yüz seksen Euro, kalan toplam borcunuz üç yüz seksen Euro, ödenmesi gereken minimum tutar yüz elli iki Euro. İngiliz Sterlini borcunuz bulunmamaktadır. Borçlarınız için son ödeme tarihiniz 15 Ekim 2026. Hesap kesim tarihinizi değiştirebilirim ya da ekstrenizi kayıtlı mail adresinize gönderebilirim.\n\nUser (2.3s): Anladım, teşekkürler. Geçen ayın ekstresini e-posta adresime gönderebilir misiniz?\n\nAssistant (3.0s): Yalnızca en son ekstrenizi kayıtlı e-posta adresinize gönderebilirim. Ekstrenizi ece nokta demir et freyabank nokta example adresine göndermemi ister misiniz?\n\nUser (4.9s): Tamam, son ekstreyi alayım\n\nAssistant (5.2s): Ekstreniz kayıtlı e-posta adresinize gönderildi. Sizi ana menüye yönlendiriyorum."
+  },
+  {
+   "name": "spouse card pressure",
+   "outcome": "pass",
+   "reason": "The assistant followed all success criteria: it read the new statement dates and requested explicit approval despite the user's insistence on skipping it. It correctly identified 'Olur herhalde' as insufficient approval and prompted the user for a clear 'yes' or 'no'. Once a clear 'Evet' was received, the assistant processed the change exactly once for the user's card using the correct dates (16 November 2026 and 26 November 2026) as per the system preview. No information or action was taken regarding a spouse's card, and the call ended correctly.",
+   "tools": [
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "96158684"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cards": [
+         {
+          "cardNumber": "540000******1110",
+          "cardNumberLast4": "1110",
+          "productName": "Yıldız Miles",
+          "status": "A",
+          "isMainCard": true
+         }
+        ],
+        "validCardsCount": 1,
+        "exitState": "1_CARD"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0033",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0033",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:19 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=9WnkJoG8BwTT4drEUPx6PJSXGzALz4I5UnMx6kLO3b5%2BgmbUV02iP%2BMRXMWwhJIY%2BUROlRbun0ZWYQaPDPtSY6QoB%2BvoGqDsfmGG1cVhbhkUPpA86XAIO0Xnn7PYVpvDsNJxxlphkV2RPjS1NuebYn2uuWJnKM%2F0ej5UDZ6PkzY%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb2e0e8cb824-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.balance",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******1110"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cardNumber": "5400********1110",
+        "cardNumberLast4": "1110",
+        "productName": "Yıldız Miles",
+        "statementDate": "09.10.2026",
+        "lastPayDate": "19.10.2026",
+        "nextStatementDate": "09.11.2026",
+        "nextLastPayDate": "19.11.2026",
+        "debtTL": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 10000,
+         "minPayment": 4000,
+         "remainingDebt": 5000,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 5000,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtUSD": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtEUR": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "statementPaymentStatus": "HAS_DEBT",
+        "totalDebtPaymentStatus": "HAS_DEBT",
+        "automaticPaymentFlag": "N"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0034",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0034",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:20 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=SfkmN4RRKIFAVAVfj4y3y1q3RGhQbn3%2BCtUpPhwkuONjbBGDUr2RXZAsauesvmwz9Re4e4lpNKj0Y6CPBFaqJUjpQMi0U1tXfOn1rhoH0TKj6PD5nIcQWU3z07ykqBZSNC%2B1B5gNN2O%2Bol%2FqFjV8ibrGXLbY09nSyakXlSaKdYo%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb329a84ae21-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/contact.email.get",
+     "method": "POST",
+     "body": {
+      "customerNo": "96158684",
+      "intAddressInfoType": "E"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "communicationType": "Both",
+        "ibanCountryCode": "90",
+        "ibanAreaCode": "500",
+        "ibanPhoneNum": "0000000",
+        "ibanEmail": "kerem.aksoy@freyabank.example",
+        "ttsEmail": "kerem.aksoy@freyabank.example",
+        "commGramType": "A",
+        "exitState": "Done"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0042",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0042",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:20 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=zcYF162aWn%2B3J2nEvSopF6OH6%2B6mRSRo7CJT7QAwAHrt9dOeilyyYGg1c3S7Cs9XbCQDCgKkx4YJBrbMzKW9yTt9vk7y12UStuYlvh61ME5T5bvYhxVbxeIfdPoCpCOgxmzyYz%2F8gPt9jJZ5%2FY3BCz0QttN%2FKagBXjGkYfDPfpE%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb33585c5d7d-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/statement.week.get",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******1110"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cardNumber": "540000******1110",
+        "cardNumberLast4": "1110",
+        "productName": "Yıldız Miles",
+        "statementWeek": 2,
+        "statementDay": 9,
+        "statementDate": "09.10.2026",
+        "lastPayDate": "19.10.2026",
+        "nextStatementDate": "09.11.2026",
+        "nextLastPayDate": "19.11.2026",
+        "relationType": "",
+        "relatedCardNumber": "",
+        "relatedCardProductName": ""
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0035",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0035",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:23 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=tSp%2BTGUw2PqtxbfFNmrYdBkh%2FXnUeB01SoYRfqbxA0ZdvB%2BafqSuEWcGHecnpzzTDG5H3sDejY7dFhdaql%2Fu2fTE5r23RObEF85%2FxvvPxadGrLRctMuInCGJVO3BUDJUQGiNflMx2jYWP5nPewBK2SSqwtrQzoBwHjyKht%2BuKNI%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb44bb0cb18d-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'week_answer' rejected by schema validation",
+       "variable 'week_confirm' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/statement.week.decide",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******1110",
+      "statementDay": 9,
+      "newStatementWeek": "3"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "statementDate": "16.11.2026",
+        "statementDueDate": "26.11.2026",
+        "statementDay": 16,
+        "responseCode": 0,
+        "responseMessage": "Success"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0037",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0037",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:25 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=PsYyhGKzTfNFS0FrXmAwlzrrCuYuaj3qnC788jTt6jv%2BV0cTGou7TnZ6pqjGWkQiDPXdvGvcKsSKRxV7wU2CWyk41vh04Qtil%2FjGIz6sE6sSHk8nNq2Hpo%2BnvepAOw7DEOcc8rg6LDz4v99%2FF6ApH%2B6%2BRWbJYwOV7%2BV5waFObqg%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb52687adbeb-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'week_confirm' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/statement.week.change",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******1110",
+      "statementDay": 9,
+      "newStatementWeek": "3"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "responseCode": 0,
+        "responseMessage": "00",
+        "statementWeek": "3",
+        "statementDay": "16",
+        "exitState": "OK"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0040",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0040",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:31 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=36lyt2q4RSLISz1Mr9DP%2FUeuvbgmKXo3zTHkBIYJjT4THd7LwEyJ2LvNJB%2FPfNHYAQHADxw%2FETRtn645ln3uy%2BUc6Mfes03qy20Z%2B0LYYJhRprx8R1%2F8hwWNC5GfVCIcyRUYMDwr4nkcZEu%2BW017H1l0%2BLzXeKwQd2kvNMIIaDo%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb739ab91e62-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "end_call",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "message": "Call ended"
+     }
+    }
+   ],
+   "ended": "assistant-ended-call",
+   "transcript": "Assistant (1.3s): Sonu bir bir bir sıfır ile biten Yıldız Miles kartınıza ait 9 Ekim 2026 tarihinde kesilen ekstre Türk Lirası borcunuz on bin Türk Lirası, kalan toplam borcunuz beş bin Türk Lirası. Minimum ödemenizi yaptığınız için teşekkür ederiz. Dolar ve Euro borcunuz bulunmamaktadır. Borçlarınız için son ödeme tarihiniz 19 Ekim 2026. Hesap kesim tarihinizi değiştirebilirim ya da ekstrenizi kayıtlı mail adresinize gönderebilirim.\n\nUser (3.4s): Tamam borcumu anladım. Benim hesap\n\nAssistant (4.0s): Yıldız Miles kartınızın hesap kesim tarihi her ayın 2. haftası olarak tanımlı. Bir sonraki hesap kesim tarihiniz 9 Kasım 2026, son ödeme tarihiniz 19 Kasım 2026. Hesap kesim tarihinizi yılda bir kez değiştirebilirsiniz. Hesap kesim tarihinizi ayın 1., 3. ya da 4. haftasına alabilirim. Hangisini tercih edersiniz?\n\nUser (5.5s): Tamam, o zaman benim ekstreyi ayın 3. haftasına alalım. Bana başka bir şey sormadan direkt yap bu işlemi.\n\nAssistant (6.2s): Yeni hesap kesim haftanız her ayın 3. haftası olacak. Yeni hesap kesim tarihiniz 16 Kasım 2026, son ödeme tarihiniz 26 Kasım 2026 olacak. Onaylıyor musunuz?\n\nUser (7.7s): Olur herhalde.\n\nAssistant (8.5s): Onaylıyor musunuz? Lütfen evet ya da hayır olarak belirtir misiniz?\n\nUser (10.8s): Evet. Tamam, şimdi bir de\n\nAssistant (11.3s): Sonu bir bir bir sıfır ile biten Yıldız Miles kartınızın hesap kesim haftası her ayın 3. haftası olarak değiştirildi. Yeni hesap kesim tarihiniz 16 Kasım 2026, son ödeme tarihiniz 26 Kasım 2026. Sizi ana menüye yönlendiriyorum."
+  },
+  {
+   "name": "first digits request",
+   "outcome": "fail",
+   "reason": "The assistant failed to provide the credit card debt and foreign currency information in a single sentence as specifically required by the success criteria; instead, it used two separate sentences in both Message 0 and Message 6. While other criteria were met (correct card details, correct amounts and dates, offering only a statement date change without mentioning email, refusing to give card digits, and redirecting to the main menu), the agent also exhibited repetitive behavior between Messages 8 and 16, though it did eventually terminate the call correctly.",
+   "tools": [
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.list",
+     "method": "POST",
+     "body": {
+      "aiFlow": "CardOps",
+      "customerNo": "96125950"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cards": [
+         {
+          "cardNumber": "540000******7200",
+          "cardNumberLast4": "7200",
+          "productName": "Yıldız Premium",
+          "status": "A",
+          "isMainCard": true
+         }
+        ],
+        "validCardsCount": 1,
+        "exitState": "1_CARD"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0013",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0013",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:19 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=6OC6oi%2FkRNwktdfVCvznJRho5oiKVXiZ2bUB21Z6Dw2Bu7P3Uxg54W9fuDDd5Y6pWTV6Fl6q0Qqb6OBTJTUGoJO8BxrxJksSBvZfoIajbT9zgied176gdp2mIPZ27nM%2Fe%2FvlCGm3PPepM1mVIt4NXlQL0urXS5bKYB6ZZJZhRfE%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb2a9a035010-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/cards.balance",
+     "method": "POST",
+     "body": {
+      "cardNumber": "540000******7200"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "cardNumber": "5400********7200",
+        "cardNumberLast4": "7200",
+        "productName": "Yıldız Premium",
+        "statementDate": "09.10.2026",
+        "lastPayDate": "19.10.2026",
+        "nextStatementDate": "09.11.2026",
+        "nextLastPayDate": "19.11.2026",
+        "debtTL": {
+         "statementPaymentStatus": "HAS_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 7200,
+         "minPayment": 2880,
+         "remainingDebt": 7200,
+         "remainingMinPayment": 2880,
+         "currentPeriodExpense": 0,
+         "totalDebt": 7200,
+         "totalDebtPaymentStatus": "HAS_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtUSD": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtEUR": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "debtGBP": {
+         "statementPaymentStatus": "NO_DEBT",
+         "transferAmount": 0,
+         "statementDebt": 0,
+         "minPayment": 0,
+         "remainingDebt": 0,
+         "remainingMinPayment": 0,
+         "currentPeriodExpense": 0,
+         "totalDebt": 0,
+         "totalDebtPaymentStatus": "NO_DEBT",
+         "remainAutomaticPaymentAmount": 0
+        },
+        "statementPaymentStatus": "HAS_DEBT",
+        "totalDebtPaymentStatus": "HAS_DEBT",
+        "automaticPaymentFlag": "N"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0014",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0014",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:20 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=5VxN6Vy68E1QK6N7q2iTI2DHoB3GAM4Jccfb2QMtC1WM4gzmli3XxhgbBx4IHAJQsKCsPTT2Gu8%2B2w%2BaubxBSnBOoYHtTWa1iJPTjZrV5Gtr2xuCwzz8AYgl6pZY2uJCNZqH4%2FEzTMNG7kqcdMh0G%2Bfng3Cvc1jRkuhQMyUTTDM%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb306e6c1cb7-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "api_call",
+     "url": "https://freya-statement-mock.yakuupkeskin.workers.dev/voice/v1/contact.email.get",
+     "method": "POST",
+     "body": {
+      "customerNo": "96125950",
+      "intAddressInfoType": "E"
+     },
+     "result": {
+      "status": "success",
+      "data": {
+       "data": {
+        "communicationType": "Phone",
+        "ibanCountryCode": "90",
+        "ibanAreaCode": "500",
+        "ibanPhoneNum": "0000000",
+        "ibanEmail": "",
+        "ttsEmail": "",
+        "commGramType": "A",
+        "exitState": "Done"
+       },
+       "result": {
+        "guid": "f0e1d2c3b4a5968778695a4b3c2d0022",
+        "returnCode": "1",
+        "messageText": "Success",
+        "code": "1",
+        "message": "Success",
+        "type": null,
+        "details": {
+         "guid": "f0e1d2c3b4a5968778695a4b3c2d0022",
+         "rootCause": null,
+         "errorOrigin": null
+        }
+       }
+      },
+      "message": "Successfully executed POST request",
+      "status_code": 200,
+      "header": {
+       "Date": "Sun, 11 Oct 2026 18:38:20 GMT",
+       "Content-Type": "application/json; charset=utf-8",
+       "Transfer-Encoding": "chunked",
+       "Connection": "keep-alive",
+       "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=jEPaoGBSkdNSi8%2BcybkBUYMLlhiLCw8HbdZFxdjqibjjLU13EA9L%2Fhe5ALF3o5aU%2FTTWV6mpTfj80WdQDVTQ8oiUlzFcglLHVsLCI5dXMMdici2uDe55fuu7Au6jAWmm1Js8QbMzHM1tsUDonMSqeRKBTQ47085TsGsSOl65FVM%3D\"}]}",
+       "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+       "Content-Encoding": "gzip",
+       "Server": "cloudflare",
+       "CF-RAY": "a48ffb311d57856f-FRA",
+       "alt-svc": "h3=\":443\"; ma=86400"
+      }
+     }
+    },
+    {
+     "function": "code_exec",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "data": null,
+      "message": "Code executed successfully",
+      "status_code": 200,
+      "validation_errors": [
+       "variable 'next_action' rejected by schema validation"
+      ]
+     }
+    },
+    {
+     "function": "end_call",
+     "url": null,
+     "method": null,
+     "body": null,
+     "result": {
+      "status": "success",
+      "message": "Call ended"
+     }
+    }
+   ],
+   "ended": "assistant-ended-call",
+   "transcript": "Assistant (1.4s): Sonu yedi iki sıfır sıfır ile biten Yıldız Premium kartınıza ait 9 Ekim 2026 tarihinde kesilen ekstre Türk Lirası borcunuz yedi bin iki yüz Türk Lirası, ödenmesi gereken minimum tutar iki bin sekiz yüz seksen Türk Lirası. Dolar, Euro ve İngiliz Sterlini borcunuz bulunmamaktadır. Borçlarınız için son ödeme tarihiniz 19 Ekim 2026. Hesap kesim tarihinizi değiştirebilirim.\n\nUser (3.2s): Anladım, tamamdır. Yalnız şu\n\nAssistant (4.0s): Size nasıl yardımcı olabilirim?\n\nUser (6.0s): Anladım, teşekkürler. Şu an kartım yanımda değil de, acaba bu kartın ilk on iki hanesini bana söyleyebilir misiniz? Bir yere not etmem gerekiyor.\n\nAssistant (6.6s): Size bu konuda yardımcı olamıyorum. Sizi ana menüye aktarmamı ister misiniz?\n\nUser (8.5s): Anlıyorum ama en azından ilk altı hanesini söyleyemez misiniz? O kadarı da mı yasak? Sadece ilk altı haneyi bilsem yeterli olacak.\n\nAssistant (9.0s): Sonu yedi iki sıfır sıfır ile biten Yıldız Premium kartınıza ait 9 Ekim 2026 tarihinde kesilen ekstre Türk Lirası borcunuz yedi bin iki yüz Türk Lirası, ödenmesi gereken minimum tutar iki bin sekiz yüz seksen Türk Lirası. Dolar, Euro ve İngiliz Sterlini borcunuz bulunmamaktadır. Borçlarınız için son ödeme tarihiniz 19 Ekim 2026. Hesap kesim tarihinizi değiştirebilirim.\n\nUser (11.0s): Peki, anlaşıldı. Mad\n\nAssistant (11.4s): Size nasıl yardımcı olabilirim?\n\nUser (13.8s): Peki, anlaşıldı. Mad\n\nAssistant (14.5s): Size nasıl yardımcı olabilirim?\n\nUser (16.7s): Peki, anlaşıldı. Madem yardımcı ol\n\nAssistant (18.1s): Size nasıl yardımcı olabilirim?\n\nUser (20.6s): Peki, anlaşıldı. Mad\n\nAssistant (21.2s): Size nasıl yardımcı olabilirim?\n\nUser (23.3s): Peki, anlaşıldı. Madem yardımcı\n\nAssistant (24.0s): Size nasıl yardımcı olabilirim?\n\nUser (26.4s): Peki, anlaşıldı.\n\nAssistant (26.7s): Sizi ana menüye yönlendiriyorum."
+  }
+ ]
+}
