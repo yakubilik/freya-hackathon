@@ -304,14 +304,18 @@ def main():
             subprocess.run(["git", "add", "-A", "builder", "tests", "bank"], cwd=ROOT)
             subprocess.run(["git", "commit", "-q", "-m", "Generic fixes from briefs %s round %d (triage agent; runs/night/triage-%s-round%d.md)\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" % (", ".join(group), rnd, tag, rnd)], cwd=ROOT)
             only = {L: (failed_by_L.get(L) or None) for L in tables}
-    # closing check: the public cases of A and B once more on whatever is deployed now
-    for L in ("A", "B"):
-        if L in letters:
-            out_dir = ROOT / "runs" / "loop" / ("%s-final" % L)
-            out_dir.mkdir(parents=True, exist_ok=True)
-            run([PY, "kit/build-the-builder/tools/run_cases.py", PUBLIC[L]["agent"], "--brief", L, "--out", str(out_dir / "public.json")], out_dir / "public.log", timeout=2400)
-            rows = rows_of([out_dir / "public.json"])
-            log("%s final public check: %d / %d" % (L, sum(r["pass"] for r in rows), len(rows)))
+    # closing run (Yakup: "en sonunda da hepsini çalıştırırız"): every case of every brief once more, on what is deployed
+    # at the end, so the final fixes are proven against everything, not only against the brief they came from
+    log("== final run over every brief")
+    final = {}
+    for L in letters:
+        if L not in PUBLIC and not (ROOT / "runs" / "synthetic" / ("build-%s" % L) / "read" / "table.json").exists():
+            continue
+        paths = cases_public(L, 99, None) if L in PUBLIC else cases_synthetic(L, 99, None)
+        rows = rows_of(paths)
+        final[L] = (sum(r["pass"] for r in rows), len(rows), [r["id"] for r in rows if not r["pass"]])
+        log("%s final: %d / %d; failed: %s" % (L, final[L][0], final[L][1], ",".join(final[L][2]) or "-"))
+    (ROOT / "runs" / "loop" / "FINAL.json").write_text(json.dumps(final, indent=1))
     log("== loop done")
 
 
