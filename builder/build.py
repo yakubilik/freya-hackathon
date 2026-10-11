@@ -231,8 +231,18 @@ def canonical_hash(obj):
     return sha256_text(json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
 
 
+GENERIC_STEMS = ("brief", "readme", "index", "main", "doc", "document")
+
+
 def slug(path):
-    s = re.sub(r"[^a-z0-9]+", "-", pathlib.Path(path).stem.lower()).strip("-")
+    """File stem as a slug; a generic stem ("brief.md" inside a directory) takes the directory's name in front so two
+    hidden briefs that are both called brief.md do not export to the same submission/brief.workflow.json."""
+    p = pathlib.Path(path)
+    s = re.sub(r"[^a-z0-9]+", "-", p.stem.lower()).strip("-")
+    if s in GENERIC_STEMS or not s:
+        parent = re.sub(r"[^a-z0-9]+", "-", p.resolve().parent.name.lower()).strip("-")
+        if parent and parent not in GENERIC_STEMS:
+            s = parent + "-" + (s or "brief")
     return s or "brief"
 
 

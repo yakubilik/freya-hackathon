@@ -263,3 +263,14 @@ def test_engine_code_fits_the_code_exec_limit(table_name):
     wf = emit(t, load_api(API_PATH))
     sizes = build.code_sizes(wf)
     assert max(sizes.values()) <= build.CODE_EXEC_MAX, sizes
+
+
+
+def test_slug_of_a_generic_brief_name_takes_the_directory():
+    """Two hidden briefs both called brief.md would export to the same submission/brief.workflow.json (synthetic C..F did
+    on 2026-10-11): the directory name goes in front."""
+    from builder.build import slug
+    assert slug("kit/build-the-builder/briefs/brief-a.md") == "brief-a"
+    assert slug("synthetic/C/brief.md") == "c-brief"
+    assert slug("/tmp/Hidden Brief 2/README.md") == "hidden-brief-2-readme"
+    assert slug("hidden/g.joined.md") == "g-joined"
