@@ -74,6 +74,7 @@ Wire strings are exact. `not_specified` is explicit; no silent defaults.
 `today`, `tomorrow`, `business_days_after(anchor, n)`, `calendar_days_after(anchor, n)`, `next_business_day(d)`, `on_or_next_business_day(d)`,
 `this_weekday(w)`, `next_weekday(w)`, `last_business_day_of_week(d)`, `last_business_day_of_next_week(d)`, `end_of_month(d)`, `deadline`, `deadline - n`,
 `in_window(t, start, end, inclusive)`. Calendar named `default`. Unparseable is a mechanical failure; unevaluable disables the dependent family and marks the capability.
+An expression over a product field named in cents is written in cents: the engine scales the (unit-converted) field back for the evaluation and returns a numeric result in units (2026-10-11, engine-gaps).
 
 **Plan** (addendum): types `party, verify, consent, say, ask, fetch, disclose, negotiate, readback, record, note, close, prompt_only`;
 `transfer` and `callback` are situation fragments. Default plan: `party, verify, fetch, disclose, negotiate, readback, record, note, close`.

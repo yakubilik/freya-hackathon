@@ -344,3 +344,38 @@ def test_dispatcher_matches_the_customer_words_against_the_label_of_a_coded_type
     plain = emit(TABLE_B, api)
     assert observe_item(plain, st, 'the credit card') is None   # the gap: without the map the code never matched
     assert observe_item(plain, st, 'the one ending 4471') == 'p1'
+
+
+# 5. expressions over fields named in cents (synthetic E)
+
+
+def cents_table():
+    """Synthetic E's shape: the account tool returns past_due_cents, the reader wrote bands and floor in cents."""
+    table = copy.deepcopy(TABLE_B)
+    p = table['parameters']
+    p['amounts.floor_expr']['value'] = "min(round(product.past_due_cents * 3 / 10, 100, 'up'), product.past_due_cents)"
+    p['bands']['value'] = [{'id': 'up_to_1000', 'condition': 'product.past_due_cents <= 100000', 'deadline_expr': 'business_days_after(today, 15)', 'attempts': 0},
+                           {'id': 'above_1000', 'condition': 'product.past_due_cents > 100000', 'deadline_expr': 'business_days_after(today, 8)', 'attempts': 0}]
+    return table
+
+
+def normalised(past_due_cents):
+    """A product as the wire normaliser hands it to the engine: the cents field already in units, past_due added."""
+    return dict(product_id='p1', type='term_loan', past_due_cents=past_due_cents / 100.0, past_due=past_due_cents / 100.0, days_late=12)
+
+
+@pytest.mark.parametrize('cents,floor,band', [(84250, 25300, 'up_to_1000'), (250000, 75000, 'above_1000'), (240000, 72000, 'above_1000')])
+def test_expressions_over_cents_fields_are_evaluated_in_cents(cents, floor, band):
+    """E brief: for $2,400.00 the floor is $720.00; above $1,000 the band is the shorter one."""
+    table = cents_table()
+    st = new_state()
+    st['identity']['state'] = 'verified'
+    st['stage'], st['pending'] = 'fetch', 'fetch'
+    st, out = step(st, [event('tool_result', tool='get_account', result='ok', data={'ok': True, 'products': [normalised(cents)]})], table, NOW)
+    assert st['items'][0]['floor'] == floor and st['items'][0]['band'] == band
+    assert not [u for u in out['unsupported'] if u.startswith('expression:')]
+
+
+def test_expressions_over_unit_fields_are_unchanged():
+    st = ready(TABLE_B, 1)
+    assert st['items'][0]['floor'] == 9000 and st['items'][0]['band'] is not None

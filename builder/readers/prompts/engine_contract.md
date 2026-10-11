@@ -35,6 +35,9 @@ no such rule, give the path with `"confidence": "not_specified"` and no `value`,
 - `dates.bare_weekday_rule`: `{"rule": "next_occurrence" | "current_week"}` or not_specified.
 - `dates.numeric_order`: `"month_day_year"` only when the brief says a payment date given as bare numbers ("4/28") is
   month then day; `"day_month_year"` or not_specified otherwise (day first is the default).
+- Amounts in expressions are in the unit the product field uses: over a field named in cents (`product.past_due_cents`)
+  write the expression in cents (`round(product.past_due_cents * 3 / 10, 100, 'up')` is the next whole dollar,
+  `product.past_due_cents <= 100000` is up to 1000 dollars); over a field in units, in units.
 - `amounts.floor_expr`: ONE expression, conditional with `a if cond else b` (never `?:`), e.g.
   `product.<field_a> if product.type == '<type>' else product.<field_b>`.
 - `amounts.range_rule`: `{"min": "floor", "max": "product.<field>", "inclusive": true|false, "below_floor": <text>}`.

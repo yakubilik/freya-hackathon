@@ -254,10 +254,30 @@ def _expr_ctx(C, st, item=None):
     return ctx
 
 
+CENTS_FIELD_RE = re.compile(r"\bproduct\.([A-Za-z_][A-Za-z0-9_]*)")
+
+
 def _eval(C, st, text, item=None):
-    """Evaluate a table expression; None (and an unsupported mark) when it cannot be evaluated."""
+    """Evaluate a table expression; None (and an unsupported mark) when it cannot be evaluated.
+
+    An expression over a product field whose name says cents (`product.past_due_cents <= 100000`,
+    `round(product.past_due_cents * 3 / 10, 100, 'up')`) is written in cents, as the field is; the wire normaliser has
+    already turned the value into units, so those fields go back to cents for the evaluation and a numeric result comes
+    back as units (synthetic E: the floor rounded up to the next hundred dollars and every product fell in the first
+    band, 2026-10-11)."""
     try:
-        return eval_expr(text, _expr_ctx(C, st, item))
+        ctx = _expr_ctx(C, st, item)
+        cents = [n for n in set(CENTS_FIELD_RE.findall(str(text or ""))) if "cents" in n.lower()]
+        if cents and isinstance(ctx.get("product"), dict):
+            prod = dict(ctx["product"])
+            for n in cents:
+                v = prod.get(n)
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    prod[n] = int(round(float(v) * 100))
+            ctx["product"] = prod
+            r = eval_expr(text, ctx)
+            return r / 100.0 if isinstance(r, (int, float)) and not isinstance(r, bool) else r
+        return eval_expr(text, ctx)
     except (ExprError, EvalError, CalendarError, ValueError, TypeError, KeyError):
         _unsupported(C, st, "expression:" + str(text))
         return None
