@@ -1190,7 +1190,8 @@ def _handle_complaint(C, st):
 GOODBYE_RE = re.compile(r"\b(good ?bye|bye( bye)?|that'?s all|that is all|that will be all|that'?ll be all|"
                         r"i (have|need|got) to go( now)?|gotta go|end (the|this) call|talk to you later|"
                         r"have a (good|nice) (day|one|evening))\b")
-IDLE_TURNS_MAX = 3   # replies in a row that answer nothing end the conversation
+IDLE_TURNS_MAX = 6   # replies in a row that answer nothing end the conversation (3 ended talkative customers who were
+                     # still coming to the point, public A 2026-10-11; the platform's own max duration bounds the call)
 
 
 NEGATED_GOODBYE_RE = re.compile(r"\b(not|don'?t|do not|never|no need to|without)\b[^.!?]{0,24}?\b(hang|goodbye|bye|go)\b")
@@ -2498,10 +2499,16 @@ def _render(C, st, out):
             _say(C, st, "pay_today")
             out["what_to_do_next"] = "Ask whether the customer can pay today; never ask how much they can pay."
         elif pending == "offer" and cur is not None and cur.get("offer"):
-            for it in st["items"]:
-                if it["status"] == "open" and it.get("offer"):
-                    _line(C, _offer_text(C, st, it))
-            out["what_to_do_next"] = "Make exactly this proposal and report accept, refuse, or a counter-proposal."
+            if g.get("idle_turns", 0) > 0 and cur["offers_made"]:
+                # the customer talked about something else after the proposal: ask whether they accept the proposal made,
+                # without restating it (a restated minimum counted as a second offer: public A PUB-06 talkative, 2026-10-11)
+                _line(C, "Ask whether the customer accepts the proposal you made; do not repeat the amount or the day.")
+                out["what_to_do_next"] = "Ask whether the proposal is accepted; report accept, refuse, or a counter-proposal."
+            else:
+                for it in st["items"]:
+                    if it["status"] == "open" and it.get("offer"):
+                        _line(C, _offer_text(C, st, it))
+                out["what_to_do_next"] = "Make exactly this proposal and report accept, refuse, or a counter-proposal."
         elif pending == "exact_day" and cur is not None:
             _line(C, "Ask once for the exact day of the payment for the %s." % cur["label"])
             out["what_to_do_next"] = "Ask for the exact day."

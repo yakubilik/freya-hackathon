@@ -2465,3 +2465,25 @@ def test_floor_said_back_without_its_cents_is_the_floor(base):
     says = [o.get("say_next") or "" for _, o in log]
     assert sum(1 for t in says if "637.50" in t and "ropose" in t) == 1
     assert [(p["amount"], p["date"]) for p in led["promises"]] == [(637.5, "2026-10-16")]
+
+
+def test_talkative_customer_is_not_ended_after_three_asides(base):
+    """Public A talkative (2026-10-11): three replies about traffic and work in a row ended the call as declined."""
+    case = CASES["PUB-01"]
+    turns = [[E("party_confirmed")], [E("other", text="Work has been so busy today.")], [E("other", text="The traffic was terrible.")],
+             [E("other", text="My desk is piled high.")], [E("id_answer", text=case["identity"]["date_of_birth"])],
+             [E("other", text="So many calls today.")], [E("id_answer", text=case["identity"]["phone_last4"])],
+             [E("pay_today_yes")], [E("confirm")]]
+    st, led, calls, log = drive(base, case, turns, TABLE_A)
+    assert st["identity"]["state"] == "verified"
+    assert [(p["amount"], p["date"]) for p in led["promises"]] == [(420.0, "2026-10-14")]
+
+
+def test_aside_after_a_floor_offer_does_not_restate_the_minimum(base):
+    case = CASES["PUB-06"]
+    st, led, calls, log = drive(base, case, verified(case) + [[E("too_much")], [E("other", text="My cousin's wedding is on the thirtieth.")],
+                                                              [E("other", text="I have been so busy.")], [E("accept_offer")], [E("confirm")]], TABLE_A)
+    says = [o.get("say_next") or "" for _, o in log]
+    assert sum(1 for t in says if "637.50" in t and "ropose" in t) == 1
+    assert any("accepts the proposal" in t for t in says)
+    assert led["promises"] and led["promises"][0]["amount"] == 637.5
