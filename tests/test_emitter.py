@@ -509,7 +509,66 @@ def test_dispatcher_falls_back_to_the_whole_message_when_words_are_missing(workf
     assert v["identity_raw"] == ""   # cleared with the slots
     v = {"identity_reply1": "id_answer", "identity_words1": "", "identity_reply2": "question_back", "identity_raw": "8864. How much do I owe?", "engine_state": ""}
     exec(code, {"vars": v})
-    assert json.loads(v["engine_events"])[0]["text"] is None   # two replies: the whole message is not one answer
+    # two replies and no words anywhere: the answer still takes the whole message (the digit parser reads "8864" out of
+    # it; without words the question is asked again, synthetic G-02/H-06 2026-10-11)
+    assert json.loads(v["engine_events"])[0]["text"] == "8864. How much do I owe?"
+
+
+def test_dispatcher_gives_a_security_answer_the_words_filed_under_the_aside(workflows):
+    """Synthetic G-02 and H-06 (2026-10-11): identity_reply1 = id_answer with no words, identity_reply2 = other with the
+    words "three three one zero" (or "1993"). The answer takes the aside's words; the aside keeps them."""
+    code = workflows["A"]["nodes"]["identity_observe"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+    v = {"identity_reply1": "id_answer", "identity_words1": "", "identity_reply2": "other", "identity_words2": "three three one zero",
+         "identity_raw": "I have been staring at my screen for hours. The last four digits are three three one zero.", "engine_state": ""}
+    exec(code, {"vars": v})
+    evs = json.loads(v["engine_events"])
+    assert [(e["kind"], e["text"]) for e in evs] == [("id_answer", "three three one zero"), ("other", "three three one zero")]
+    v = {"identity_reply1": "id_answer", "identity_words1": "", "identity_reply2": "other", "identity_words2": "",
+         "identity_raw": "So busy lately. My year of birth is 1993.", "engine_state": ""}
+    exec(code, {"vars": v})
+    assert json.loads(v["engine_events"])[0]["text"] == "So busy lately. My year of birth is 1993."
+    # an answer with its own words keeps them
+    v = {"identity_reply1": "id_answer", "identity_words1": "4051", "identity_reply2": "other", "identity_words2": "the traffic was terrible", "engine_state": ""}
+    exec(code, {"vars": v})
+    assert [(e["kind"], e["text"]) for e in json.loads(v["engine_events"])] == [("id_answer", "4051"), ("other", "the traffic was terrible")]
+
+
+def test_complaint_is_an_extraction_kind_in_every_speaking_stage(workflows):
+    """Synthetic G-05 and J-03: the extractor had no "complaint" value and filed the complaint as a dispute."""
+    for node in ("greeting", "identity", "negotiate", "readback", "callback"):
+        schema = workflows["A"]["nodes"][node]["extraction_schema"]
+        reply = next(f for f in schema if f["name"] == node + "_reply1")
+        assert "complaint" in reply["enum_values"], node
+        assert "complaint:" in reply["description"]
+
+
+def test_close_speech_takes_the_tables_sentence_for_the_unverified_customer(bank, workflows):
+    """Synthetic G-03, H-02, J-05 (2026-10-11): at the identity-failed close the tts said another brief's advice ("use the
+    mobile app or visit a branch") instead of the table's own sentence ("Please call the number on your statement.").
+    The table's wording is spoken when it is a sentence; an instruction-shaped wording keeps the generic one."""
+    from builder.emitter.fragments import close_spoken_for, CLOSE_SPOKEN, _as_sentence
+    assert "app" not in CLOSE_SPOKEN["use_app_or_branch"] and "branch" not in CLOSE_SPOKEN["use_app_or_branch"]
+    assert "questions_protect" not in CLOSE_SPOKEN
+    assert _as_sentence("the customer can visit a branch with identification") == "You can visit a branch with identification."
+    assert _as_sentence("call the number on their statement") == "Call the number on your statement."
+    assert _as_sentence("Please call the number on your statement.") == "Please call the number on your statement."
+    table = copy.deepcopy(TABLE_A)
+    for ph in table["phrases"]:
+        if ph.get("id") == "use_app_or_branch":
+            ph["text"] = "the customer can visit a branch with identification"
+        if ph.get("id") == "promise_recorded":
+            ph["text"] = "confirm the promise is in place, only after the tool returned ok: true"
+    spoken = close_spoken_for(table)
+    assert spoken["use_app_or_branch"] == "You can visit a branch with identification."
+    assert spoken["promise_recorded"] == CLOSE_SPOKEN["promise_recorded"]
+    wf = emit(table, API, variant="test", bank_url=bank)
+    case = PUBLIC["PUB-03"]
+    rec, led = run(bank, {"A": wf, "B": workflows["B"]}, "PUB-03", [[E("party_confirmed")], [E("id_answer", text="1 January 1980")],
+                                                                    [E("id_answer", text="2 January 1980")], [E("id_answer", text="3 January 1980")]])
+    closing = [t["text"] for t in rec["transcript"] if t["role"] == "assistant" and t["node"].startswith("close_")]
+    assert closing and "You can visit a branch with identification." in closing[-1] and "app" not in closing[-1].lower(), closing
+    assert "protect" not in closing[-1].lower()
+    assert led["outcome"] == "not_verified" and led["reason"] == "failed"
 
 
 SYNTH = ROOT / "synthetic"

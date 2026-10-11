@@ -840,6 +840,79 @@ def parse_digits(text, n):
     return res
 
 
+# the two halves of a two-part postcode said one at a time ("SW1A", then "2AA"): each alone is a partial answer
+CODE_PARTIAL_RES = (re.compile(r"^[A-Z]{1,2}[0-9][0-9A-Z]?$"), re.compile(r"^[0-9][A-Z]{2}$"))
+CODE_MIN_LEN = 3   # no postcode or reference anywhere is shorter
+
+
+def _letter_token(tokens, i):
+    """A single letter said as part of a code ("S W one A two A A"): next to another letter, a digit or a digit
+    word, or last; not the pronoun in "I live at 4711"."""
+    t = tokens[i]
+    if len(t) != 1 or not t.isalpha():
+        return False
+    nxt = tokens[i + 1] if i + 1 < len(tokens) else None
+    if nxt is None:
+        return True
+    nl = nxt.lower()
+    return (len(nxt) == 1 and nxt.isalpha()) or nxt.isdigit() or nl in UNITS or nl in TENS or nl in ("oh", "double", "triple") \
+        or any(ch.isdigit() for ch in nxt)
+
+
+def parse_code(text):
+    """An alphanumeric code said aloud (a postcode, a reference): spoken digits become digits ("four seven one one" ->
+    4711, "double four" -> 44, "oh" -> 0), letters said one by one or written in capitals stay ("S W one A two A A"
+    -> SW1A2AA, "SW1A 2AA" -> SW1A2AA), spaces and punctuation go, upper case; a self-correction keeps the last piece.
+    Fewer than three characters, or one half of a two-part postcode, is a partial answer (the customer gives it in
+    pieces, synthetic H-04/J-05 2026-10-11); nothing readable is 'none'."""
+    res = {"status": "none", "value": None}
+    if text is None:
+        return res
+    raw = str(text)
+    segs = _segments(raw)
+    if segs and len(segs) > 1:
+        return parse_code(segs[-1])
+    tokens = re.sub(r"[^\w\s]", " ", raw.replace("\u2019", "'").replace("-", " ")).split()
+    out = ""
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        low = t.lower()
+        if t.isdigit():
+            out += t
+        elif low in ("double", "triple") and i + 1 < len(tokens):
+            nxt = tokens[i + 1]
+            nl = nxt.lower()
+            piece = nxt if (nxt.isdigit() and len(nxt) == 1) else (str(UNITS[nl]) if nl in UNITS and UNITS[nl] < 10
+                                                                  else (nxt.upper() if len(nxt) == 1 and nxt.isalpha() else None))
+            if piece is not None:
+                out += piece * (2 if low == "double" else 3)
+                i += 2
+                continue
+        elif low == "oh":
+            out += "0"
+        elif low in UNITS:
+            out += str(UNITS[low])
+        elif low in TENS:
+            v = TENS[low]
+            if i + 1 < len(tokens) and tokens[i + 1].lower() in UNITS and 0 < UNITS[tokens[i + 1].lower()] < 10:
+                v += UNITS[tokens[i + 1].lower()]
+                i += 1
+            out += str(v)
+        elif any(ch.isdigit() for ch in t):
+            out += t.upper()                     # "SW1A2AA", "SW1A", "2AA"
+        elif t.isalpha() and ((len(t) > 1 and t.isupper()) or _letter_token(tokens, i)):
+            out += t.upper()                     # "SW", or letters one at a time
+        i += 1
+    if not out:
+        return res
+    if len(out) < CODE_MIN_LEN or any(rx.match(out) for rx in CODE_PARTIAL_RES):
+        res["status"], res["value"] = "partial", out
+    else:
+        res["status"], res["value"] = "complete", out
+    return res
+
+
 def parse_year(text):
     s = _norm(str(text or ""))
     m = re.search(r"\b((?:18|19|20)\d{2})\b", s)

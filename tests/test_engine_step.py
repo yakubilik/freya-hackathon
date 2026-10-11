@@ -1934,3 +1934,263 @@ def test_immediate_hardship_transfer_uses_table_policy(verified_customer):
     st, out = step(st, [{"kind": "tool_result", "tool": "transfer_to_agent", "result": "ok",
                         "data": {"ok": True}}], table, now)
     assert [(w["tool"], w["args"]) for w in out["writes"]] == [("close_call", {"outcome": "transferred", "reason": "care"})]
+
+
+# ---------------------------------------------------------------------------------------------
+# synthetic briefs G, H, I, J, round 2 (runs/night/triage-GHIJ-round2.md): generic engine fixes
+
+
+import copy  # noqa: E402
+from datetime import date, datetime  # noqa: E402
+
+
+def _with(table, **params):
+    """A copy of a table with parameters replaced ("notes__reasons" -> "notes.reasons")."""
+    t = copy.deepcopy(table)
+    for key, value in params.items():
+        t["parameters"][key.replace("__", ".")] = {"value": value, "confidence": "quoted"}
+    return t
+
+
+def test_min_and_max_compare_dates_in_table_expressions():
+    """Synthetic I/J: the attempts' date_expr "min(<rule date>, deadline)" raised (min was numeric only), so every
+    refusal exhausted the product at once and no persuasion attempt was made (J-02, J-03, J-04)."""
+    from builder.engine.calendar import eval_expr, make_calendar
+    ctx = {"now": datetime(2026, 11, 4, 11, 0), "cal": make_calendar(["2026-11-11"]), "rules": {}, "deadline": "2026-11-10"}
+    assert eval_expr("min(business_days_after(today, 3), deadline)", ctx) == date(2026, 11, 9)
+    assert eval_expr("min(business_days_after(today, 10), deadline)", ctx) == date(2026, 11, 10)
+    assert eval_expr("max(business_days_after(today, 1), deadline)", ctx) == date(2026, 11, 10)
+    assert eval_expr("min(3, 5)", ctx) == 3 and eval_expr("max(3, 5)", ctx) == 5
+
+
+def test_attempts_whose_date_is_capped_by_the_deadline_are_made(base):
+    table = copy.deepcopy(TABLE_A)
+    a1 = table["parameters"]["attempts"]["value"][0]
+    a1["date_expr"] = "min(%s, deadline)" % a1["date_expr"]
+    expected = {"outcome": "no_promise", "reason": "refused", "promises": [], "notes": [], "callbacks": [], "transfers": []}
+    st, led, calls, log = check(base, "PUB-04", verified(PUBLIC["PUB-04"]) + [[E("pay_today_no")], [E("refuse")], [E("refuse")]],
+                                table=table, expected=expected)
+    assert [o["kind"] for o in st["items"][0]["offers_made"]] == ["attempt", "attempt"]
+    assert not [u for u in st["unsupported"] if u.startswith("expression:") or u.startswith("attempts[")]
+
+
+def test_too_much_said_with_the_no_offers_the_floor_and_uses_no_attempt(base):
+    """Synthetic J-02: "No, the full amount is too much" came as pay_today_no + too_much; the no used the persuasion
+    attempt and the minimum was never offered."""
+    st, led, calls, log = check(base, "PUB-06", verified(PUBLIC["PUB-06"]) + [
+        [E("pay_today_no"), E("too_much")], [E("accept_offer", date="this Friday")], [E("confirm")]])
+    assert [o["kind"] for o in st["items"][0]["offers_made"]] == ["floor"]
+    assert st["items"][0]["attempts_used"] == 0
+
+
+def test_a_day_said_with_the_acceptance_is_the_day_agreed(base):
+    """Synthetic J-02: "yes to the smaller amount, on the 11th" came as accept_offer + date_proposal; the offer's own day
+    was agreed and the day said found nothing open."""
+    st, led, calls, log = check(base, "PUB-06", verified(PUBLIC["PUB-06"]) + [
+        [E("too_much")], [E("accept_offer"), E("date_proposal", date="this Friday")], [E("confirm")]])
+    assert led["promises"][0]["date"] == "2026-10-16"
+
+
+def test_below_the_minimum_on_a_day_after_the_deadline_offers_the_minimum_on_the_deadline(base):
+    """Synthetic G-06: "220 next Tuesday" (below the minimum, after the deadline) got the minimum offered for today; the
+    day is corrected to the deadline, which is named, and the minimum goes on it."""
+    case = PUBLIC["PUB-04"]
+    st, led, calls, log = drive(base, case, verified(case) + [[E("amount_proposal", amount=1, date="Friday 30 October")],
+                                                             [E("accept_offer")], [E("confirm")]], TABLE_A)
+    item = st["items"][0]
+    assert item["offers_made"][0]["kind"] == "floor" and item["offers_made"][0]["date"] == item["deadline"] == "2026-10-23"
+    assert any("latest" in o["say_next"].lower() and "cannot be recorded" in o["say_next"] for _, o in log)
+    assert led["outcome"] == "promise"
+    assert [(x["product_id"], float(x["amount"]), x["date"]) for x in led["promises"]] == [("p1", item["floor"] / 100.0, "2026-10-23")]
+
+
+def test_hardship_event_carrying_the_proposal_values_is_a_proposal(base):
+    """Synthetic G-06: the extractor filed the amount, the day and the product of the proposal under the hardship reply
+    and left the proposal slots empty; the proposal was lost. EXT-084 with the values on the hardship event."""
+    case = EXTENDED["EXT-084"]
+    st, led, calls, log = check(base, "EXT-084", verified(case) + [[E("hardship", amount=200, date="Friday 16 October",
+                                                                       text="I lost my job but can still pay 200 on Friday 16 October")],
+                                                                    [E("refuse")], [E("confirm")]])
+    assert st["items"][0]["attempts_used"] == 0
+
+
+def test_declined_support_keeps_the_minimum_offered_for_the_customers_own_figure(base):
+    """Synthetic G-06: after the support offer was declined every open item was noted as hardship, including the one
+    whose minimum had just been offered in answer to the customer's own (too low) figure. That offer is not persuasion
+    and stays; the customer accepts it and the promise is recorded."""
+    case = PUBLIC["PUB-05"]
+    st, led, calls, log = drive(base, case, verified(case) + [
+        [E("hardship", amount=1, date="Friday 30 October", text="my wife passed away, I can only do one pound on Friday 30 October")],
+        [E("dont_want_to_talk", text="I do not want to be transferred.")], [E("accept_offer")], [E("confirm")]], TABLE_A)
+    item = st["items"][0]
+    assert led["outcome"] == "promise"
+    assert [(x["product_id"], float(x["amount"]), x["date"]) for x in led["promises"]] == [("p1", item["floor"] / 100.0, "2026-10-23")]
+    assert tools_of(calls)[-2:] == ["create_promise", "close_call"]
+    assert sum(1 for _, o in log if "customer support team" in o["say_next"]) == 1
+    # a declined offer with nothing on the table still closes as hardship (brief A rule 32)
+    check(base, "EXT-083", verified(EXTENDED["EXT-083"]) + [[E("hardship")], [E("refuse")]])
+
+
+def test_a_dispute_that_ends_the_call_notes_only_the_disputed_product(base):
+    """Synthetic H-05: a dispute without a per-product continue rule noted every product as disputed and the bank refused
+    the engine's canonical reason. Only the disputed product gets the note; the others are not negotiated."""
+    table = copy.deepcopy(TABLE_B)
+    table["parameters"]["situations"]["value"]["dispute"].pop("multi")
+    case = PUBLIC["PUB-12"]
+    expected = {"outcome": "no_promise", "reason": "dispute", "promises": [], "notes": [{"product_id": "p1", "reason": "dispute"}],
+                "callbacks": [], "transfers": []}
+    check(base, "PUB-12", verified(case) + [[E("dispute", item="p1", text="that card is not mine")]], table=table, expected=expected)
+    # no product named, a payment proposed for the other one in the same breath: the dispute is about the rest
+    two = copy.deepcopy(case)
+    two["products"] = two["products"][:2]
+    st, led, calls, log = drive(base, two, verified(two) + [[E("dispute", item="p2", date="this Friday",
+                                                                text="I closed that card years ago. I can pay the loan in full on Friday."),
+                                                             E("date_proposal")]], table)
+    assert [(n["product_id"], n["reason"]) for n in led["notes"]] == [("p1", "dispute")]
+    assert led["outcome"] == "no_promise" and led["reason"] == "dispute"
+
+
+def test_note_reasons_are_sent_in_the_tables_own_codes():
+    """Synthetic G-06 (HARD), G-02 (REF), H-05 (already_closed): the engine wrote its canonical reason names and the bank
+    answered "unknown reason". The table's code list decides the value."""
+    table = _with(TABLE_B, notes__reasons=["REF", "HARD", "DISP", "PAID", "ERR"])
+    table["parameters"]["situations"]["value"]["dispute"]["multi"]["note"] = "DISP"
+    C = engine._context(table, "2026-10-14T11:00")
+    st = new_state()
+    for canonical, wire in (("refused", "REF"), ("hardship", "HARD"), ("dispute", "DISP"), ("paid", "PAID"), ("service_error", "ERR"), ("REF", "REF")):
+        assert engine._wire_reason(C, st, canonical) == wire, canonical
+    finer = _with(TABLE_B, notes__reasons=["refused", "hardship", "paid", "failed", "not_mine", "already_closed", "amount_wrong"])
+    finer["parameters"]["situations"]["value"]["service_error"]["note"] = "failed"
+    C = engine._context(finer, "2026-10-14T11:00")
+    assert engine._wire_reason(C, st, "dispute", "I closed that credit card years ago and it cannot be mine") == "already_closed"
+    assert engine._wire_reason(C, st, "dispute", "that loan is not mine, I never had one") == "not_mine"
+    assert engine._wire_reason(C, st, "dispute", "the amount is wrong") == "amount_wrong"
+    assert engine._wire_reason(C, st, "service_error") == "failed"      # the situation's own note
+    plain = engine._context(TABLE_A, "2026-10-14T11:00")
+    assert engine._wire_reason(plain, st, "refused") == "refused"       # no code list: the canonical name
+
+
+def test_refusal_notes_reach_the_bank_as_the_tables_code(base):
+    table = _with(TABLE_B, notes__reasons=["REF", "HARD", "DISP", "PAID", "ERR"])
+    case = PUBLIC["PUB-12"]
+    st, led, calls, log = drive(base, case, verified(case) + [[E("pay_today_no")]] + [[E("refuse")]] * 6, table)
+    notes = [(a["product_id"], a["reason"]) for t, a, _, _ in calls if t == "add_note"]
+    assert notes[:1] == [("p1", "REF")] and all(r == "REF" for _, r in notes), notes
+    assert st["items"][0]["noted"] == {"reason": "REF", "canonical": "refused", "text": None}
+
+
+def test_complaint_transfers_to_the_tables_complaints_queue(base):
+    """Synthetic G-05 and J-03: the engine had no complaint event; "I want to make a formal complaint" was filed as a
+    dispute (G) or a refusal to answer (J) and collection went on. The table's complaint situation names the queue;
+    it applies before and after verification and nothing else in the reply is acted on."""
+    table = copy.deepcopy(TABLE_A)
+    table["parameters"]["situations"]["value"]["complaint"] = {"transfer_queue": "support", "close": ["transferred", "support"]}
+    expected = {"outcome": "transferred", "reason": "support", "promises": [], "notes": [], "callbacks": [], "transfers": [{"queue": "support"}]}
+    case = PUBLIC["PUB-01"]
+    st, led, calls, log = check(base, "PUB-01", verified(case) + [[E("complaint", text="I want to make a complaint")]], table=table, expected=expected)
+    assert tools_of(calls)[-2:] == ["transfer_to_agent", "close_call"]
+    # before verification
+    st, led, calls, log = check(base, "PUB-01", [[E("party_confirmed")], [E("complaint")]], table=table, expected=expected)
+    assert tools_of(calls) == ["transfer_to_agent", "close_call"]
+    # the words decide when the extractor filed it under another kind; a negation does not
+    st, led, calls, log = check(base, "PUB-01", verified(case) + [[E("dispute", text="Those charges are wrong and I want to make a formal complaint. How do I go about doing that?"), E("question_back")]],
+                                table=table, expected=expected)
+    disputed = {"outcome": "no_promise", "reason": "dispute", "promises": [], "notes": [], "callbacks": [], "transfers": []}
+    check(base, "PUB-01", verified(case) + [[E("dispute", text="I am not complaining, that card is simply not mine")]], table=table, expected=disputed)
+    # without a complaint rule in the table the reply is an aside and the call goes on
+    st, led, calls, log = drive(base, case, verified(case) + [[E("complaint", text="I want to complain")]], TABLE_A)
+    assert not st["closed"] and st["stage"] == "negotiate"
+
+
+def test_hardship_with_an_explicit_null_offer_transfers_at_once(base):
+    """Synthetic H-06: the reader wrote "offer": null for a brief that transfers hardship customers without asking; the
+    engine knew only "none" and asked the question."""
+    table = copy.deepcopy(TABLE_A)
+    table["parameters"]["situations"]["value"]["hardship"]["offer"] = None
+    table["parameters"]["situations"]["value"]["hardship"]["voluntary_promise"] = "drop"
+    expected = {"outcome": "transferred", "reason": "support", "promises": [], "notes": [], "callbacks": [], "transfers": [{"queue": "support"}]}
+    case = EXTENDED["EXT-084"]
+    st, led, calls, log = check(base, "EXT-084", verified(case) + [[E("hardship", amount=200, date="Friday 16 October", text="I lost my job but can pay 200 on Friday")]],
+                                table=table, expected=expected)
+    assert tools_of(calls)[-2:] == ["transfer_to_agent", "close_call"]
+    assert not any("support team" in o["say_next"] and "?" in o["say_next"] for _, o in log)
+
+
+def test_code_answers_said_aloud_are_joined_and_split_answers_completed(base):
+    """Synthetic H-02, H-04, J-05: a postcode given as "three zero one one", or in two pieces ("eight one" then "four
+    two", "LL57." then "1UP."), was sent as said and counted wrong; "LL57." went out with its full stop."""
+    from builder.engine.dates import parse_code
+    assert parse_code("three zero one one.") == {"status": "complete", "value": "3011"}
+    assert parse_code("eight one.") == {"status": "partial", "value": "81"}
+    assert parse_code("eight one four two") == {"status": "complete", "value": "8142"}
+    assert parse_code("LL57.") == {"status": "partial", "value": "LL57"}
+    assert parse_code("1UP.") == {"status": "partial", "value": "1UP"}
+    assert parse_code("LL57. 1UP.") == {"status": "complete", "value": "LL571UP"}
+    assert parse_code("C F one zero three A T.") == {"status": "complete", "value": "CF103AT"}
+    assert parse_code("My postcode is 6003.") == {"status": "complete", "value": "6003"}
+    assert parse_code("I live at 8142") == {"status": "complete", "value": "8142"}
+    assert parse_code("AB10 1XY") == {"status": "complete", "value": "AB101XY"}
+    assert parse_code("eight one, sorry, eight two four two") == {"status": "complete", "value": "8242"}
+    assert parse_code("no idea") == {"status": "none", "value": None}
+    q = {"id": "postcode", "type": "text", "text": "your postcode", "parse_rule": "upper case without spaces"}
+    assert engine._parse_answer(q, "L L five seven.") == ("partial", "LL57")
+    assert engine._parse_answer({"id": "mothers_maiden_name", "type": "text", "text": "your mother's maiden name"}, "Van Dyke.") == ("complete", "Van Dyke")
+    table = copy.deepcopy(TABLE_A)
+    table["parameters"]["identity.questions"]["value"][1] = {"id": "postcode", "wire_field": "postcode", "type": "text", "order": 2,
+                                                             "text": "the postcode of the registered address",
+                                                             "parse_rule": "join spoken digits, strip spaces and punctuation, upper case"}
+    case = PUBLIC["PUB-01"]
+    st, led, calls, log = drive(base, case, [[E("party_confirmed")], [E("id_answer", text=case["identity"]["date_of_birth"])],
+                                             [E("id_answer", text="L L five seven.")], [E("id_answer", text="one U P.")]], table)
+    sent = [a for t, a, _, _ in calls if t == "verify_identity" and a.get("field") == "postcode"]
+    assert sent == [{"field": "postcode", "answer": "LL571UP"}]
+    assert any(o["engine_next"] == "identity" and "rest of the answer" in o["say_next"] for _, o in log)
+
+
+def test_no_confirmation_sentence_is_invented_when_the_table_has_none(base):
+    """Synthetic J-01: the brief withdrew the text-message sentence with no replacement; the engine's fallback said one."""
+    table = copy.deepcopy(TABLE_A)
+    table["phrases"] = [p for p in table["phrases"] if p.get("id") != "text_message"]
+    case = PUBLIC["PUB-01"]
+    st, led, calls, log = check(base, "PUB-01", verified(case) + [[E("pay_today_yes")], [E("confirm")]], table=table)
+    spoken = " ".join(o["say_next"] + " " + " ".join(o["mandatory_lines"]) for _, o in log)
+    assert "text message" not in spoken.lower()
+    assert "recorded" in spoken
+
+
+def test_second_ask_for_the_customer_is_the_same_question(base):
+    """Synthetic H-01: on the second ask the model asked for an account number."""
+    case = PUBLIC["PUB-01"]
+    st, led, calls, log = drive(base, case, [[E("other", text="Go ahead.")]], TABLE_A)
+    assert st["party_asks"] == 2
+    assert "Ask once more" in log[-1][1]["say_next"] and case["variables"]["last_name"] in log[-1][1]["say_next"]
+    assert "account" in log[-1][1]["say_next"] and "name no account" in log[-1][1]["say_next"]
+
+
+def test_amounts_carry_the_tables_currency_word(base):
+    """Synthetic G-01: the engine's lines gave bare numbers and the model said "dollars" for a pounds brief."""
+    assert engine._currency_word("pounds sterling, spoken in words") == "pounds"
+    assert engine._currency_word("Currency is the euro") == "euros"
+    assert engine._currency_word("US dollars as strings") == "dollars"
+    assert engine._currency_word(None) == "" and engine._currency_word("") == ""
+    table = _with(TABLE_A, amounts__currency="pounds sterling, spoken in words")
+    case = PUBLIC["PUB-01"]
+    st, led, calls, log = check(base, "PUB-01", verified(case) + [[E("pay_today_yes")], [E("confirm")]], table=table)
+    assert any("420 pounds past due" in o["say_next"] for _, o in log)
+    assert any("420 pounds on" in o["readback_text"] for _, o in log)
+    st, led, calls, log = drive(base, case, verified(case), TABLE_A)
+    assert any("420 past due" in o["say_next"] for _, o in log)       # no currency in the table: the bare number
+
+
+def test_exhausted_under_hardship_is_a_hardship_note():
+    table = TABLE_B
+    C = engine._context(table, "2026-10-14T11:00")
+    st = new_state()
+    engine._build_items(C, st, [{"product_id": "p1", "type": "personal_loan", "past_due": 500, "days_late": 20, "instalment_amount": 100}])
+    st["global"]["hardship"] = True
+    engine._exhaust(C, st, st["items"][0])
+    assert st["items"][0]["noted"]["canonical"] == "hardship"
+    st = new_state()
+    engine._build_items(C, st, [{"product_id": "p1", "type": "personal_loan", "past_due": 500, "days_late": 20, "instalment_amount": 100}])
+    engine._exhaust(C, st, st["items"][0])
+    assert st["items"][0]["noted"]["canonical"] == "refused"

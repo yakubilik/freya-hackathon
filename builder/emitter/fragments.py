@@ -45,7 +45,7 @@ ENGINE_ARGS = {"verify_identity": ["field", "answer"], "get_account": [], "creat
 CLOSE_TOOL = "close_call"
 ENGINE_MARKER = "Freya call engine, rendered by builder/engine/snippet.py"
 
-COMMON_KINDS = ["question_back", "robot_question", "scam_question", "human", "hardship", "dont_want_to_talk", "other"]
+COMMON_KINDS = ["question_back", "robot_question", "scam_question", "human", "hardship", "complaint", "dont_want_to_talk", "other"]
 STAGE_KINDS = {
     "party": ["party_confirmed", "party_other", "party_wrong_number", "party_deceased", "callback_offer"] + COMMON_KINDS,
     "callback": ["callback_offer", "party_confirmed", "party_wrong_number", "party_deceased"] + COMMON_KINDS,
@@ -89,6 +89,7 @@ KIND_HELP = {
     "scam_question": "asks whether this is a scam",
     "human": "asks to speak to a person",
     "hardship": "mentions a hardship: illness, a death in the family, job loss",
+    "complaint": "says they want to make a complaint or are going to complain, or asks how to complain",
     "dont_want_to_talk": "says they do not want to talk",
     "other": "anything else, including small talk, greetings and unclear replies",
 }
@@ -121,11 +122,52 @@ CLOSE_SPOKEN = {
     "change_in_app": "A recorded promise cannot be changed in this call; it can be changed in the mobile app.",
     "sympathy": "I am sorry to hear that.",
     "no_information": "I do not have that information.",
-    "use_app_or_branch": "I could not verify your identity, so I cannot go further on this call. Please use the mobile app or visit a branch.",
-    "questions_protect": "The security questions protect your account.",
+    "use_app_or_branch": "I could not verify your identity, so I cannot go further on this call.",
     "system_unavailable": "I am sorry, the system is unavailable right now.",
     "request_noted": "Your request has been noted.",
 }
+# content phrases whose table wording is spoken at the close when it is a sentence (the table's own words for where an
+# unverified customer should turn, "Please call the number on your statement.", not another brief's app-or-branch
+# advice: synthetic G-03/H-02/J-05, 2026-10-11); an instruction-shaped wording ("confirm the promise is in place") keeps
+# the generic sentence above
+CLOSE_FROM_TABLE = ("use_app_or_branch", "promise_recorded", "text_message", "rest_overdue", "paid_takes_day", "change_in_app",
+                    "could_not_record", "no_information", "system_unavailable", "request_noted")
+INSTRUCTION_START_RE = re.compile(r"^(say|tell|ask|offer|explain|state|mention|confirm|acknowledge|one (short )?sentence|"
+                                  r"the (customer|caller) (is|was) told)\b", re.I)
+
+
+def _as_sentence(text):
+    """A table phrase written for the customer, as a sentence the tts can say: "the customer can visit a branch with
+    identification" -> "You can visit a branch with identification."; "call the number on their statement" ->
+    "Call the number on your statement."."""
+    t = re.sub(r"\s+", " ", str(text or "")).strip().strip('"').strip()
+    if not t:
+        return ""
+    t = re.sub(r"^(the customer|the caller|they)\s+(can|should|may|must|will|could)\s+", lambda m: "You " + m.group(2) + " ", t, flags=re.I)
+    t = re.sub(r"\btheir\b", "your", t)
+    t = re.sub(r"\bthemselves\b", "yourself", t)
+    t = re.sub(r"\bthem\b", "you", t)
+    t = t[0].upper() + t[1:]
+    if t[-1] not in ".!?":
+        t += "."
+    return t
+
+
+def close_spoken_for(table):
+    """CLOSE_SPOKEN with the table's own sentence wherever it has one for a phrase the close may speak."""
+    out = dict(CLOSE_SPOKEN)
+    for ph in (table or {}).get("phrases") or []:
+        if not isinstance(ph, dict) or ph.get("kind") != "mandatory" or ph.get("exact"):
+            continue
+        pid, text = ph.get("id"), str(ph.get("text") or "").strip()
+        if pid not in CLOSE_FROM_TABLE or not text or "{" in text or INSTRUCTION_START_RE.match(text):
+            continue
+        sentence = _as_sentence(text)
+        if sentence:
+            out[pid] = sentence
+    return out
+
+
 TAIL_PREFIX = "Finish your message with exactly these words:"
 GOODBYE = "Thank you, goodbye."
 REPEAT = "Ask the customer to repeat what they said."
@@ -169,6 +211,7 @@ SYSTEM_PROMPT = (
     "records when the customer will pay.\n"
     "- Never offer a reduction, a waiver, an arrangement or any term your current step does not give you.\n"
     "- If asked something your step does not answer, say you do not have that information.\n"
+    "- Say amounts exactly as the step gives them; never add a currency the step does not name.\n"
     "- No tool call is allowed. Never end a turn with nothing.")
 
 
@@ -558,6 +601,18 @@ try:
                     if not kinds[j] and vals[j][f]:
                         vals[i][f], vals[j][f] = vals[j][f], ''
                         break
+    # a security answer whose words were filed under the aside said with it (identity_reply1 = id_answer without words,
+    # identity_reply2 = other with words "four seven one one"; synthetic G-02/H-06, 2026-10-11): the answer takes those
+    # words, else the whole message. The parser and the bank decide whether they hold the answer; without words the
+    # question is asked again and a talkative customer never repeats the digits.
+    for i in range(n):
+        if kinds[i] == 'id_answer' and not vals[i]['words']:
+            for j in range(n):
+                if j != i and kinds[j] in ('other', 'question_back', 'robot_question', 'scam_question') and vals[j]['words']:
+                    vals[i]['words'] = vals[j]['words']
+                    break
+            if not vals[i]['words']:
+                vals[i]['words'] = _ob_val(_RAW)
     evs = []
     for kind, v in [(kinds[i], vals[i]) for i in range(n)] + extra:
         if not kind:
@@ -961,7 +1016,7 @@ except Exception:
 def engine_node(ctx, snippet, routes):
     """The single engine code node: snapshot of vars, the engine snippet, the emitter epilogue; routes on engine_next."""
     cfg = {"stages": [s for s in ctx.stages], "first_stage": "party", "goodbye": GOODBYE, "repeat": REPEAT,
-           "head_prefix": HEAD_PREFIX, "tail_prefix": TAIL_PREFIX, "close_spoken": CLOSE_SPOKEN, "close_tool": CLOSE_TOOL, "write_stage": {t: WRITE_STAGE[t] for t in ctx.write_tools},
+           "head_prefix": HEAD_PREFIX, "tail_prefix": TAIL_PREFIX, "close_spoken": close_spoken_for(ctx.table), "close_tool": CLOSE_TOOL, "write_stage": {t: WRITE_STAGE[t] for t in ctx.write_tools},
            "write_vars": {t: {k: write_var(t, ctx.field_map.get(t, {}).get(k, k)) for k in ENGINE_ARGS[t] if ctx.field_map.get(t, {}).get(k, k)} for t in ctx.write_tools}}
     cfg["write_types"] = {t: {k: (ctx.api["tools"][t].get("request_fields", {}).get(
         ctx.field_map.get(t, {}).get(k, k), {}) or {}).get("type") for k in ENGINE_ARGS[t]}
