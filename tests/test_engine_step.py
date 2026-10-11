@@ -1078,9 +1078,10 @@ def test_goodbye_from_a_third_party_closes_without_a_callback(base):
     check(base, "PUB-02", [[E("party_other")], [E("other", text="I have to go, goodbye.")]], expected=expect("not_reached", "no_callback"))
 
 
-def test_three_replies_that_answer_nothing_end_the_conversation(base):
-    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("other", text="Hmm.")], [E("other")], [E("other", text="Right.")]],
-                                expected=expect("no_promise", "refused"))
+def test_six_replies_that_answer_nothing_end_the_conversation(base):
+    """Six since 2026-10-11 (three ended talkative customers still coming to the point); see IDLE_TURNS_MAX."""
+    idle = [[E("other", text="Hmm.")], [E("other")], [E("other", text="Right.")]] * 2
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + idle, expected=expect("no_promise", "refused"))
     assert not speaking_silent(log)
 
 
