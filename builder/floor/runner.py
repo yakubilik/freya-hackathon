@@ -157,13 +157,22 @@ def record():
         with open(run["sims_log"], "a") as f:
             f.write(json.dumps(row) + "\n")
 try:
-    sim = freya.api("POST", "/api/v2/simulations", {
-        "agentId": state["agent_id"], "name": "floor sim %d %s" % (n, time.strftime("%H:%M:%S")), "mode": "chat",
-        "selectedPersonaIds": list(ids.values()),
-        "customerVariablesMap": {ids[c["name"]]: c.get("variables", {}) for c in callers},
-        "maxConcurrentCalls": max(1, len(callers)), "runsPerPersona": 1, "maxCallDurationSeconds": 180,
-        "assistantLlmOverride": freya.AGENT_LLM, "routingLlmOverride": freya.AGENT_LLM,
-        "extractionLlmOverride": freya.AGENT_LLM, "personaLlmOverride": freya.SIM_LLM, "analysisLlmOverride": freya.SIM_LLM})
+    while True:
+        # the workspace runs one simulation at a time and refuses a second one: wait for the slot while time allows
+        try:
+            sim = freya.api("POST", "/api/v2/simulations", {
+                "agentId": state["agent_id"], "name": "floor sim %d %s" % (n, time.strftime("%H:%M:%S")), "mode": "chat",
+                "selectedPersonaIds": list(ids.values()),
+                "customerVariablesMap": {ids[c["name"]]: c.get("variables", {}) for c in callers},
+                "maxConcurrentCalls": max(1, len(callers)), "runsPerPersona": 1, "maxCallDurationSeconds": 180,
+                "assistantLlmOverride": freya.AGENT_LLM, "routingLlmOverride": freya.AGENT_LLM,
+                "extractionLlmOverride": freya.AGENT_LLM, "personaLlmOverride": freya.SIM_LLM, "analysisLlmOverride": freya.SIM_LLM})
+            break
+        except Exception as e:
+            if "concurrent" not in str(e) or left() < SIM_S + SAVE_S + 20:
+                raise
+            print("another simulation is running in the workspace; waiting 20 s", flush=True)
+            time.sleep(20)
     sim_id = row["simulation_id"] = (sim.get("simulation") or sim)["id"]
     stop = time.time() + min(SIM_S, left() - SAVE_S)
     status = None
