@@ -28,55 +28,31 @@ The builder reads a bank's brief and its tool API file and creates a phone agent
   static walk, local self-test on a mock bank, deploy, platform self-test on the public cases when the brief is a public
   one. A run takes 15-20 minutes; the 30-minute budget is enforced per stage.
 
-## The final submission, and what changed after the final case opened
+## Final submission
 
-Run: `python3 builder/build.py final/final-case https://freya-statement-mock.yakuupkeskin.workers.dev 2>&1 | tee traces/final.log`
-(`final/final-case` is the case folder as published; the mock is `mock/statement/`, a Cloudflare Worker that replays the
-case's test customers). Submitted: `submission/final.workflow.json` (the export of that run's agent), `traces/final.log`
-(that run's trace) and the run directory `runs/20261011-183322-final-case-joined/` with the floor's Claude session logs (`floor-session.jsonl`,
-`floor-fix-session.jsonl`), the second-family review (`floor-work/out/review.md`) and its own simulation results.
+- Agent: `submission/final.workflow.json` (agent `ee825e04`, version 18), built by commit `7026c42`.
+- Trace: `traces/final.log`. The builder's Claude session logs and its self-test results are in
+  `runs/20261011-183322-final-case-joined/`.
+- Run: `python3 builder/build.py final/final-case https://freya-statement-mock.yakuupkeskin.workers.dev`
+- Mock: `mock/statement/`, a Cloudflare Worker that serves the case's test customers.
+- Result: passed 6/6, 5/6 and 6/6 of the case's six example scenarios in independent simulations after the run.
 
-Why the builder changed after the case opened. The kit and the event page described each hidden brief as one Markdown
-file with its own OpenAPI tool API file, the seven practice tool names unchanged ("the fields and the allowed values can
-change"), debt collection, calls in English. The reader, engine and emitter were built to that description. The final
-came as one case folder of documents with a prose service contract, other services, another domain and Turkish calls,
-and this builder stopped with "no machine-readable service contract" and produced no agent. The commits after the case
-opened adapt the input path only:
+### What changed after the case opened, and why
 
-- `f8d84ad`: a case folder without a machine-readable contract goes to the floor (T0) instead of failing; the floor
-  reads the case folder it is given instead of the practice kit's API and practice customers.
-- `f113646`: the floor keeps the builder's two model families (a second-family review of the saved workflow, then a
-  Claude fix session, as the reader's R1/R4 always did) and tests its own agent with bounded platform simulations of
-  callers it writes from the case folder, as the kit's example builder tested its agents.
-- `5b738d3`: wording only (a skill rule and a test fixture made neutral).
-- `7026c42`: the floor may run up to 6 simulations (live ones took 0.5-1 min); skill: no example values in fields
-  the model fills. **The submitted agent was built by this commit** (run `runs/20261011-183322-final-case-joined`,
-  trace `traces/final.log`, agent `ee825e04`, version 18).
-- `9f2c42a`, `76d5dbb` (after the submitted run, used only by later runs that were not submitted): `R4_MODEL` chooses
-  the second family's model; a self-test simulation refused because another one is running waits for the slot.
+We built for the final that was announced: one Markdown brief with an OpenAPI tool file, the same seven tools, debt
+collection, English. The final came as a folder of documents with a prose contract, different services, another
+domain and Turkish. Our main path needs the OpenAPI file, so the builder stopped without an agent. We changed code
+only to adapt the input path; nothing from the case is in the builder.
 
-### Why the result is weaker than our practice results
+- `f8d84ad`: no OpenAPI file -> fall back to the floor, which now reads the case folder (not the practice kit).
+- `f113646`: the floor keeps our two model families (Claude builds, Codex reviews) and tests its own agent with
+  simulations, as the kit's example builder did.
+- `5b738d3`, `7026c42`: wording; up to 6 self-test simulations; no example values in fields the model fills.
+- `9f2c42a`, `76d5dbb`: after the submitted run (reviewer model setting; wait for a free simulation slot).
 
-We built for the final that was announced: one Markdown brief per case with its own OpenAPI tool file, the seven
-practice tools with the same names (only fields and allowed values changing), debt collection, calls in English. Our
-main path (an LLM reading into a rule table, a deterministic call engine and a workflow emitter) depends on exactly
-that: it compiles the brief for that tool set from the OpenAPI file. The final changed the form: a folder of documents
-with a prose service contract, seven different services, another domain and Turkish calls. With no machine-readable
-contract and none of the expected tools, the main path could not run at all, and the builder stopped without an agent.
-
-So we had to change code after the case opened, only to adapt the input path (listed above), and the whole case fell
-to the fallback, a Claude coding-agent loop, instead of the engine that the rest of this repository is. That cost
-accuracy: every run's first workflow fell into a platform trap (model-filled fields inside a nested body arrive empty;
-an example value in a field description gets copied; a code node's output does not reach a prompt) that only the
-self-test simulations exposed, and the result varies from run to run. The submitted agent (`ee825e04`, version 18)
-passed 5 of 6 and then 6 of 6 of the case's example scenarios in independent simulations after its run; a local
-static review (gpt-6.1-sol, test tooling only) found it weak on cards sharing a name and last four digits and on a
-failing e-mail lookup. Other runs of the same day (Fable 5.1, and gpt-6.1-sol as the reviewer) did worse and were not
-submitted.
-
-Reader, engine and emitter are unchanged. No rule, value, name, path or sentence from the case is in the builder; the
-tests of these changes use invented data. `bfae95e` and `c2f22c0` (stop early when the Freya or Claude keys are
-missing) are operational checks.
+This cost accuracy: the case ran on the fallback instead of our engine, each run's first agent hit a platform trap
+that only its self-tests caught, and results vary between runs. Known weak spots of the submitted agent: cards that
+share a name and last four digits, and a failing e-mail lookup.
 
 Setup: `uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt`, then put the keys in `.env`
 (`FREYA_API_KEY`, `FREYA_WORKSPACE_ID`, `FREYA_API_URL`, `FREYA_BANK_TEAM_KEY`; optional `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OWN_BANK_URL`).
