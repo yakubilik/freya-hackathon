@@ -1,0 +1,272 @@
+[
+ {
+  "id": "F-01",
+  "brief": "F",
+  "family": "Dates",
+  "level": "medium",
+  "title": "'Next Friday' is after the limit; date of birth as 'fourteen oh three eighty-eight'",
+  "variables": {
+   "first_name": "Clara",
+   "last_name": "Weiss",
+   "title": "Ms",
+   "now": "2026-10-27T11:00"
+  },
+  "identity": {
+   "date_of_birth": "1988-03-14"
+  },
+  "products": [
+   {
+    "type": "card",
+    "card_last4": "5566",
+    "past_due": 210.0,
+    "days_late": 12,
+    "monthly_instalment": 40.0
+   }
+  ],
+  "script": "Confirms the name. Gives her date of birth as 'fourteen oh three eighty-eight'. Asked whether she can pay today, says no, but she can pay in full 'next Friday'. Accepts the latest date when it is offered. Confirms.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 210.0,
+     "date": "2026-10-30"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the exact opening sentence is said",
+   "verify_identity called with birth_date 1988-03-14",
+   "next Friday, 6 November, is refused as after the limit and Friday 30 October is offered",
+   "promise of 210 euros on 30 October; the text message sentence is said"
+  ],
+  "style": "in_words"
+ },
+ {
+  "id": "F-02",
+  "brief": "F",
+  "family": "Refusal",
+  "level": "hard",
+  "title": "Fewer than three working days left in the month; 'I will have to see'",
+  "variables": {
+   "first_name": "Jonas",
+   "last_name": "Berger",
+   "title": "Mr",
+   "now": "2026-10-29T18:30"
+  },
+  "identity": {
+   "date_of_birth": "1979-07-02"
+  },
+  "products": [
+   {
+    "type": "consumer_loan",
+    "past_due": 180.0,
+    "days_late": 8,
+    "monthly_instalment": 60.0
+   }
+  ],
+  "script": "Verified. Asked whether he can pay today, says only 'I will have to see'. Accepts the proposal of the smaller amount on the date the robot names. Confirms.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 60.0,
+     "date": "2026-11-30"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "'I will have to see' is treated as a refusal and uses the single try",
+   "the try proposes the minimum of 60 euros on Monday 30 November, the last working day of next month",
+   "no proposal of 30 October, which is inside this month",
+   "exactly one promise: 60 euros on 30 November"
+  ],
+  "style": "talkative"
+ },
+ {
+  "id": "F-03",
+  "brief": "F",
+  "family": "Third party",
+  "level": "medium",
+  "title": "Son answers on a Saturday, first time outside the window",
+  "variables": {
+   "first_name": "Petra",
+   "last_name": "Kessler",
+   "title": "Ms",
+   "now": "2026-11-07T10:00"
+  },
+  "identity": {
+   "date_of_birth": "1965-11-23"
+  },
+  "products": [
+   {
+    "type": "auto_loan",
+    "past_due": 540.0,
+    "days_late": 20,
+    "monthly_instalment": 180.0
+   }
+  ],
+  "script": "The person who answers is her son. Says his mother is at work; suggests 'Monday at nine'. If that is not possible, says 'Monday at eleven then'.",
+  "expected": {
+   "outcome": "not_reached",
+   "reason": "callback",
+   "promises": [],
+   "notes": [],
+   "callbacks": [
+    {
+     "date": "2026-11-09",
+     "time": "11:00"
+    }
+   ],
+   "transfers": []
+  },
+  "checks": [
+   "nothing about the reason for the call is said",
+   "Monday at nine is refused as outside ten to six, and one more time is asked",
+   "callback booked for Monday 9 November at 11:00, not for Sunday",
+   "close_call not_reached / callback"
+  ],
+  "third_party": true
+ },
+ {
+  "id": "F-04",
+  "brief": "F",
+  "family": "Hardship",
+  "level": "medium",
+  "title": "In hospital, names an amount and a date; transferred anyway",
+  "variables": {
+   "first_name": "Milan",
+   "last_name": "Horvat",
+   "title": "Mr",
+   "now": "2026-12-18T17:30"
+  },
+  "identity": {
+   "date_of_birth": "1991-05-30"
+  },
+  "products": [
+   {
+    "type": "card",
+    "card_last4": "2014",
+    "past_due": 330.0,
+    "days_late": 22,
+    "monthly_instalment": 70.0
+   }
+  ],
+  "script": "Verified. Asked whether he can pay today, says he is in hospital and can pay one hundred euros on the 22nd. If asked anything else, asks why he is being asked again.",
+  "expected": {
+   "outcome": "transferred",
+   "reason": "care",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "care"
+    }
+   ]
+  },
+  "checks": [
+   "one short sentence of sympathy",
+   "transfer_to_agent with queue care without asking whether he wants it",
+   "no promise recorded although an amount and a date were named",
+   "close_call transferred / care"
+  ],
+  "style": "asks_back"
+ },
+ {
+  "id": "F-05",
+  "brief": "F",
+  "family": "Identity",
+  "level": "medium",
+  "title": "Three wrong dates of birth, late on a Monday evening",
+  "variables": {
+   "first_name": "Lea",
+   "last_name": "Fischer",
+   "title": "Ms",
+   "now": "2026-11-30T21:40"
+  },
+  "identity": {
+   "date_of_birth": "1984-11-03"
+  },
+  "products": [
+   {
+    "type": "consumer_loan",
+    "past_due": 760.0,
+    "days_late": 45,
+    "monthly_instalment": 190.0
+   }
+  ],
+  "script": "Confirms the name. Gives her date of birth as 3 November 1985, then 13 November 1984, then 3 October 1984. Asks how much she owes.",
+  "expected": {
+   "outcome": "not_verified",
+   "reason": "failed",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the check ends after the third wrong answer",
+   "no amount or product disclosed",
+   "she is told she can go to a branch with her identity card; close_call not_verified / failed"
+  ],
+  "style": "pieces"
+ },
+ {
+  "id": "F-06",
+  "brief": "F",
+  "family": "Human",
+  "level": "hard",
+  "title": "Asks for a person right after the promise is recorded",
+  "variables": {
+   "first_name": "Tomas",
+   "last_name": "Richter",
+   "title": "Mr",
+   "now": "2026-11-04T09:00"
+  },
+  "identity": {
+   "date_of_birth": "1973-08-19"
+  },
+  "products": [
+   {
+    "type": "auto_loan",
+    "past_due": 450.0,
+    "days_late": 7,
+    "monthly_instalment": 150.0
+   }
+  ],
+  "script": "Verified. Agrees to pay the full amount today and confirms. As soon as the robot says the promise is recorded, asks to speak to a real person. When asked whether the robot can help first, insists on a person.",
+  "expected": {
+   "outcome": "transferred",
+   "reason": "human",
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 450.0,
+     "date": "2026-11-04"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "people"
+    }
+   ]
+  },
+  "checks": [
+   "the promise of 450 euros today is recorded before the request",
+   "the robot asks once whether it can help, then transfers to queue people",
+   "close_call transferred / human, the promise stays"
+  ]
+ }
+]

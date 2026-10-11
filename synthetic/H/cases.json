@@ -1,0 +1,308 @@
+[
+ {
+  "id": "H-01",
+  "brief": "H",
+  "family": "Opening",
+  "level": "easy",
+  "title": "Never confirms the name",
+  "variables": {
+   "first_name": "Beat",
+   "last_name": "Zollinger",
+   "title": "Mr",
+   "now": "2026-10-22T18:30"
+  },
+  "identity": {
+   "postcode": "8042",
+   "birth_year": "1966"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "7731",
+    "past_due": 410.0,
+    "days_late": 14,
+    "floor": 82.0
+   }
+  ],
+  "script": "Answers the name question with 'go ahead'. On the second ask says 'hello?'. Says nothing else.",
+  "expected": {
+   "outcome": "unreachable",
+   "reason": "unclear",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the opening sentence is exactly 'Good day, this is the Portmann Bank digital assistant.' with no recording sentence",
+   "the name is asked twice and nothing about the account is said",
+   "verify_identity never called; close_call unreachable / unclear"
+  ]
+ },
+ {
+  "id": "H-02",
+  "brief": "H",
+  "family": "Amounts",
+  "level": "medium",
+  "title": "Too much, 'you tell me', next Friday is after the deadline, in words",
+  "variables": {
+   "first_name": "Ruth",
+   "last_name": "Baumgartner",
+   "title": "Ms",
+   "now": "2026-10-30T17:30"
+  },
+  "identity": {
+   "postcode": "3011",
+   "birth_year": "1984"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "2098",
+    "past_due": 2450.0,
+    "days_late": 9,
+    "floor": 500.0
+   }
+  ],
+  "script": "Verified. Asked whether she can pay today, says no, the full amount is too much, and adds 'you tell me what you can do'. Accepts the smaller amount and says she can pay it 'next Friday'. Accepts the latest date when it is offered. Confirms.",
+  "expected": {
+   "outcome": "pledge",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 500.0,
+     "date": "2026-11-03"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the assistant never asks how much she can pay",
+   "the amount offered once and recorded is 500 euros, the floor returned by get_account (not 490, which would be 20 percent)",
+   "Friday 6 November is refused and Tuesday 3 November, 4 calendar days after today, is offered and recorded",
+   "pledge of 500 euros on 3 November; the text message sentence is said"
+  ],
+  "style": "in_words"
+ },
+ {
+  "id": "H-03",
+  "brief": "H",
+  "family": "Human",
+  "level": "hard",
+  "title": "Three pledges on one date, then asks for a person",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Ackermann",
+   "title": "Mr",
+   "now": "2026-11-30T09:15"
+  },
+  "identity": {
+   "postcode": "6003",
+   "birth_year": "1977"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "5510",
+    "past_due": 180.0,
+    "days_late": 6,
+    "floor": 36.0
+   },
+   {
+    "type": "personal_loan",
+    "past_due": 900.0,
+    "days_late": 20,
+    "floor": 300.0
+   },
+   {
+    "type": "car_loan",
+    "past_due": 2100.0,
+    "days_late": 35,
+    "floor": 700.0
+   }
+  ],
+  "script": "Verified. Asked whether he can clear all three today, says no, but he will pay all three in full on the 4th of December; says 'the 5th, sorry, the 4th' the first time. Confirms once. As soon as the pledges are recorded, asks to be put through to a person.",
+  "expected": {
+   "outcome": "transferred",
+   "reason": "human",
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 180.0,
+     "date": "2026-12-04"
+    },
+    {
+     "product_id": "p2",
+     "amount": 900.0,
+     "date": "2026-12-04"
+    },
+    {
+     "product_id": "p3",
+     "amount": 2100.0,
+     "date": "2026-12-04"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "front_desk"
+    }
+   ]
+  },
+  "checks": [
+   "all three products stated before any ask",
+   "one read-back and one confirmation, then create_promise three times for 4 December",
+   "the transfer to front_desk happens without asking whether the assistant can help first",
+   "close_call transferred / human; no notes"
+  ],
+  "style": "corrects"
+ },
+ {
+  "id": "H-04",
+  "brief": "H",
+  "family": "Refusal",
+  "level": "hard",
+  "title": "Postcode in pieces, two-digit year, then refuses both attempts on a Saturday",
+  "variables": {
+   "first_name": "Ursula",
+   "last_name": "Frei",
+   "title": "Ms",
+   "now": "2026-12-05T10:00"
+  },
+  "identity": {
+   "postcode": "8142",
+   "birth_year": "1971"
+  },
+  "products": [
+   {
+    "type": "personal_loan",
+    "past_due": 600.0,
+    "days_late": 40,
+    "floor": 150.0
+   }
+  ],
+  "script": "Confirms the name. Gives the postcode as 'eight one' and then 'four two.'. Gives the year of birth as 'seventy-one'; when asked for the full year says 1971. Asked whether she can pay on Monday (today is Saturday), says no. Refuses the first proposal and the second proposal.",
+  "expected": {
+   "outcome": "no_pledge",
+   "reason": "refused",
+   "promises": [],
+   "notes": [
+    {
+     "product_id": "p1",
+     "reason": "refused"
+    }
+   ],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "verify_identity called with postcode 8142 and birth_year 1971; the assistant asks for the four-digit year and never sends 71",
+   "the first payment question asks for Monday 7 December, not for today (a Saturday)",
+   "attempt one is the full 600 euros on Friday 11 December, the deadline (7 calendar days is Saturday 12 December, moved back)",
+   "attempt two is the floor of 150 euros on the same deadline",
+   "add_note refused; close_call no_pledge / refused"
+  ],
+  "style": "pieces"
+ },
+ {
+  "id": "H-05",
+  "brief": "H",
+  "family": "Dispute",
+  "level": "medium",
+  "title": "Card closed years ago: the call stops; postcode wrong once first",
+  "variables": {
+   "first_name": "Marco",
+   "last_name": "Bernasconi",
+   "title": "Mr",
+   "now": "2026-12-23T15:00"
+  },
+  "identity": {
+   "postcode": "6900",
+   "birth_year": "1980"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "3377",
+    "past_due": 150.0,
+    "days_late": 30,
+    "floor": 30.0
+   },
+   {
+    "type": "car_loan",
+    "past_due": 1800.0,
+    "days_late": 12,
+    "floor": 600.0
+   }
+  ],
+  "script": "Gives the postcode as 6090 first, then 6900. Year of birth 1980. When the credit card is stated, says he closed that card years ago and it cannot be his. If the car loan is raised, offers to pay it in full on the 28th.",
+  "expected": {
+   "outcome": "no_pledge",
+   "reason": "dispute",
+   "promises": [],
+   "notes": [
+    {
+     "product_id": "p1",
+     "reason": "already_closed"
+    }
+   ],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the postcode is asked a second time and the check continues after one wrong answer",
+   "add_note already_closed on the card and the car loan is not negotiated",
+   "no pledge recorded; close_call no_pledge / dispute"
+  ],
+  "style": "asks_back"
+ },
+ {
+  "id": "H-06",
+  "brief": "H",
+  "family": "Hardship",
+  "level": "medium",
+  "title": "Job loss plus an amount and a date in the same sentence; transferred anyway",
+  "variables": {
+   "first_name": "Simone",
+   "last_name": "Hug",
+   "title": "Ms",
+   "now": "2026-11-10T20:30"
+  },
+  "identity": {
+   "postcode": "4051",
+   "birth_year": "1993"
+  },
+  "products": [
+   {
+    "type": "car_loan",
+    "past_due": 950.0,
+    "days_late": 18,
+    "floor": 320.0
+   }
+  ],
+  "script": "Verified. Asked whether she can pay today, says she lost her job last week but can pay three hundred and twenty euros on Friday. Talks about how hard the week has been.",
+  "expected": {
+   "outcome": "transferred",
+   "reason": "wellbeing",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "wellbeing"
+    }
+   ]
+  },
+  "checks": [
+   "one short sentence of sympathy and no question about payment after the job loss is mentioned",
+   "transfer_to_agent with queue wellbeing, not care_team, without asking",
+   "no pledge recorded although an amount and a date were named",
+   "close_call transferred / wellbeing; no notes"
+  ],
+  "style": "talkative"
+ }
+]

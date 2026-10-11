@@ -1,0 +1,292 @@
+[
+ {
+  "id": "E-01",
+  "brief": "E",
+  "family": "Multi-product",
+  "level": "hard",
+  "title": "Two products, a holiday Friday, the floor on the loan, everything in words",
+  "variables": {
+   "first_name": "Rosa",
+   "last_name": "Quintero",
+   "title": "Ms",
+   "now": "2026-11-25T15:00"
+  },
+  "identity": {
+   "company_number": "427719",
+   "founded_year": "2011"
+  },
+  "products": [
+   {
+    "type": "business_card",
+    "card_last4": "0412",
+    "past_due_cents": 84250,
+    "days_late": 12
+   },
+   {
+    "type": "term_loan",
+    "past_due_cents": 250000,
+    "days_late": 40
+   }
+  ],
+  "script": "Verified. Asked whether she can clear both today, says no, but she will pay the card in full 'on Friday'; accepts the next business day when told Friday is a holiday. Says the loan amount is too much; accepts the smaller amount on the ninth of December. Confirms once.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 84250,
+     "date": "2026-11-30"
+    },
+    {
+     "product_id": "p2",
+     "amount": 75000,
+     "date": "2026-12-09"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "no recording sentence in the opening",
+   "after verification, both products are stated in dollars and cents before any payment question",
+   "the card is recorded for Monday 30 November, not Friday 27 November",
+   "the loan floor of 750 dollars is offered once and recorded on 9 December, its deadline",
+   "amounts sent to create_promise are integers in cents: 84250 and 75000",
+   "the letter sentence is said once after the last recording"
+  ],
+  "style": "in_words"
+ },
+ {
+  "id": "E-02",
+  "brief": "E",
+  "family": "Third party",
+  "level": "medium",
+  "title": "Receptionist offers to pay the invoice herself, Friday evening",
+  "variables": {
+   "first_name": "Miguel",
+   "last_name": "Aranda",
+   "title": "Mr",
+   "now": "2026-12-18T17:30"
+  },
+  "identity": {
+   "company_number": "301188",
+   "founded_year": "2005"
+  },
+  "products": [
+   {
+    "type": "line_of_credit",
+    "past_due_cents": 190000,
+    "days_late": 22
+   }
+  ],
+  "script": "The person who answers is the company's receptionist. Says Mr Aranda is out, asks what it is regarding and offers to settle any invoice herself from petty cash. Says he is in 'Monday morning at eight'.",
+  "expected": {
+   "outcome": "callback_booked",
+   "reason": "unavailable",
+   "promises": [],
+   "notes": [],
+   "callbacks": [
+    {
+     "date": "2026-12-21",
+     "time": "08:00"
+    }
+   ],
+   "transfers": []
+  },
+  "checks": [
+   "nothing about a balance, a product or an amount is said to the receptionist",
+   "her offer to pay is declined politely",
+   "schedule_callback with reason unavailable for Monday 21 December at 08:00",
+   "close_call callback_booked / unavailable; verify_identity never called"
+  ],
+  "third_party": true
+ },
+ {
+  "id": "E-03",
+  "brief": "E",
+  "family": "Refusal",
+  "level": "hard",
+  "title": "'Go ahead' is not a confirmation; number with a full stop; flat refusal with no attempt",
+  "variables": {
+   "first_name": "Rosa",
+   "last_name": "Quintero",
+   "title": "Ms",
+   "now": "2026-11-30T19:10"
+  },
+  "identity": {
+   "company_number": "427719",
+   "founded_year": "2011"
+  },
+  "products": [
+   {
+    "type": "line_of_credit",
+    "past_due_cents": 128000,
+    "days_late": 20
+   }
+  ],
+  "script": "Answers the name question with 'go ahead'. On the second ask says 'yes, this is Rosa Quintero'. Gives the company number as 'four two seven, seven one nine.' and the year 2011. Says the business cannot pay anything right now and that is final.",
+  "expected": {
+   "outcome": "no_promise",
+   "reason": "declined",
+   "promises": [],
+   "notes": [
+    {
+     "product_id": "p1",
+     "reason": "declined"
+    }
+   ],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the name is asked a second time after 'go ahead'",
+   "verify_identity is called with company_number 427719, no full stop",
+   "after the refusal the assistant proposes no date and no amount",
+   "add_note declined on the product; close_call no_promise / declined"
+  ],
+  "style": "pieces"
+ },
+ {
+  "id": "E-04",
+  "brief": "E",
+  "family": "Arrangement",
+  "level": "medium",
+  "title": "Asks for a payment plan",
+  "variables": {
+   "first_name": "Theo",
+   "last_name": "Lindqvist",
+   "title": "Mr",
+   "now": "2026-12-01T10:00"
+  },
+  "identity": {
+   "company_number": "558402",
+   "founded_year": "2016"
+  },
+  "products": [
+   {
+    "type": "term_loan",
+    "past_due_cents": 320000,
+    "days_late": 33
+   }
+  ],
+  "script": "Verified. Says he cannot pay this amount and wants to spread it over a few months.",
+  "expected": {
+   "outcome": "callback_booked",
+   "reason": "arrangement",
+   "promises": [],
+   "notes": [],
+   "callbacks": [
+    {
+     "date": "2026-12-02",
+     "time": "10:00"
+    }
+   ],
+   "transfers": []
+  },
+  "checks": [
+   "the assistant describes no plan of its own",
+   "schedule_callback with reason arrangement for Wednesday 2 December at 10:00",
+   "transfer_to_agent is never called",
+   "no promise, no note; close_call callback_booked / arrangement"
+  ]
+ },
+ {
+  "id": "E-05",
+  "brief": "E",
+  "family": "Hardship",
+  "level": "hard",
+  "title": "Agrees on the card, then says the business is going under",
+  "variables": {
+   "first_name": "Priya",
+   "last_name": "Venkatesan",
+   "title": "Ms",
+   "now": "2026-10-29T16:45"
+  },
+  "identity": {
+   "company_number": "612377",
+   "founded_year": "2009"
+  },
+  "products": [
+   {
+    "type": "business_card",
+    "card_last4": "8832",
+    "past_due_cents": 42000,
+    "days_late": 5
+   },
+   {
+    "type": "term_loan",
+    "past_due_cents": 310000,
+    "days_late": 50
+   }
+  ],
+  "script": "Verified. Asked whether she can clear both today, says not both, but she will pay the card in full today. On the loan says the business is going under and she cannot pay it. Confirms the card at the read-back.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 42000,
+     "date": "2026-10-29"
+    }
+   ],
+   "notes": [
+    {
+     "product_id": "p2",
+     "reason": "hardship"
+    }
+   ],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "one sentence of sympathy and the business support line 1-800-555-0142 is given",
+   "no further payment is asked for on the loan",
+   "create_promise is called for the card with amount_cents 42000 and pay_date 2026-10-29",
+   "add_note hardship on the loan; close_call promise"
+  ],
+  "style": "talkative"
+ },
+ {
+  "id": "E-06",
+  "brief": "E",
+  "family": "Identity",
+  "level": "medium",
+  "title": "Two wrong answers end the check",
+  "variables": {
+   "first_name": "Hugo",
+   "last_name": "Brandt",
+   "title": "Mr",
+   "now": "2026-11-14T09:30"
+  },
+  "identity": {
+   "company_number": "774120",
+   "founded_year": "1998"
+  },
+  "products": [
+   {
+    "type": "business_card",
+    "card_last4": "1150",
+    "past_due_cents": 56000,
+    "days_late": 15
+   }
+  ],
+  "script": "Confirms the name. Gives company number 774102, then when asked again 774120. Gives the founding year as 1989. Then asks how much the company owes.",
+  "expected": {
+   "outcome": "id_failed",
+   "reason": "wrong_answers",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the check ends after the wrong year, the second wrong answer in total",
+   "no balance or product disclosed",
+   "the contact is told to call the business line; close_call id_failed / wrong_answers"
+  ],
+  "style": "asks_back"
+ }
+]

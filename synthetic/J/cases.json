@@ -1,0 +1,308 @@
+[
+ {
+  "id": "J-01",
+  "brief": "J",
+  "family": "Multi-product",
+  "level": "hard",
+  "title": "One date for a card and mortgage arrears, Friday before a systems day, in words",
+  "variables": {
+   "first_name": "Bronwen",
+   "last_name": "Hughes",
+   "title": "Ms",
+   "now": "2026-10-16T17:30"
+  },
+  "identity": {
+   "date_of_birth": "1984-05-06",
+   "postcode": "CF103AT"
+  },
+  "products": [
+   {
+    "kind": "card",
+    "card_last4": "4471",
+    "amount_due": 450.0,
+    "days_overdue": 12,
+    "minimum": 90.0
+   },
+   {
+    "kind": "mortgage_arrears",
+    "amount_due": 1300.0,
+    "days_overdue": 35,
+    "minimum": 650.0
+   }
+  ],
+  "script": "Verified. Asked whether she can clear both today, says no, but she wants to pay both in full on the twenty-eighth of October. Accepts when told the mortgage arrears have an earlier latest date. Confirms once.",
+  "expected": {
+   "outcome": "arranged",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 450.0,
+     "date": "2026-10-28"
+    },
+    {
+     "product_id": "p2",
+     "amount": 1300.0,
+     "date": "2026-10-22"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the first sentence has the bank's name, 'automated assistant' and that the call is recorded",
+   "the card is recorded on 28 October, inside its 10-business-day deadline of 2 November",
+   "the mortgage arrears are recorded on Thursday 22 October, the 3rd business day after today with 19 October a systems day",
+   "no text message sentence after the recording",
+   "close_call arranged"
+  ],
+  "style": "in_words"
+ },
+ {
+  "id": "J-02",
+  "brief": "J",
+  "family": "Amounts",
+  "level": "medium",
+  "title": "Too much, 'you tell me', then the 11th, which is after the deadline",
+  "variables": {
+   "first_name": "Alistair",
+   "last_name": "Reid",
+   "title": "Mr",
+   "now": "2026-11-04T11:00"
+  },
+  "identity": {
+   "date_of_birth": "1972-09-15",
+   "postcode": "AB101XY"
+  },
+  "products": [
+   {
+    "kind": "loan",
+    "amount_due": 1600.0,
+    "days_overdue": 20,
+    "minimum": 400.0
+   }
+  ],
+  "script": "Verified. Asked whether he can pay today, says no, the full amount is too much, and adds 'you tell me what you can do'. Accepts the smaller amount and asks to pay it 'on the 11th'. Accepts the latest date when it is offered. Confirms.",
+  "expected": {
+   "outcome": "arranged",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 400.0,
+     "date": "2026-11-10"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent never asks how much he can pay",
+   "the minimum of 400 pounds from get_account is offered once, not half the amount",
+   "Wednesday 11 November is refused and Tuesday 10 November, the 4th business day after today, is offered and recorded",
+   "no confirmation sentence about a text message"
+  ],
+  "style": "talkative"
+ },
+ {
+  "id": "J-03",
+  "brief": "J",
+  "family": "Complaint",
+  "level": "medium",
+  "title": "Wants to complain before security is passed",
+  "variables": {
+   "first_name": "Siobhan",
+   "last_name": "Carey",
+   "title": "Ms",
+   "now": "2026-10-31T09:30"
+  },
+  "identity": {
+   "date_of_birth": "1990-11-28",
+   "postcode": "BT71NN"
+  },
+  "products": [
+   {
+    "kind": "card",
+    "card_last4": "0082",
+    "amount_due": 230.0,
+    "days_overdue": 8,
+    "minimum": 46.0
+   }
+  ],
+  "script": "Confirms the name. Asked for her date of birth, asks why the bank keeps calling and says she wants to make a complaint about these calls.",
+  "expected": {
+   "outcome": "routed",
+   "reason": "complaint",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "complaints"
+    }
+   ]
+  },
+  "checks": [
+   "nothing about arrears or a product is said",
+   "transfer_to_agent with queue complaints at once, no further security question",
+   "close_call routed / complaint"
+  ],
+  "style": "asks_back"
+ },
+ {
+  "id": "J-04",
+  "brief": "J",
+  "family": "Multi-product",
+  "level": "hard",
+  "title": "Disputes one, paid another, refuses the mortgage arrears twice",
+  "variables": {
+   "first_name": "Owen",
+   "last_name": "Pritchard",
+   "title": "Mr",
+   "now": "2026-12-21T19:00"
+  },
+  "identity": {
+   "date_of_birth": "1966-04-02",
+   "postcode": "SY231AA"
+  },
+  "products": [
+   {
+    "kind": "card",
+    "card_last4": "7345",
+    "amount_due": 300.0,
+    "days_overdue": 15,
+    "minimum": 60.0
+   },
+   {
+    "kind": "loan",
+    "amount_due": 520.0,
+    "days_overdue": 9,
+    "minimum": 130.0
+   },
+   {
+    "kind": "mortgage_arrears",
+    "amount_due": 2000.0,
+    "days_overdue": 28,
+    "minimum": 1000.0
+   }
+  ],
+  "script": "Verified. Asked whether he can clear all of them today, says the credit card is not his. Says he paid the loan on Friday; 'Thursday, sorry, Friday' the first time. On the mortgage arrears says no and refuses both proposals.",
+  "expected": {
+   "outcome": "no_arrangement",
+   "reason": "disputed",
+   "promises": [],
+   "notes": [
+    {
+     "product_id": "p1",
+     "reason": "disputed"
+    },
+    {
+     "product_id": "p2",
+     "reason": "paid"
+    },
+    {
+     "product_id": "p3",
+     "reason": "refused"
+    }
+   ],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the card is flagged disputed without argument and the call continues",
+   "the loan gets the one-business-day sentence and a paid flag",
+   "attempt one on the mortgage arrears is the full 2,000 pounds on Thursday 24 December; attempt two is the minimum of 1,000 pounds on the same day, its deadline",
+   "close_call no_arrangement / disputed, the flag of the first product that is not paid"
+  ],
+  "style": "corrects"
+ },
+ {
+  "id": "J-05",
+  "brief": "J",
+  "family": "Hardship",
+  "level": "hard",
+  "title": "Declines the transfer, then names an amount and a date; postcode in two parts",
+  "variables": {
+   "first_name": "Megan",
+   "last_name": "Vaughan",
+   "title": "Ms",
+   "now": "2026-10-22T10:00"
+  },
+  "identity": {
+   "date_of_birth": "1988-07-07",
+   "postcode": "LL571UP"
+  },
+  "products": [
+   {
+    "kind": "loan",
+    "amount_due": 800.0,
+    "days_overdue": 14,
+    "minimum": 200.0
+   }
+  ],
+  "script": "Verified. Says she has been off work ill. When customer care is offered, says 'I do not want to be transferred'. Then says she can do two hundred pounds on the 30th. Confirms.",
+  "expected": {
+   "outcome": "arranged",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 200.0,
+     "date": "2026-10-30"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "one sentence of sympathy and the customer care offer made once",
+   "no persuasion attempt after the hardship",
+   "arrangement of 200 pounds on Friday 30 October, inside the deadline of 5 November",
+   "no hardship flag because the loan has an arrangement"
+  ],
+  "style": "pieces"
+ },
+ {
+  "id": "J-06",
+  "brief": "J",
+  "family": "Third party",
+  "level": "easy",
+  "title": "The customer has died",
+  "variables": {
+   "first_name": "Arthur",
+   "last_name": "Penhaligon",
+   "title": "Mr",
+   "now": "2026-12-29T17:45"
+  },
+  "identity": {
+   "date_of_birth": "1949-01-30",
+   "postcode": "TR11AA"
+  },
+  "products": [
+   {
+    "kind": "loan",
+    "amount_due": 275.0,
+    "days_overdue": 40,
+    "minimum": 70.0
+   }
+  ],
+  "script": "The person who answers is his daughter. Says her father passed away in November.",
+  "expected": {
+   "outcome": "not_reached",
+   "reason": "deceased",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent says 'My condolences to you and your family.' and asks nothing else",
+   "nothing about arrears or a product is said",
+   "close_call not_reached / deceased, no callback"
+  ],
+  "third_party": true
+ }
+]

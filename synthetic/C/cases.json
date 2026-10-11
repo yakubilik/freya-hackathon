@@ -1,0 +1,267 @@
+[
+ {
+  "id": "C-01",
+  "brief": "C",
+  "family": "Happy path",
+  "level": "easy",
+  "title": "Pays 'the full amount' today, Friday evening",
+  "variables": {
+   "first_name": "Ingrid",
+   "last_name": "Dahl",
+   "title": "Ms",
+   "now": "2026-10-16T17:30"
+  },
+  "identity": {
+   "postcode": "4021",
+   "birth_year": "1979"
+  },
+  "products": [
+   {
+    "kind": "card",
+    "card_last4": "2231",
+    "overdue_amount": 380.0,
+    "days_overdue": 9
+   }
+  ],
+  "script": "Confirms she is Ingrid Dahl. Postcode 4021, year of birth 1979. When asked whether she can settle today, says 'yes, the full amount, today'. Confirms at the read-back.",
+  "expected": {
+   "outcome": "pledge",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 380.0,
+     "date": "2026-10-16"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the exact opening sentence is said, including 'This call is recorded'",
+   "postcode and year of birth both passed before get_account",
+   "the pledge is for 380 euros on 16 October, the same day",
+   "the amount is said in words, not as digits",
+   "the confirmation-email sentence is said after the pledge",
+   "create_promise called exactly once, close_call pledge"
+  ]
+ },
+ {
+  "id": "C-02",
+  "brief": "C",
+  "family": "Third party",
+  "level": "medium",
+  "title": "Husband answers on a Saturday and offers to pay",
+  "variables": {
+   "first_name": "Astrid",
+   "last_name": "Lund",
+   "title": "Ms",
+   "now": "2026-10-31T10:15"
+  },
+  "identity": {
+   "postcode": "5003",
+   "birth_year": "1985"
+  },
+  "products": [
+   {
+    "kind": "loan",
+    "overdue_amount": 920.0,
+    "days_overdue": 18
+   }
+  ],
+  "script": "The person who answers is her husband. Asks what it is about and offers to pay it himself right now. Says Astrid is reachable 'on Monday at ten'. If told that is not possible, says 'Tuesday at ten then'.",
+  "expected": {
+   "outcome": "unreachable",
+   "reason": "callback_booked",
+   "promises": [],
+   "notes": [],
+   "callbacks": [
+    {
+     "date": "2026-11-03",
+     "time": "10:00"
+    }
+   ],
+   "transfers": []
+  },
+  "checks": [
+   "the assistant says nothing about why it is calling, no product, amount or balance",
+   "the husband's offer to pay is declined without any account detail",
+   "Monday 2 November is refused (closing day) and one more time is asked for",
+   "callback booked for Tuesday 3 November at 10:00",
+   "verify_identity and get_account never called"
+  ],
+  "third_party": true
+ },
+ {
+  "id": "C-03",
+  "brief": "C",
+  "family": "Amounts",
+  "level": "hard",
+  "title": "Too much, 'you tell me', vague period, then the deadline, all in words",
+  "variables": {
+   "first_name": "Henrik",
+   "last_name": "Solberg",
+   "title": "Mr",
+   "now": "2026-12-23T19:45"
+  },
+  "identity": {
+   "postcode": "7030",
+   "birth_year": "1968"
+  },
+  "products": [
+   {
+    "kind": "loan",
+    "overdue_amount": 1240.0,
+    "days_overdue": 30
+   }
+  ],
+  "script": "Verified. Asked whether he can settle today, says no, the full amount is far too much right now; if asked what he can pay, says 'you tell me'. Accepts the smaller amount but says 'at the end of the month'. When asked for an exact day says 'I do not know exactly'. Accepts the date the assistant proposes. Confirms.",
+  "expected": {
+   "outcome": "pledge",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 310.0,
+     "date": "2027-01-05"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the assistant never asks how much he can pay",
+   "the floor of 310 euros is offered once, with the note that the rest stays overdue",
+   "the assistant asks once for the exact day, then proposes 5 January 2027",
+   "the pledge is 310 euros on 5 January 2027",
+   "no second persuasion attempt and no second offer of the floor"
+  ],
+  "style": "in_words"
+ },
+ {
+  "id": "C-04",
+  "brief": "C",
+  "family": "Dispute",
+  "level": "medium",
+  "title": "Paid it off last year, owes nothing; postcode wrong once first",
+  "variables": {
+   "first_name": "Marit",
+   "last_name": "Haugen",
+   "title": "Ms",
+   "now": "2026-11-30T11:00"
+  },
+  "identity": {
+   "postcode": "6008",
+   "birth_year": "1990"
+  },
+  "products": [
+   {
+    "kind": "overdraft",
+    "overdue_amount": 455.5,
+    "days_overdue": 22
+   }
+  ],
+  "script": "Confirms the name. Gives postcode 6080 first, then 6008 when asked again. Year of birth 1990. When the overdraft is mentioned, says she paid that off in full last year and owes nothing. Does not want to discuss it further.",
+  "expected": {
+   "outcome": "no_pledge",
+   "reason": "disputed",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the postcode is asked a second time and the year is still asked afterwards",
+   "the assistant does not argue and proposes no amount or date",
+   "no pledge recorded; close_call no_pledge / disputed, not settled"
+  ],
+  "style": "talkative"
+ },
+ {
+  "id": "C-05",
+  "brief": "C",
+  "family": "Hardship",
+  "level": "medium",
+  "title": "Bereavement plus a concrete date in the same breath",
+  "variables": {
+   "first_name": "Olav",
+   "last_name": "Bakke",
+   "title": "Mr",
+   "now": "2026-10-21T14:00"
+  },
+  "identity": {
+   "postcode": "1352",
+   "birth_year": "1975"
+  },
+  "products": [
+   {
+    "kind": "card",
+    "card_last4": "9087",
+    "overdue_amount": 268.0,
+    "days_overdue": 6
+   }
+  ],
+  "script": "Verified. When asked whether he can settle today, says his mother died last week and he can pay everything on the 28th. Says 'the 29th, sorry, the 28th' when he first gives the day. If asked anything else about payment, repeats the 28th.",
+  "expected": {
+   "outcome": "handed_over",
+   "reason": "welfare",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "welfare"
+    }
+   ]
+  },
+  "checks": [
+   "one short sentence of sympathy",
+   "no pledge is recorded although a date was named",
+   "transfer_to_agent called with queue welfare without asking whether he wants it",
+   "after the bereavement is mentioned, no persuasion attempt and no amount is proposed"
+  ],
+  "style": "corrects"
+ },
+ {
+  "id": "C-06",
+  "brief": "C",
+  "family": "Refusal",
+  "level": "hard",
+  "title": "Says goodbye while the assistant still has a question",
+  "variables": {
+   "first_name": "Sigrid",
+   "last_name": "Moen",
+   "title": "Ms",
+   "now": "2026-10-13T09:30"
+  },
+  "identity": {
+   "postcode": "3045",
+   "birth_year": "1982"
+  },
+  "products": [
+   {
+    "kind": "loan",
+    "overdue_amount": 610.0,
+    "days_overdue": 12
+   }
+  ],
+  "script": "Verified. Asked whether she can settle today, says 'I really have to go now, bye' and nothing more. If asked anything further, says only 'bye'.",
+  "expected": {
+   "outcome": "no_pledge",
+   "reason": "refused",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the balance of 610 euros and 12 days overdue is stated after verification",
+   "after the goodbye the assistant does not repeat its question or propose a date",
+   "the assistant says goodbye and closes no_pledge / refused",
+   "no pledge recorded, no transfer"
+  ],
+  "style": "pieces"
+ }
+]

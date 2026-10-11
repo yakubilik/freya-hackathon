@@ -1,0 +1,36 @@
+You are an independent reviewer for a hackathon test set. Work read-only. Do not modify files.
+
+Context: a bank (Freya Bank, fictional) specifies how a phone agent must run debt-collection calls. Two briefs define the rules. A mock bank knows exactly 13 customers (the official practice cases). We wrote 146 extra practice scenarios; each reuses the account of one official case (field `session_case`) and changes only what the customer does. A scorer later compares the bank's records (outcome, reason, promises, notes, callbacks, transfers) with the `expected` block of each scenario, and a judge model checks the transcript against the `checks` lines.
+
+Read these files completely first:
+1. kit/build-the-builder/briefs/brief-a.md  (47 numbered rules)
+2. kit/build-the-builder/briefs/brief-b.md  (11 numbered rules plus a closing paragraph; builds on Brief A)
+3. kit/build-the-builder/public-test-set.json  (the 13 official cases; their format, tone and expected results are the reference)
+4. kit/build-the-builder/tools/openapi.json  (the seven bank tools and their allowed values)
+5. kit/build-the-builder/tools/run_cases.py  (how a scenario's `script` becomes the simulated customer's prompt; note that family "Third party" makes the persona someone other than the customer)
+
+Then review:
+- scenarios/extended-test-set.json
+- scenarios/COVERAGE.md
+- scenarios/brief_calendar.py and scenarios/validate.py (only as far as needed to judge whether the dates are derived correctly)
+
+Facts you must use: `now` is always 2026-10-14T11:00, a Wednesday. Business days are Monday to Friday except the bank holidays listed in Brief A. The mock bank injects a fault only on the PUB-10 account (create_promise fails on its first call); no other account can fail. Product ids are p1, p2, p3 in the order of `products`.
+
+Your task:
+A. For EVERY scenario in scenarios/extended-test-set.json (all 146, do not sample), independently re-derive from the briefs what the bank's records must show after the call described in `script`: outcome, reason, each promise (product_id, amount, date), each note, each callback (date, time) and each transfer (queue). Compute the dates yourself from the rules (bands, deadlines as the 7th or 12th business day after today, next business day, last business day of this week, "this"/"next" weekday, callback window). Compare with the scenario's `expected`. Flag every scenario where:
+   - the expected result is wrong or not what the brief requires,
+   - the script is ambiguous, could make a simulated customer behave differently from run to run, or contradicts its own expected result or checks,
+   - the `rules` list is wrong (lists a rule that does not decide or shape the result, or misses the rule that does),
+   - `variables`, `identity` or `products` differ from the session case, or `faults` is missing/wrong,
+   - a check line asks for something the brief does not require or contradicts the brief.
+B. Check scenarios/COVERAGE.md: for each rule of Brief A (1-47) and Brief B (1-11), is it really exercised by the listed scenarios, meaning the rule decides or visibly shapes the expected result? Flag rules that are listed but not really exercised, and rules that are exercised by a scenario but not listed.
+C. Judge each item in the "Open questions" section of COVERAGE.md: is it a real ambiguity in the brief's text, or does the brief actually settle it? Say which, and if the brief settles it, quote the rule.
+D. Look for important customer behaviours or rule boundaries that the set does not cover and that could be covered on the 13 fixed accounts.
+
+Be concrete and skeptical. Quote rule numbers. Do not assume our expected values are right; derive your own first and then compare. Where you disagree, show your derivation.
+
+Output discipline: keep any intermediate narration to one short line per step; do not print file contents or long tables. Put your complete, itemised findings list at the VERY END of your output, immediately before the verdict line, so nothing after it can be cut off. Every scenario you want changed must appear in that list with its id; a finding mentioned only in narration does not count.
+
+Then finish with: a numbered list of findings under the heading FINDINGS, each starting with the scenario id (or "COVERAGE" / "OPEN-QUESTION n" / "GENERAL"), one or two sentences each, most serious first (write "FINDINGS: none" if there are none); and then, as the very last line of your output, exactly one of
+VERDICT: APPROVED
+VERDICT: CHANGES REQUIRED

@@ -1,0 +1,19 @@
+## FINDINGS
+
+1. **MAJOR — I/policy.md, §5.5 versus §§6.1–6.2; I/memo.md, §§6–7.** A product reported paid or disputed requires that note, but a later hardship disclosure with transfer declined requires `hardship` for every product without a promise. Memo §6 permits exactly one note per product; §7 only resolves simultaneous triggers and does not resolve this sequence. For example, p1 disputed followed by hardship on p2 leaves both p1’s note and the closing reason ambiguous. **Fix:** explicitly preserve previously determined `paid`/`dispute` notes and apply `hardship` only to unresolved products.
+
+2. **MINOR — I/README.md, opening paragraph, “do-not-call notes every product.”** This omits memo §6’s exceptions: unverified calls receive no notes, and products with recorded promises receive no notes. **Fix:** say that verified do-not-call endings note only products without recorded promises; existing promises remain and the outcome is `promise`.
+
+## DATE ARITHMETIC
+
+- **I-01, p1 promise:** From Friday 2026-10-09, exclude October 10–11 and holiday October 12. October 13–16 = business days 1–4; October 19–23 = 5–9; October 26 = 10, the deadline. Floor `"35.00"`. Bare Monday means October 12; roll forward to Tuesday October 13. Her final correction confirms Tuesday. **Agrees:** `"312.40"` on `2026-10-13`; close `promise`, no reason, notes, callbacks or transfers.
+- **I-02, p1 paid:** From November 30, December 1–4 = business days 1–4; December 7–11 = 5–9; December 14 = 10, the deadline. Floor `"20.00"`. Friday’s reported payment produces a deferred `paid` note, regardless of that Friday being a holiday. **Agrees:** p1 has one `paid` note and no promise.
+- **I-02, p2 promise:** From Monday November 30, December 1 = business day 1 and December 2 = 2, the 50-days-late deadline. Bare Wednesday is December 2. Floor `"295.00"` replaces the old percentage minimum of `"118.00"`. **Agrees:** `"295.00"` on `2026-12-02`; overall close `promise`, no reason, callbacks or transfers; only p1 receives a note.
+- **I-03, p1/p2, no promises:** After November 25, exclude holidays November 26–27 and weekend November 28–29. November 30 = business day 1; December 1–4 = 2–5; December 7–11 = 6–10. Thus p1’s deadline is December 4, floor `"155.00"`; p2’s deadline is December 11, floor `"15.00"`. **Agrees:** immediate do-not-call handling, one `do_not_call` note per product, close `no_promise / do_not_call`; no promises, callbacks or transfers.
+- **I-04, first callback proposal; p1:** From Saturday October 24, October 26–30 = business days 1–5, giving p1 deadline October 30 and floor `"228.00"`; these remain undisclosed. “Tonight at nine” means October 24 at 21:00, beyond the inclusive 20:00 limit. **Agrees:** reject this callback and ask once for another time.
+- **I-04, second callback proposal:** “Tomorrow at ten” means Sunday October 25 at 10:00. Today is October 24; the next business day is Monday October 26, which is not a holiday in this brief. Sunday is neither permitted date. **Agrees:** no callback; close `not_reached / no_callback`; no promises, notes or transfers.
+- **I-05, p1 promise:** After Tuesday December 1, December 2, 3, 4, 7 and 8 are business days 1–5; exclude December 5–6. Deadline December 8; floor `"210.00"`. One unsuccessful request to clarify the vague period leads to offering that deadline. **Agrees:** `"840.00"` on `2026-12-08`; close `promise`, no reason or other actions. The superseded six-business-day rule would yield December 9, so this case discriminates correctly.
+- **I-06, p1, no promise:** After Thursday November 12, Friday November 13 = business day 1; exclude November 14–15; Monday November 16 = 2, the deadline. Floor `"330.00"`. Accepted hardship assistance ends payment negotiation. **Agrees:** transfer to `hardship_team`, close `transferred / hardship`; no promises, notes or callbacks.
+
+## VERDICT
+VERDICT: FIX (at least one BLOCKER or MAJOR).

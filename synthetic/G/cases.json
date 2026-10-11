@@ -1,0 +1,299 @@
+[
+ {
+  "id": "G-01",
+  "brief": "G",
+  "family": "Happy path",
+  "level": "medium",
+  "title": "Phone digits and a question in one message; pays on the deadline",
+  "variables": {
+   "first_name": "Nadia",
+   "last_name": "Oyelaran",
+   "title": "Ms",
+   "now": "2026-11-19T16:00"
+  },
+  "identity": {
+   "date_of_birth": "1986-02-09",
+   "phone_last4": "8864"
+  },
+  "products": [
+   {
+    "type": "CC",
+    "card_last4": "4471",
+    "arrears": 640.0,
+    "days_in_arrears": 20
+   }
+  ],
+  "script": "Confirms the name. Date of birth 9 February 1986. Answers the phone question with '8864. How much do I owe?'. Asked whether she can pay today, says no, but she can pay in full on the 30th. Confirms.",
+  "expected": {
+   "outcome": "PTP",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 640.0,
+     "date": "2026-11-30"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the recording sentence is said word for word in the first sentence",
+   "verify_identity called with phone_last4 8864 and the amount is only stated after both questions pass",
+   "promise of 640 pounds on Monday 30 November, the 6th business day after today with 20 November a staff day",
+   "the text message sentence is said, not the letter sentence"
+  ]
+ },
+ {
+  "id": "G-02",
+  "brief": "G",
+  "family": "Refusal",
+  "level": "hard",
+  "title": "Three products, refuses everything; one attempt each, no second attempt",
+  "variables": {
+   "first_name": "Dominic",
+   "last_name": "Ferreira",
+   "title": "Mr",
+   "now": "2026-12-11T17:30"
+  },
+  "identity": {
+   "date_of_birth": "1978-10-30",
+   "phone_last4": "3310"
+  },
+  "products": [
+   {
+    "type": "CC",
+    "card_last4": "9020",
+    "arrears": 400.0,
+    "days_in_arrears": 12
+   },
+   {
+    "type": "PL",
+    "arrears": 1200.0,
+    "days_in_arrears": 30
+   },
+   {
+    "type": "HP",
+    "arrears": 800.0,
+    "days_in_arrears": 70
+   }
+  ],
+  "script": "Verified. Asked whether he can clear all of them today, says no. On each product, refuses the first proposal flatly. If a second proposal is made on the same product, accepts it and confirms it. Does not want a transfer.",
+  "expected": {
+   "outcome": "NOPTP",
+   "reason": "REF",
+   "promises": [],
+   "notes": [
+    {
+     "product_id": "p1",
+     "reason": "REF"
+    },
+    {
+     "product_id": "p2",
+     "reason": "REF"
+    },
+    {
+     "product_id": "p3",
+     "reason": "REF"
+    }
+   ],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "after verification, all three products are stated before any payment question",
+   "exactly one persuasion attempt per product: Friday 18 December (last business day of next week) for the card and the loan, Wednesday 16 December (its deadline) for the hire purchase agreement",
+   "no second attempt on any product, so no promise is recorded",
+   "three REF notes, one per product; close_call NOPTP / REF"
+  ],
+  "style": "talkative"
+ },
+ {
+  "id": "G-03",
+  "brief": "G",
+  "family": "Identity",
+  "level": "medium",
+  "title": "Two wrong dates of birth end the check under the memo",
+  "variables": {
+   "first_name": "Fiona",
+   "last_name": "McAllister",
+   "title": "Ms",
+   "now": "2026-11-30T10:30"
+  },
+  "identity": {
+   "date_of_birth": "1992-07-21",
+   "phone_last4": "6630"
+  },
+  "products": [
+   {
+    "type": "PL",
+    "arrears": 560.0,
+    "days_in_arrears": 9
+   }
+  ],
+  "script": "Confirms the name. Gives her date of birth as the twenty-first of July nineteen ninety-one, then the twelfth of July nineteen ninety-two. Asks what this is about.",
+  "expected": {
+   "outcome": "IDFAIL",
+   "reason": "FAIL",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the check ends after the second wrong date of birth",
+   "the phone question is never asked",
+   "nothing about the account is said; she is told to call the number on her statement",
+   "close_call IDFAIL / FAIL"
+  ],
+  "style": "in_words"
+ },
+ {
+  "id": "G-04",
+  "brief": "G",
+  "family": "Third party",
+  "level": "medium",
+  "title": "Flatmate answers on the last Saturday of the month",
+  "variables": {
+   "first_name": "Kwame",
+   "last_name": "Boateng",
+   "title": "Mr",
+   "now": "2026-10-31T11:00"
+  },
+  "identity": {
+   "date_of_birth": "1989-12-12",
+   "phone_last4": "5078"
+  },
+  "products": [
+   {
+    "type": "HP",
+    "arrears": 1050.0,
+    "days_in_arrears": 16
+   }
+  ],
+  "script": "The person who answers is his flatmate. Says Kwame is out and suggests 'today at two'. If that is not possible, says 'Monday at nine'.",
+  "expected": {
+   "outcome": "NOCON",
+   "reason": "CB",
+   "promises": [],
+   "notes": [],
+   "callbacks": [
+    {
+     "date": "2026-11-02",
+     "time": "09:00"
+    }
+   ],
+   "transfers": []
+  },
+  "checks": [
+   "nothing about arrears or a product is said to the flatmate",
+   "today is refused, one more time is asked for",
+   "callback booked for Monday 2 November at 09:00",
+   "close_call NOCON / CB"
+  ],
+  "third_party": true
+ },
+ {
+  "id": "G-05",
+  "brief": "G",
+  "family": "Complaint",
+  "level": "medium",
+  "title": "Wants to make a complaint after the balance is stated",
+  "variables": {
+   "first_name": "Harriet",
+   "last_name": "Nkemelu",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "date_of_birth": "1983-03-05",
+   "phone_last4": "2291"
+  },
+  "products": [
+   {
+    "type": "CC",
+    "card_last4": "7718",
+    "arrears": 220.0,
+    "days_in_arrears": 7
+   }
+  ],
+  "script": "Verified. When the arrears are stated, says the charges are wrong and she wants to make a formal complaint. Asks how to complain.",
+  "expected": {
+   "outcome": "XFER",
+   "reason": "COMP",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "complaints"
+    }
+   ]
+  },
+  "checks": [
+   "the assistant does not argue and does not carry on collecting",
+   "transfer_to_agent with queue complaints straight away",
+   "no note on the product; close_call XFER / COMP"
+  ],
+  "style": "asks_back"
+ },
+ {
+  "id": "G-06",
+  "brief": "G",
+  "family": "Hardship",
+  "level": "hard",
+  "title": "Widowed, declines the transfer, pays the HP minimum on its deadline",
+  "variables": {
+   "first_name": "Leonard",
+   "last_name": "Hastings",
+   "title": "Mr",
+   "now": "2026-12-01T19:30"
+  },
+  "identity": {
+   "date_of_birth": "1958-06-27",
+   "phone_last4": "9143"
+  },
+  "products": [
+   {
+    "type": "HP",
+    "arrears": 1000.0,
+    "days_in_arrears": 70
+   },
+   {
+    "type": "CC",
+    "card_last4": "6604",
+    "arrears": 999.0,
+    "days_in_arrears": 10
+   }
+  ],
+  "script": "Verified. Says his wife passed away last month. When a transfer to financial support is offered, says 'I do not want to be transferred'. Then offers two hundred and twenty pounds on the hire purchase agreement 'next Tuesday'; says 'next Wednesday, sorry, next Tuesday' when he first says it. Accepts the minimum when told 220 is below it, and accepts the earlier date when told the latest date is earlier. Says nothing can be paid on the card. Confirms.",
+  "expected": {
+   "outcome": "PTP",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 250.0,
+     "date": "2026-12-04"
+    }
+   ],
+   "notes": [
+    {
+     "product_id": "p2",
+     "reason": "HARD"
+    }
+   ],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "one sentence of sympathy; the transfer offer names financial support and is made once",
+   "no persuasion attempt on either product after the hardship",
+   "220 pounds is declined as below the minimum and the minimum of 250 pounds (25 percent, not 200) is offered once",
+   "next Tuesday, 8 December, is refused for the hire purchase agreement; 4 December, its 3rd-business-day deadline, is recorded",
+   "HARD note on the credit card; close_call PTP"
+  ],
+  "style": "corrects"
+ }
+]
