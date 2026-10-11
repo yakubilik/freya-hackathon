@@ -2267,3 +2267,16 @@ def test_amounts_in_words_when_the_brief_asks():
     assert _money(124000, C) == "one thousand two hundred and forty euros"
     assert _money(124000, {"currency": "pounds", "amount_words": False}) == "1240 pounds"
     assert not _amount_words_text({"table": {"obligations": [{"then": [{"say": {"content": "name the product in words"}}]}]}, "phrases": {}}, None)
+
+
+def test_numeric_date_of_birth_in_words():
+    """Synthetic F-01 (2026-10-11): the in_words customer gave the date of birth as 'fourteen oh three eighty-eight' and the
+    engine read only the day; day, month and year as numbers in words are a date, a two-digit year gets its century."""
+    from builder.engine.dates import parse_identity_date
+    assert parse_identity_date("fourteen oh three eighty-eight")["value"] == "1988-03-14"
+    assert parse_identity_date("the fourteenth of the third, eighty-eight")["value"] == "1988-03-14"
+    assert parse_identity_date("fourteen three nineteen eighty eight")["value"] == "1988-03-14"
+    assert parse_identity_date("twenty-first of the seventh, oh five")["value"] == "2005-07-21"
+    assert parse_identity_date("three fourteen eighty-eight", "month_day_year")["value"] == "1988-03-14"
+    assert parse_identity_date("fourteen March nineteen eighty-eight")["value"] == "1988-03-14"
+    assert parse_identity_date("the fourteenth")["status"] == "partial"

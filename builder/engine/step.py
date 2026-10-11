@@ -1179,6 +1179,8 @@ def _callback_events(C, st, evs):
             st["pending"] = "callback_retry"
             return
         if cb["invalid"] >= int(max_invalid):
+            # the last refused offer is still answered before the goodbye (synthetic I-04, 2026-10-11)
+            _line(C, "Say that this time is outside the window as well, so no callback can be booked.")
             _trigger(C, st, "callback_refused_twice")
             return
         st["pending"] = "callback_retry"
@@ -2073,6 +2075,9 @@ def _render(C, st, out):
             _say(C, st, "opening")
             opening = _phrase(C, "opening") or {}
             content = _param(C, "opening.sentence_content") if _has_param(C, "opening.sentence_content") else None
+            if not opening.get("exact") and re.search(r"\b(first|one|single) sentence\b", " ".join(str(x or "") for x in (opening.get("text"), content)), re.I):
+                # "all in the first sentence" (synthetic J-01, 2026-10-11: the recording notice was moved to a second sentence)
+                _line(C, "Put the bank's name, what you are and that the call is recorded in one single sentence.")
             if opening.get("exact") and isinstance(content, str) and content.strip() != str(opening.get("text") or "").strip():
                 _line(C, "After the supplied exact opening, convey any remaining introduction content from these "
                       "requirements without repeating that opening: " + content)

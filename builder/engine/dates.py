@@ -662,6 +662,58 @@ def resolve_date(text, now, rules=None):
 # identity answers
 
 
+def _numeric_groups_for_date(tokens):
+    """[14, 3, 88] for 'fourteen oh three eighty eight', [14, 3, 1988] for 'fourteen three nineteen eighty eight'; None
+    when a token is not a number word, a digit string, 'oh'/'zero', 'and' or an ordinal day ('fourteenth')."""
+    toks = ["zero" if t in ("oh", "o", "nought") else t for t in tokens if t not in ("and", "the", "of")]
+    toks = [str(ORDINALS[t]) if t in ORDINALS else t for t in toks]
+    toks = [m.group(1) if (m := ORDINAL_SUFFIX.match(t)) else t for t in toks]
+    if not toks or not all(t in UNITS or t in TENS or t == "zero" or t == "hundred" or t.isdigit() for t in toks):
+        return None
+    span = _year_in_words_span(toks)
+    year = None
+    if span:
+        year, a, b = span
+        toks = toks[:a] + toks[b:]
+    groups = []
+    i = 0
+    while i < len(toks):
+        t = toks[i]
+        if t == "zero":
+            # "oh three" -> 3, "oh" alone -> 0
+            if i + 1 < len(toks) and toks[i + 1] in UNITS and UNITS[toks[i + 1]] < 10:
+                groups.append(UNITS[toks[i + 1]])
+                i += 2
+            else:
+                groups.append(0)
+                i += 1
+            continue
+        if t.isdigit():
+            groups.append(int(t))
+            i += 1
+            continue
+        if t in TENS:
+            v = TENS[t]
+            nxt = toks[i + 1] if i + 1 < len(toks) else ""
+            if nxt in UNITS and UNITS[nxt] < 10:
+                v += UNITS[nxt]
+                i += 1
+            elif nxt.isdigit() and len(nxt) == 1:        # "twenty" + "first" (already 1)
+                v += int(nxt)
+                i += 1
+            groups.append(v)
+            i += 1
+            continue
+        if t in UNITS:
+            groups.append(UNITS[t])
+            i += 1
+            continue
+        return None
+    if year is not None:
+        groups.append(year)
+    return groups
+
+
 def parse_identity_date(text, parse_rule="day_month_year"):
     """A date of birth as said by a customer -> {"status": "complete|partial|none", "value": 'YYYY-MM-DD'|None, "parts": dict of day/month/year.
     Numbers only are read day, month, year (parse_rule 'day_month_year') or month, day, year ('month_day_year').
@@ -698,6 +750,19 @@ def parse_identity_date(text, parse_rule="day_month_year"):
             res["parts"] = {"day": a, "month": b, "year": y}
         return _finish_dob(res)
     tokens = s.split(" ")
+    # "fourteen oh three eighty-eight" / "fourteen, three, nineteen eighty-eight": day, month and year as numbers in words
+    # (the kit's in_words customers, synthetic F-01 2026-10-11); nothing but number words, exactly three groups
+    if not any(t in MONTHS for t in tokens):
+        groups = _numeric_groups_for_date(tokens)
+        if groups and len(groups) == 3:
+            a, b, y = groups
+            if y < 100:
+                y += 1900 if y > 30 else 2000
+            if parse_rule == "month_day_year":
+                a, b = b, a
+            if 1 <= a <= 31 and 1 <= b <= 12 and 1800 <= y <= 2100:
+                res["parts"] = {"day": a, "month": b, "year": y}
+                return _finish_dob(res)
     day = month = year = None
     span = _year_in_words_span(tokens)
     if span:

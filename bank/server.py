@@ -206,7 +206,12 @@ class Bank:
     def _canonical(s, role, args):
         """Request args keyed by canonical field name, read through the profile's wire names."""
         names = s["profile"]["fields"].get(role, {})
-        return {canon: args[wire] for canon, wire in names.items() if wire in args}
+        out = {canon: args[wire] for canon, wire in names.items() if wire in args}
+        if role == "verify_identity" and "answer" not in out:
+            # a one-question API: no question field, the answer travels under its own name (synthetic F: `birth_date`)
+            leftover = {k: v for k, v in args.items() if k not in names.values()}
+            if len(leftover) == 1: out["answer"] = next(iter(leftover.values()))
+        return out
 
     @staticmethod
     def _wire(s, role, canon):
@@ -217,6 +222,8 @@ class Bank:
     def _verify_identity(self, s, a):
         p = s["profile"]
         field, answer, left = a.get("field"), a.get("answer"), lambda: max(0, p["max_wrong"] - s["wrong"])
+        if field is None and len(s["identity"]) == 1:
+            field = next(iter(s["identity"]))      # a one-question API names no question
         if field not in s["identity"]: return {"ok": False, "error": self._wire(s, "verify_identity", "field") + " must be " + " or ".join(s["identity"])}
         if left() <= 0: return {"ok": False, "verified": False, "wrong_answers_left": 0, "error": "identity check is over"}
         if s["verified"].get(field):
@@ -224,6 +231,8 @@ class Bank:
             if not p["passed_field_omits_all_verified"]: r["all_verified"] = self._verified(s)
             return r
         kind, truth = p["identity_types"].get(field, "text"), s["identity"][field]
+        if kind == "text" and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(truth or "")):
+            kind = "date"             # the type was not in the API (no question enum): the stored truth says it is a date
         if kind == "date":
             got, want = read_date(answer), read_date(truth)
             if got is None: return {"ok": False, "error": "answer is not a date. Send it as YYYY-MM-DD."}
