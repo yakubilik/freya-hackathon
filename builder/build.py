@@ -6,8 +6,9 @@
 
 The final's form: the case folder holds BRIEF.md, README.md, the documents and a service contract; the second argument
 is the base URL of our mock of the bank. The contract (a .json/.yaml/.yml OpenAPI document anywhere in the folder) is
-copied with its server on the mock, so every tool of the final variant calls the mock and nothing else; without a
-machine-readable contract the build stops with a trace error. BRIEF.md, README.md and then the other text documents
+copied with its server on the mock, so every tool of the final variant calls the mock and nothing else. Without a
+machine-readable contract (a prose contract: services, paths and shapes in text and tables) there is nothing for the
+reader and the emitter: the run goes straight to the floor (trigger T0) with the whole budget. BRIEF.md, README.md and then the other text documents
 (file-name order, subfolders included) are joined into <case_folder>.joined.md; images and binaries are only listed.
 
 Stages, under one 30-minute budget with reservations (Schedule below):
@@ -22,7 +23,9 @@ Stages, under one 30-minute budget with reservations (Schedule below):
   5. platform one public case on the official scorer when time remains and the brief is public.
   6. manifest runs/<run_id>/manifest.json, written even on failure.
 
-The floor is the kit's example builder (kit/build-the-builder/examples/agent_builder.py), run as a subprocess.
+The floor, run as a subprocess: for a case folder our own runner (builder/floor/runner.py with its skill, which reads
+every document of the folder and builds the tools on the mock; its session log is runs/<run_id>/floor-session.jsonl),
+else the kit's example builder (kit/build-the-builder/examples/agent_builder.py).
 Trace: runs/<run_id>/trace.log (plain text, every line also on stdout, paths repo-relative) and trace.jsonl. Keys come from the environment or from .env in the
 repository root (KEY=VALUE lines); they are never written to the trace.
 """
@@ -648,9 +651,17 @@ def prepare_case(trace, manifest, case_dir, tools_path, mock_url, joined):
         for n in notes:
             trace.info("contract candidate passed over: %s" % n)
         if contract is None:
-            raise ValueError("no machine-readable service contract in the case folder (looked for a .json/.yaml/.yml "
-                             "OpenAPI document with openapi/swagger/paths at the top%s); no tools are invented, the "
-                             "build stops" % ("; " + " | ".join(notes) if notes else ""))
+            # a prose contract: the reader and the emitter need an OpenAPI document, the floor reads the folder itself
+            manifest["mock_url"] = mock_url
+            brief_path, used, skipped = join_case_dir(case_dir, out=joined)
+            manifest["brief_documents"], manifest["skipped_documents"] = used, skipped
+            manifest["brief_path"], manifest["tools_path"] = rel(brief_path), None
+            manifest["brief_hash"] = sha256_file(brief_path)
+            trace.info("documents in the case folder: %s%s" % (
+                ", ".join(used), "; not joined (the floor reads them itself): " + ", ".join(skipped) if skipped else ""))
+            raise FloorTrigger("T0", "no machine-readable contract (no .json/.yaml/.yml OpenAPI document with "
+                                     "openapi/swagger/paths at the top%s); the reading is skipped, the floor reads the "
+                                     "case folder and its contract itself" % ("; " + " | ".join(notes) if notes else ""))
         api0 = parse_api(doc)
         mock_base = base_url_for(api0, "final", mock_url)
         trace.info("service contract: %s, %d operation(s) (%s); its server %s; tools go to the mock %s" % (
@@ -731,8 +742,12 @@ def run(argv=None, schedule=None):
     trace.info("environment: %d keys loaded from .env (names only: %s)" % (len(env_set), ", ".join(sorted(env_set))))
     try:
         if case_dir is not None:
-            brief_path, tools_path = prepare_case(trace, manifest, case_dir, tools_path, mock_url, brief_path)
-        _pipeline(a, schedule, trace, manifest, brief_path, tools_path, bslug, run_id, out_dir)
+            try:
+                brief_path, tools_path = prepare_case(trace, manifest, case_dir, tools_path, mock_url, brief_path)
+            except FloorTrigger as ft:
+                run_floor(a, schedule, trace, manifest, ft, brief_path, None, bslug, case_dir, mock_url)
+                return manifest
+        _pipeline(a, schedule, trace, manifest, brief_path, tools_path, bslug, run_id, out_dir, case_dir, mock_url)
     except Exception as e:  # noqa: BLE001 - the manifest is written whatever happens
         manifest["status"] = "failed"
         manifest["errors"].append("%s: %s" % (type(e).__name__, e))
@@ -750,7 +765,7 @@ def run(argv=None, schedule=None):
     return manifest
 
 
-def _pipeline(a, schedule, trace, manifest, brief_path, tools_path, bslug, run_id, out_dir):
+def _pipeline(a, schedule, trace, manifest, brief_path, tools_path, bslug, run_id, out_dir, case_dir=None, mock_url=None):
     from builder.readers.api_file import parse_api
 
     brief_text = brief_path.read_text()
@@ -769,7 +784,7 @@ def _pipeline(a, schedule, trace, manifest, brief_path, tools_path, bslug, run_i
         table = stage_read(a, schedule, trace, manifest, brief_path, tools_path, public, out_dir)
         wf, counts_ = stage_emit(a, schedule, trace, manifest, table, api, raw_api)
     except FloorTrigger as ft:
-        return run_floor(a, schedule, trace, manifest, ft, brief_path, tools_path, bslug)
+        return run_floor(a, schedule, trace, manifest, ft, brief_path, tools_path, bslug, case_dir, mock_url)
 
     if not a.skip_tests:
         stage_selftest(schedule, trace, manifest, table, api, public)
@@ -1059,42 +1074,76 @@ def stage_platform(schedule, trace, manifest, public):
 # ---- floor
 
 
-def run_floor(a, schedule, trace, manifest, ft, brief_path, tools_path, bslug):
+def run_floor(a, schedule, trace, manifest, ft, brief_path, tools_path, bslug, case_dir=None, mock_url=None):
+    """The floor after a trigger. A case folder with a mock URL gets our own runner (builder/floor/runner.py: it reads
+    the whole folder, contract and drawings included, and checks its tools on the mock, no practice cases); a brief with
+    a tool API file gets the kit's example builder. Either way the workflow it saved is exported."""
     manifest["trigger"] = {"id": ft.trigger, "reason": ft.reason}
     trace.error("fallback trigger %s: %s" % (ft.trigger, ft.reason))
+    case_floor = case_dir is not None and mock_url is not None
+    kind = "case" if case_floor else "kit"
     budget = schedule.budget("floor")
     if budget < FLOOR_MIN_S:
         trace.error("floor not admitted: %.0f s left after the export reserve, %d needed; no agent from this run" % (budget, FLOOR_MIN_S))
         manifest["status"] = "no agent"
         return
     if a.no_deploy:
-        trace.info("floor not run: --no-deploy")
+        trace.info("floor not run: --no-deploy (it would be the %s floor with %.0f s)" % (kind, budget))
         manifest["status"] = "no agent (offline)"
-        manifest["fallback"] = "kit (not run)"
+        manifest["fallback"] = "%s (not run)" % kind
         return
-    manifest["fallback"] = "kit"
+    manifest["fallback"] = kind
+    model = os.environ.get("BUILDER_MODEL", "claude-opus-5-5")
     trace.stage_start("floor", budget)
-    cmd = [sys.executable, str(KIT / "examples" / "agent_builder.py"), str(brief_path), str(tools_path)]
-    trace.info("running the kit's example builder as the floor (model %s, timeout %.0f s)" % (
-        os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), budget))
+    if case_floor:
+        slot = a.slot or "%s-floor" % bslug
+        state_file, key = STATE_FILE, slot
+        session_log = trace.dir / "floor-session.jsonl"
+        cmd = [sys.executable, str(ROOT / "builder" / "floor" / "runner.py"), str(case_dir), mock_url,
+               "--run-dir", str(trace.dir), "--slot", slot, "--state-file", str(STATE_FILE), "--budget", "%.0f" % budget]
+        cwd, purpose = ROOT, "case floor: read the case folder, build the agent with its tools on the mock, check and save it"
+        trace.info("running our case-folder floor builder/floor/runner.py (model %s, timeout %.0f s, slot %s, mock %s); "
+                   "session log %s" % (model, budget, slot, mock_url, rel(session_log)))
+    else:
+        state_file, key = KIT / ".freya-agents.json", brief_path.stem
+        session_log = None
+        cmd = [sys.executable, str(KIT / "examples" / "agent_builder.py"), str(brief_path), str(tools_path)]
+        cwd, purpose = KIT, "kit floor: build, test and fix a phone agent"
+        trace.info("running the kit's example builder as the floor (model %s, timeout %.0f s)" % (model, budget))
+    before = (json.loads(state_file.read_text()) if state_file.exists() else {}).get(key)
     t0 = time.monotonic()
     try:
-        p = subprocess.run(cmd, cwd=KIT, capture_output=True, text=True, timeout=budget, env=dict(os.environ))
+        # the runner cuts its own session before the budget; the extra seconds are for it to write its last lines
+        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=budget + (20 if case_floor else 0),
+                           env=dict(os.environ))
         (trace.dir / "floor.log").write_text(p.stdout + p.stderr)
         trace.echo_output("floor", p.stdout + p.stderr)
         done = re.search(r"done: (\d+) turns, (\d+) s, \$([\d.]+)", p.stdout)
-        trace.model_call(os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), "kit floor: build, test and fix a phone agent",
-                         None, round(time.monotonic() - t0, 1), detail=done.group(0) if done else "exit %s" % p.returncode)
-    except subprocess.TimeoutExpired:
+        trace.model_call(model, purpose, None, round(time.monotonic() - t0, 1),
+                         detail=done.group(0) if done else "exit %s" % p.returncode)
+    except subprocess.TimeoutExpired as e:
+        out = (e.stdout or b"").decode(errors="replace") if isinstance(e.stdout, bytes) else (e.stdout or "")
+        (trace.dir / "floor.log").write_text(out)
+        trace.echo_output("floor", out)
+        trace.model_call(model, purpose, None, round(time.monotonic() - t0, 1), detail="timed out")
         trace.error("floor timed out after %.0f s; exporting what it saved, if anything" % budget)
-    kit_state = KIT / ".freya-agents.json"
-    state = json.loads(kit_state.read_text()) if kit_state.exists() else {}
-    entry = state.get(brief_path.stem)
+    if session_log is not None:
+        trace.info("floor session log (every message of the coding agent): %s%s" % (
+            rel(session_log), "" if session_log.exists() else " (not written)"))
+    state = json.loads(state_file.read_text()) if state_file.exists() else {}
+    entry = state.get(key)
     if not entry:
         trace.stage_end("floor", "no workflow saved")
         manifest["status"] = "no agent"
         return
-    manifest["slot"] = "kit:" + brief_path.stem
+    if entry == before:
+        # an earlier run's agent is not this run's: submitting it with this trace would not match
+        trace.error("the floor saved nothing in this run; slot %s still holds an earlier version (%s), not exported" % (
+            key, entry.get("version")))
+        trace.stage_end("floor", "no workflow saved")
+        manifest["status"] = "no agent"
+        return
+    manifest["slot"] = key if case_floor else "kit:" + key
     manifest["workflow_id"], manifest["agent_id"] = entry["workflow_id"], entry["agent_id"]
     manifest["version"] = entry.get("version")
     freya = import_freya()

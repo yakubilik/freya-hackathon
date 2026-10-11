@@ -355,13 +355,118 @@ def test_mock_url_selects_the_mock_base(offline):
         assert str(ROOT) not in text and str(pathlib.Path.home()) not in text
 
 
-def test_mock_url_without_contract_fails_loudly(offline):
+PROSE_CONTRACT = """# Service contract
+
+Base URL: https://services.example.invalid/v1
+
+| Service | Method | Path | Request | Response |
+|---|---|---|---|---|
+| check_reference | POST | /check_reference | `{"reference": string}` | `{"status": "found" or "unknown"}` |
+| log_outcome | POST | /log_outcome | `{"reference": string, "outcome": string}` | `{"logged": true}` |
+"""
+
+
+def _prose_case(tmp_path):
+    d = _case(tmp_path, contract=False)
+    (d / "contract").mkdir()
+    (d / "contract" / "services.md").write_text(PROSE_CONTRACT)
+    return d
+
+
+def test_prose_contract_goes_to_the_floor_t0(offline):
+    """A case folder whose contract is prose has no OpenAPI document for the reader: the run goes to the floor (T0)
+    with the whole budget instead of failing, and the reading is skipped."""
     tmp, floors = offline
-    d = _case(tmp, contract=False)
-    m = build.run([str(d), MOCK, "--out-dir", str(tmp / "run"), "--no-deploy", "--reuse-table", str(TABLE_A_PATH)])
-    assert m["status"] == "failed" and not floors
-    assert "no machine-readable service contract" in m["errors"][0]
-    assert "no machine-readable service contract" in (tmp / "run" / "trace.log").read_text()
+    d = _prose_case(tmp)
+    m = build.run([str(d), MOCK, "--out-dir", str(tmp / "run"), "--no-deploy"])
+    assert floors == ["T0"] and m["status"] != "failed" and not m["errors"]
+    assert "no machine-readable contract" in m["trigger"]["reason"]
+    assert m["mock_url"] == MOCK and m["contract_path"] is None and m["tools_path"] is None
+    assert "contract/services.md" in m["brief_documents"] and m["brief_hash"]
+    assert "read" not in m["stages"]
+    log = (tmp / "run" / "trace.log").read_text()
+    assert "run failed" not in log and "documents in the case folder: BRIEF.md, README.md" in log
+
+
+def test_prose_contract_no_deploy_floor_not_run(monkeypatch, tmp_path):
+    """The real run_floor under --no-deploy: the floor is not run, the status says so and is not "failed"."""
+    monkeypatch.setattr(build, "load_env", lambda *a, **k: [])
+    monkeypatch.setattr(build, "source_commit", lambda: "0" * 40)
+    monkeypatch.setattr(build, "claude_ready", lambda: None)
+    d = _prose_case(tmp_path)
+    m = build.run([str(d), MOCK, "--out-dir", str(tmp_path / "run"), "--no-deploy"])
+    assert m["status"] == "no agent (offline)" and m["fallback"] == "case (not run)"
+    assert m["trigger"]["id"] == "T0" and not m["errors"]
+    log = (tmp_path / "run" / "trace.log").read_text()
+    assert "fallback trigger T0: no machine-readable contract" in log and "floor not run: --no-deploy" in log
+    assert json.loads((tmp_path / "run" / "manifest.json").read_text())["status"] == "no agent (offline)"
+
+
+def test_case_floor_runs_our_runner_and_exports_its_slot(monkeypatch, tmp_path, capsys):
+    """For a case folder the floor is builder/floor/runner.py, not the kit's builder: the case folder and the mock go
+    in, the session log path and the runner's output go to the trace, the slot it saved is exported."""
+    d = _prose_case(tmp_path)
+    state = tmp_path / "state.json"
+    state.write_text(json.dumps({"other": {"workflow_id": "w0", "agent_id": "a0"}}))
+    monkeypatch.setattr(build, "STATE_FILE", state)
+    seen = {}
+
+    def fake_run(cmd, cwd=None, timeout=None, **kw):
+        seen["cmd"], seen["timeout"] = cmd, timeout
+        run_dir = pathlib.Path(cmd[cmd.index("--run-dir") + 1])
+        (run_dir / "floor-session.jsonl").write_text("{}\n")
+        slot = cmd[cmd.index("--slot") + 1]
+        st = json.loads(state.read_text())
+        st[slot] = {"workflow_id": "w1", "agent_id": "a1", "version": 2}
+        state.write_text(json.dumps(st))
+        return build.subprocess.CompletedProcess(cmd, 0, "built it\ndone: 12 turns, 300 s, $1.00. Trace: x\n", "")
+
+    class FakeFreya:
+        @staticmethod
+        def export_workflow(wid, path):
+            pathlib.Path(path).write_text(json.dumps({"workflow_id": wid}))
+
+    monkeypatch.setattr(build.subprocess, "run", fake_run)
+    monkeypatch.setattr(build, "import_freya", lambda: FakeFreya)
+    monkeypatch.setattr(build, "EXPORT_DIR", tmp_path / "export")
+    monkeypatch.setattr(build, "ROOT", tmp_path)
+    s = build.Schedule(1800, clock=Clock())
+    a = build.parse_args([str(d), MOCK])
+    tr = build.Trace(tmp_path / "run", s)
+    m = {"errors": []}
+    build.run_floor(a, s, tr, m, build.FloorTrigger("T0", "no machine-readable contract"), tmp_path / "case.joined.md",
+                    None, "case-joined", d, MOCK)
+    cmd = seen["cmd"]
+    assert cmd[1].endswith("builder/floor/runner.py") and cmd[2] == str(d) and cmd[3] == MOCK
+    assert "agent_builder.py" not in " ".join(cmd) and float(cmd[cmd.index("--budget") + 1]) == s.budget("floor")
+    assert m["status"] == "ok (floor)" and m["fallback"] == "case" and m["slot"] == "case-joined-floor"
+    assert m["workflow_id"] == "w1" and m["agent_id"] == "a1" and m["version"] == 2
+    log = (tmp_path / "run" / "trace.log").read_text()
+    assert "floor session log (every message of the coding agent): run/floor-session.jsonl" in log
+    assert "purpose=case floor:" in log
+    assert "floor | built it" in capsys.readouterr().out
+
+
+def test_floor_runner_workdir(tmp_path):
+    """The runner's scratch folder: a copy of the case, the kit's reference files, our skill and the helpers; nothing
+    from the kit's practice API or its practice cases."""
+    sys.path.insert(0, str(ROOT / "builder" / "floor"))
+    import runner  # noqa: PLC0415
+    d = _prose_case(tmp_path)
+    work = tmp_path / "work"
+    runner.prepare_workdir(work, d, MOCK, "slot-x", tmp_path / "state.json", 123.0)
+    assert (work / "case" / "contract" / "services.md").read_text() == PROSE_CONTRACT
+    assert not (work / "case" / ".DS_Store").exists() and (work / "case" / "flow.png").exists()
+    for f in runner.KIT_FILES:
+        assert (work / "kit" / f).exists()
+    assert not (work / "kit" / "tools").exists()
+    skill = (work / ".claude" / "skills" / runner.SKILL / "SKILL.md").read_text()
+    assert "name: %s" % runner.SKILL in skill and "run_cases" not in skill and "openapi.json" not in skill
+    rj = json.loads((work / "run.json").read_text())
+    assert rj == {"mock_url": MOCK, "slot": "slot-x", "state_file": str(tmp_path / "state.json"), "deadline_epoch": 123.0}
+    for h in ("left.py", "save.py", "chat.py"):
+        compile((work / h).read_text(), h, "exec")
+    assert MOCK in runner.prompt_for(MOCK, 1500) and "25 minutes" in runner.prompt_for(MOCK, 1500)
 
 
 def test_trace_scrubs_keys_and_paths(tmp_path, monkeypatch, capsys):

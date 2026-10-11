@@ -52,5 +52,23 @@
  "fresh-A": {
   "workflow_id": "e6d9b93e-eacb-4e07-8710-15d527b1dca3",
   "agent_id": "957da591-bd01-4984-988d-d84d56782851"
+ },
+ "final-rehearsal-A": {
+  "workflow_id": "249dd9e5-61f6-4ca3-a912-1b6c4acc4aea",
+  "agent_id": "8283f49a-7cc6-4413-9eee-fe0d7aeb4a83"
+ },
+ "turkish-smoke": {
+  "workflow_id": "c718b209-6fd0-4625-a82b-a1a0a29732bc",
+  "agent_id": "3245df0b-f150-46fe-b2b2-c7f51885d295",
+  "version": 2
+ },
+ "mock-smoke": {
+  "workflow_id": "9dd1eb8b-7051-444b-b482-01e16bf5e233",
+  "agent_id": "798d2be3-ec2e-4dc4-9d30-595490fab1a0",
+  "version": 2
+ },
+ "tr-lang-smoke": {
+  "workflow_id": "9959a79d-ce7c-4dd2-9be0-b4b9b4db12ca",
+  "agent_id": "da15a450-100f-417d-a4dd-cbbc43d21d79"
  }
 }
