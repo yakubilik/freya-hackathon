@@ -463,8 +463,9 @@ def test_floor_runner_workdir(tmp_path):
     skill = (work / ".claude" / "skills" / runner.SKILL / "SKILL.md").read_text()
     assert "name: %s" % runner.SKILL in skill and "run_cases" not in skill and "openapi.json" not in skill
     rj = json.loads((work / "run.json").read_text())
-    assert rj == {"mock_url": MOCK, "slot": "slot-x", "state_file": str(tmp_path / "state.json"), "deadline_epoch": 123.0}
-    for h in ("left.py", "save.py", "chat.py"):
+    assert rj == {"mock_url": MOCK, "slot": "slot-x", "state_file": str(tmp_path / "state.json"), "deadline_epoch": 123.0,
+                  "sims_max": runner.SIMS_MAX, "sims_log": None}
+    for h in ("left.py", "save.py", "chat.py", "sim.py"):
         compile((work / h).read_text(), h, "exec")
     assert MOCK in runner.prompt_for(MOCK, 1500) and "25 minutes" in runner.prompt_for(MOCK, 1500)
 

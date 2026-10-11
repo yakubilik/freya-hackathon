@@ -23,6 +23,17 @@ Stages, under one 30-minute budget with reservations (Schedule below):
   5. platform one public case on the official scorer when time remains and the brief is public.
   6. manifest runs/<run_id>/manifest.json, written even on failure.
 
+Why a case folder can go straight to the floor (written 2026-10-11, after the final case opened). The kit and the
+challenge page promised hidden briefs as one Markdown file each with its own OpenAPI tool file, the seven practice tool
+names unchanged, debt collection, calls in English; the reader, the engine and the emitter were built to that
+promise. The final arrived in another form (one case folder of documents, a prose service contract, other services,
+another domain, another language), and this builder stopped with "no machine-readable contract" and made no agent.
+The changes made after the case opened only adapt the input path: a folder without a machine-readable contract goes to
+the floor (T0); the floor reads the case folder instead of the kit's practice files; it keeps the builder's two model
+families (a second-family review of the saved workflow, then a Claude fix session, as the reader's R1/R4 did); it
+tests its own agent with simulations, as the kit's example builder did. Reader, engine and emitter are unchanged, and
+nothing from any case (no rule, value, name, path or sentence) is written into the builder.
+
 The floor, run as a subprocess: for a case folder our own runner (builder/floor/runner.py with its skill, which reads
 every document of the folder and builds the tools on the mock; its session log is runs/<run_id>/floor-session.jsonl),
 else the kit's example builder (kit/build-the-builder/examples/agent_builder.py).
@@ -1130,6 +1141,8 @@ def run_floor(a, schedule, trace, manifest, ft, brief_path, tools_path, bslug, c
     if session_log is not None:
         trace.info("floor session log (every message of the coding agent): %s%s" % (
             rel(session_log), "" if session_log.exists() else " (not written)"))
+        _trace_floor_steps(trace, trace.dir / "floor-steps.json")
+        _trace_floor_sims(trace, trace.dir / "floor-sims.jsonl")
     state = json.loads(state_file.read_text()) if state_file.exists() else {}
     entry = state.get(key)
     if not entry:
@@ -1150,6 +1163,52 @@ def run_floor(a, schedule, trace, manifest, ft, brief_path, tools_path, bslug, c
     _export(freya, trace, manifest, entry["workflow_id"], bslug, Deadline(max(60.0, schedule.remaining())))
     trace.stage_end("floor", "ok")
     manifest["status"] = "ok (floor)"
+
+
+def _trace_floor_steps(trace, steps_path):
+    """The case floor's review and fix steps (builder/floor/runner.py writes them): every model call with its model,
+    purpose, seconds and outcome; a skipped or failed step says why and that the first saved workflow stands."""
+    try:
+        steps = json.loads(steps_path.read_text()) if steps_path.exists() else []
+    except (OSError, ValueError):
+        steps = []
+    for st in steps:
+        if st.get("name") == "first":
+            continue                                   # traced above as the floor's own model call
+        outcome = st.get("outcome", "")
+        if outcome.startswith("skipped"):
+            trace.info("%s: %s; the first saved workflow stands" % (st.get("purpose"), outcome))
+            continue
+        trace.model_call(st.get("model"), st.get("purpose"), st.get("tokens"), st.get("seconds"),
+                         detail=outcome, backend=st.get("backend"))
+        if st.get("review"):
+            trace.info("floor review (second model family, %s): %s" % (st.get("backend"), rel(trace.dir / st["review"])))
+        if st.get("log"):
+            trace.info("floor fix session log: %s" % rel(trace.dir / st["log"]))
+        if outcome.startswith("failed"):
+            trace.error("%s %s; the first saved workflow stands" % (st.get("name"), outcome))
+
+
+def _trace_floor_sims(trace, sims_path):
+    """The simulations the case floor ran on its own saved phone agent (builder/floor/runner.py's sim.py writes one line
+    each): a test line per simulation with how many callers it ran, passed/total, the simulation id and seconds."""
+    lines = sims_path.read_text().splitlines() if sims_path.exists() else []
+    if not lines:
+        trace.info("floor simulations: none ran on the saved phone agent")
+    for ln in lines:
+        try:
+            r = json.loads(ln)
+        except ValueError:
+            continue
+        total, passed = r.get("callers") or 0, r.get("passed") or 0
+        status = str(r.get("status"))
+        result = "PASS" if total and passed == total and status == "completed" else "FAIL"
+        detail = "%d / %d passed, simulation %s, status %s, %s s" % (passed, total, r.get("simulation_id"), status,
+                                                                     r.get("seconds"))
+        if r.get("failed"):
+            detail += "; failed: %s" % ", ".join(map(str, r["failed"]))
+        trace.test("0", "floor simulation %s of the saved phone agent (%d simulated callers)" % (r.get("n"), total),
+                   result, detail)
 
 
 def main(argv=None):

@@ -70,5 +70,20 @@
  "tr-lang-smoke": {
   "workflow_id": "9959a79d-ce7c-4dd2-9be0-b4b9b4db12ca",
   "agent_id": "da15a450-100f-417d-a4dd-cbbc43d21d79"
+ },
+ "case-try1-joined-floor": {
+  "workflow_id": "9d53c616-06c2-49de-91db-a77eb3fd91ac",
+  "agent_id": "af821ff2-ba94-4aff-b0e2-7236e38feffd",
+  "version": 3
+ },
+ "case-rev-joined-floor": {
+  "workflow_id": "4d7d8f31-ee81-4ce1-a00a-a0ce6fc20ca4",
+  "agent_id": "6e505dd2-005c-444c-9cf7-088243b04400",
+  "version": 10
+ },
+ "case-norev-joined-floor": {
+  "workflow_id": "ac14de4f-1eab-4f8e-b193-f177fb1e7531",
+  "agent_id": "572a9cbd-46a5-4319-8e0e-31be55a00c97",
+  "version": 8
  }
 }
