@@ -1010,6 +1010,19 @@ def parse_year(text):
     digits = [d for d in digits if d]
     if len(digits) == 4 and all(len(d) == 1 and d.isdigit() for d in digits) and digits[0] + digits[1] in ("18", "19", "20"):
         return {"status": "complete", "value": "".join(digits)}
+    # "19... 82", "nineteen 82", "19 eighty-two": the century and the rest as two pieces (synthetic C-06, 2026-10-11)
+    nums = [YEAR_CENTURY_PIECES.get(t, t) for t in toks if t not in ("and", "then")]
+    if len(nums) == 2 and nums[0] in ("18", "19", "20"):
+        rest = nums[1] if nums[1].isdigit() else None
+        if rest is None:
+            g = (_small_groups(_norm(nums[1]).split(" ")) if nums[1] else None) or []
+            rest = str(g[0]) if len(g) == 1 else None
+    elif len(nums) == 3 and nums[0] in ("18", "19", "20") and nums[1] in TENS and nums[2] in UNITS and UNITS[nums[2]] < 10:
+        rest = str(TENS[nums[1]] + UNITS[nums[2]])
+    else:
+        rest = None
+    if rest is not None and rest.isdigit() and len(rest) == 2:
+        return {"status": "complete", "value": nums[0] + rest}
     core = re.sub(r"\b(it's|it s|it is|that's|that s|the year|year|of birth|is|was|in|born|i|yes)\b", " ", s)
     core = " ".join(core.split())
     if core in YEAR_CENTURY_PIECES:

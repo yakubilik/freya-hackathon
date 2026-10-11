@@ -1361,6 +1361,14 @@ def _identity_events(C, st, evs):
                         ident["partials"][qid] = prev + " " + text
                     elif status == "partial":
                         ident["partials"][qid] = text
+                    if status != "complete":
+                        # the rest never completes the answer ("19" then "82" read as nothing, synthetic C-06 2026-10-11):
+                        # after two tries the pieces are dropped and the whole question is asked again, no endless
+                        # "the rest of the answer"
+                        ident["rest_tries"] = ident.get("rest_tries", 0) + 1
+                        if ident["rest_tries"] >= 2:
+                            ident["partials"].pop(qid, None)
+                            ident["rest_tries"] = 0
                 elif status == "partial":
                     ident["partials"][qid] = text
             if status == "complete":
@@ -1685,6 +1693,12 @@ def _negotiate_bundle(C, st, evs):
     if C["pay_today_pending"] and st["items"]:
         st["pay_today_asked"] = True
     _tidy_bundle(C, st, evs)
+    # "I can pay the 310, but at the end of the month": the extractor files the vague period both on the proposal and as a
+    # vague_period event; the second copy would take the one exact-day question for answered and propose the deadline at
+    # once (synthetic C-03, 2026-10-11). The proposal carries the period; the duplicate goes
+    carried = set(str(o.get("date_text") or "").strip().lower() for o in evs
+                  if o["kind"] in ("amount_proposal", "date_proposal", "change") and o.get("date_text"))
+    evs = [e for e in evs if not (e["kind"] == "vague_period" and str(e.get("date_text") or "").strip().lower() in carried)]
     by_item = {}
     order = []
     proposal_items = set()

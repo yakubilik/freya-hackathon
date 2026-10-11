@@ -2319,3 +2319,33 @@ def test_tiny_piece_after_a_wrong_year_is_joined(base):
                                              [E("pay_today_yes")], [E("confirm")]], table)
     sent = [c[1].get("answer") for c in calls if c[0] == "verify_identity"]
     assert sent == ["8142", "1970", "1971"] and st["identity"]["state"] == "verified" and led["outcome"] == "promise"
+
+
+def test_year_said_as_century_and_rest_and_the_rest_loop_ends():
+    """Synthetic C-06 (2026-10-11): "19... 82." was unreadable, then "19" / "82" never joined and the engine asked for
+    'the rest of the answer' for ever."""
+    from builder.engine.dates import parse_year
+    assert parse_year("19... 82.") == {"status": "complete", "value": "1982"}
+    assert parse_year("nineteen 82") == {"status": "complete", "value": "1982"}
+    assert parse_year("19 eighty-two") == {"status": "complete", "value": "1982"}
+    assert parse_year("19 8")["status"] == "none"
+    from builder.engine.step import _identity_events, new_state
+    import importlib
+    step = importlib.import_module("builder.engine.step")
+    table = _with(TABLE_A, identity__questions=[{"id": "birth_year", "wire_field": "birth_year", "type": "year", "order": 1, "text": "year of birth", "parse_rule": "four digits"}])
+    C = step._context(table, "2026-10-16T10:00")
+    st = new_state({"customer_id": "c"})
+    st["identity"]["partials"] = {"birth_year": "nineteen"}
+    for n in range(2):
+        _identity_events(C, st, [E("id_answer", text="blah")])
+    assert st["identity"]["partials"] == {} and st["pending"] == "identity_again"
+
+
+def test_vague_period_carried_on_the_proposal_is_not_counted_twice(base):
+    """Synthetic C-03 (2026-10-11): "I can pay the 310, but at the end of the month" came as an amount proposal with the
+    vague period on it and as a vague_period event; the copy counted as the second vague answer and the deadline was
+    proposed without the exact-day question. The exact day is asked once, then the named day is recorded."""
+    st, led, calls, log = check(base, "EXT-052", verified(EXTENDED["EXT-052"]) + [
+        [E("pay_today_no"), E("amount_proposal", item="p1", amount=780, date="next week"), E("vague_period", date="next week")],
+        [E("date_proposal", date="Wednesday 21 October")], [E("confirm")]])
+    assert sum(1 for _, o in log if "exact day" in o["say_next"]) == 1
