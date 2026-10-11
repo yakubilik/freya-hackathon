@@ -2280,3 +2280,24 @@ def test_numeric_date_of_birth_in_words():
     assert parse_identity_date("three fourteen eighty-eight", "month_day_year")["value"] == "1988-03-14"
     assert parse_identity_date("fourteen March nineteen eighty-eight")["value"] == "1988-03-14"
     assert parse_identity_date("the fourteenth")["status"] == "partial"
+
+
+def test_declined_hardship_transfer_keeps_the_call_open_when_the_brief_continues(base):
+    """Synthetic J-05 / G-06 (2026-10-11): "Declined: continue without persuasion; a date or amount the customer still names
+    is recorded". The engine closed on the decline; the customer's figure a turn later was never heard. Brief A ("If they
+    decline, close as no_promise / hardship") still closes at once."""
+    table = copy.deepcopy(TABLE_A)
+    table["units"] = {"x.1": {"text": "Declined: continue without persuasion; a date or amount the customer still names is recorded."}}
+    case = PUBLIC["PUB-05"]
+    st, led, calls, log = drive(base, case, verified(case) + [[E("hardship", text="I lost my job")],
+                                                             [E("dont_want_to_talk", text="I do not want to be transferred.")],
+                                                             [E("amount_proposal", amount=300, date="Friday 23 October")], [E("confirm")]], table)
+    assert led["outcome"] == "promise" and [(p["product_id"], float(p["amount"]), p["date"]) for p in led["promises"]] == [("p1", 300.0, "2026-10-23")]
+    opens = [o["say_next"] for _, o in log if "anything the customer would like to arrange" in o["say_next"]]
+    assert len(opens) == 1 and "Propose no amount" in opens[0]
+    # nothing named in the open reply: noted as hardship and closed, no second question
+    st, led, calls, log = drive(base, case, verified(case) + [[E("hardship", text="I lost my job")], [E("refuse")], [E("other", text="No, nothing.")]], table)
+    assert led["outcome"] == "no_promise" and led["reason"] == "hardship" and [c[0] for c in calls][-2:] == ["add_note", "close_call"]
+    # brief A: the decline closes the call
+    st, led, calls, log = drive(base, case, verified(case) + [[E("hardship", text="I lost my job")], [E("refuse")]], TABLE_A)
+    assert led["outcome"] == "no_promise" and led["reason"] == "hardship"

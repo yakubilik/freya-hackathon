@@ -41,6 +41,7 @@ EVENT_KINDS = set([
 # Wording used only when the table carries no phrase for an obligation it does state.
 FALLBACK_TEXT = {
     "opening": "Say you are a digital assistant calling from the bank and that the call is recorded.",
+    "hardship_open": "Say that is understood; ask whether there is anything the customer would like to arrange today. Propose no amount and no date.",
     "party_question": "Ask whether you are speaking with {title} {last_name}.",
     "robot_answer": "Say that you are the bank's digital assistant.",
     "callback_question": "Ask when {title} {last_name} can be reached.",
@@ -84,7 +85,7 @@ def new_state(call=None):
                      "declines": 0, "retried": 0},
         "callback": {"date": None, "time": None, "invalid": 0},
         "items": [], "current_item": 0, "pay_today_asked": False, "readback_version": 0,
-        "global": {"hardship": False, "support_offered": False, "human_asked_once": False, "dont_want": 0,
+        "global": {"hardship": False, "support_offered": False, "hardship_open": False, "human_asked_once": False, "dont_want": 0,
                    "pending_transfer": None, "transfer_done": None, "transfer_failures": 0, "paid_claim": False,
                    "dispute": False, "turns": 0, "pending_lines": [], "fetch_failures": 0, "close_failures": 0,
                    "resume_pending": None, "triggers": []},
@@ -884,6 +885,32 @@ def _support_answer(C, st, accepted):
     # declined: no persuasion; items still open after this bundle are noted as hardship (see _advance),
     # a date or amount named in the same reply is still recorded
     st["global"]["hardship_declined"] = True
+    if _hardship_continues(C, s) and _open_items(st):
+        # "Declined: continue without persuasion; a date or amount the customer still names is recorded" (synthetic
+        # D, G, I, J): the call stays open for one more reply instead of closing on the decline (G-06, J-05 2026-10-11);
+        # brief A says "If they decline, close as no_promise / hardship" and keeps closing at once
+        st["global"]["hardship_open"] = True
+        st["pending"] = "hardship_open"
+        C["question_now"] = "hardship_open"
+        _say(C, st, "hardship_open")
+
+
+HARDSHIP_CONTINUES_RE = re.compile(r"declin\w*\W{0,3}(the call )?continues?\b|\bcontinues? without persuasion", re.I)
+
+
+def _hardship_continues(C, s):
+    """True when the brief says the call goes on after a declined hardship transfer ("Declined: continue without
+    persuasion; a date or amount the customer still names is recorded", synthetic D, G, I, J). Brief A says "If they
+    decline, close as no_promise / hardship": False. Read from the brief's own sentences (the table's units) and the
+    hardship obligation."""
+    texts = [str((s or {}).get("decline_rule") or (s or {}).get("declined") or "")]
+    units = C["table"].get("units") or {}
+    for u in (units.values() if isinstance(units, dict) else units):
+        texts.append(str(u.get("text") or "") if isinstance(u, dict) else str(u))
+    for o in C["table"].get("obligations") or []:
+        if o.get("id") == (s or {}).get("obligation"):
+            texts.append(str(o.get("quote") or ""))
+    return any(HARDSHIP_CONTINUES_RE.search(t) for t in texts if t)
 
 
 def _handle_human(C, st, ev):
@@ -1778,7 +1805,7 @@ def _advance(C, st):
     g = st["global"]
     pending = st.get("pending")
     cur = _current(st)
-    if pending in ("support_offer", "can_i_help"):
+    if pending in ("support_offer", "can_i_help", "hardship_open"):
         return
     if g.get("hardship_declined"):
         # no persuasion after a declined support offer: whatever is still open (a vague day, an unanswered attempt) is
@@ -2148,6 +2175,11 @@ def _render(C, st, out):
             _line(C, OFFER_IS_A_QUESTION)
         out["engine_next"] = stage if stage in SPEAKING_STAGES else "negotiate"
         out["what_to_do_next"] = "Ask the yes-or-no question again and report accept or decline."
+    elif pending == "hardship_open":
+        if C.get("question_now") != pending:
+            _say(C, st, "hardship_open")
+        out["engine_next"] = stage if stage in SPEAKING_STAGES else "negotiate"
+        out["what_to_do_next"] = "Wait for the customer; report any amount or day they name, or that they do not."
     elif stage == "negotiate":
         if C.get("disclose"):
             _say(C, st, "disclosure")
@@ -2426,6 +2458,15 @@ def _step(state, events, table, now):
                     cust = [e for e in cust if e["kind"] not in ("refuse", "deny", "pay_today_no", "other", "plan_request", "too_much", "dont_want_to_talk")
                             and not (e["kind"] == "amount_proposal" and e.get("amount") is None)
                             and not (e["kind"] == "date_proposal" and not e.get("date_text"))]
+            elif st.get("pending") == "hardship_open":
+                # the reply to the open line after a declined transfer: a figure or a day is handled as the customer's own
+                # proposal (no persuasion follows); anything else ends the hardship path and the items are noted
+                g["hardship_open"] = False
+                st["pending"] = g.get("resume_pending") or "pay_today"
+                C["understood"] = True
+                if not (kinds & set(CARRIER_KINDS)) and not (kinds & set(["hardship", "human", "plan_request", "paid", "dispute", "complaint", "question_back", "robot_question", "scam_question"])):
+                    cust = [e for e in cust if e["kind"] not in ("refuse", "deny", "pay_today_no", "other", "too_much", "dont_want_to_talk", "accept_offer", "confirm", "vague_period")]
+                    farewell = False
             elif st.get("pending") == "can_i_help":
                 if "human" in kinds:
                     pass
