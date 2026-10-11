@@ -191,33 +191,49 @@ def offline_gate(tag):
 
 # ---- triage
 
-def triage(L, rnd, paths):
-    manifest = ROOT / "runs" / "loop" / ("%s-round%d" % (L, rnd)) / "RESULTS.md"
-    rows = rows_of(paths)
+def triage(group, rnd, paths_by_L):
+    tag = "".join(group)
+    manifest = ROOT / "runs" / "loop" / ("group-%s-round%d" % (tag, rnd)) / "RESULTS.md"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    total = 0
     with manifest.open("w") as fh:
-        fh.write("# %s round %d\n\nResult files: %s\n\nFailed cases:\n" % (L, rnd, ", ".join(str(p) for p in paths)))
-        for r in rows:
-            if not r["pass"]:
-                fh.write("- %s (call %s): %s\n" % (r["id"], r.get("call_id"), " | ".join(r["failed"])[:600]))
-    kind = "public" if L in PUBLIC else "synthetic"
+        fh.write("# Briefs %s, round %d\n\n" % (", ".join(group), rnd))
+        for L, paths in paths_by_L.items():
+            rows = rows_of(paths)
+            kind = "public (kit/build-the-builder/briefs/brief-%s.md, kit/build-the-builder/tools/openapi.json; cases: public-test-set.json + scenarios/extended-test-set.json)" % L.lower() if L in PUBLIC else "synthetic (synthetic/%s/: brief files, api.json, cases.json, README.md; table runs/synthetic/build-%s/read/table.json; bank = our mock bank through the tunnel)" % (L, L)
+            fh.write("## Brief %s: %s\nResult files: %s\nFailed cases:\n" % (L, kind, ", ".join(str(p) for p in paths)))
+            for r in rows:
+                if not r["pass"]:
+                    total += 1
+                    fh.write("- %s (call %s): %s\n" % (r["id"], r.get("call_id"), " | ".join(r["failed"])[:600]))
+            if L in PUBLIC:
+                # Yakup: nothing tested so far may go to waste. The earlier run of every extended scenario on v15 (before the
+                # night's fixes) with its call ids: compare, and read those transcripts too when a case still fails or
+                # passes by luck now.
+                earlier = rows_of(sorted(glob.glob(str(ROOT / "runs" / "extended" / ("%s-*.json" % L)))))
+                fh.write("\nEarlier run on version 15 (2026-10-10 night, before the fixes), failures for comparison:\n")
+                for r in earlier:
+                    if not r["pass"]:
+                        fh.write("- %s (call %s): %s\n" % (r["id"], r.get("call_id"), " | ".join(r["failed"])[:300]))
+            fh.write("\n")
     prompt = (ROOT / "runs" / "night" / "agent-loop-triage.md").read_text()
-    prompt = prompt.replace("__L__", L).replace("__KIND__", kind).replace("__RESULTS__", str(manifest)).replace("__N__", str(rnd))
-    log("%s round %d: triage agent starts on %d failures" % (L, rnd, sum(1 for r in rows if not r["pass"])))
+    prompt = prompt.replace("__L__", ", ".join(group)).replace("__KIND__", "see the results file").replace("__RESULTS__", str(manifest)).replace("__N__", str(rnd))
+    log("group %s round %d: triage agent starts on %d failures" % (tag, rnd, total))
     rc = 1
     for acct in (YAKUP, BEDRIYAN):
-        lp = ROOT / "runs" / "night" / ("agent-triage-%s-round%d.log" % (L, rnd))
+        lp = ROOT / "runs" / "night" / ("agent-triage-%s-round%d.log" % (tag, rnd))
         rc = run(["claude", "-p", prompt, "--model", "claude-fable-5-1", "--dangerously-skip-permissions", "--output-format", "text"],
                  lp, {"CLAUDE_CONFIG_DIR": acct}, timeout=5400)
         tail = lp.read_text()[-2000:].lower() if lp.exists() else ""
         if rc == 0 and "usage limit" not in tail and "rate limit" not in tail:
             break
-        log("%s round %d: triage on %s failed (rc %s), trying the next account" % (L, rnd, acct.rsplit("/", 1)[-1], rc))
+        log("group %s round %d: triage on %s failed (rc %s), trying the next account" % (tag, rnd, acct.rsplit("/", 1)[-1], rc))
     res = subprocess.run([PY, "-m", "pytest", "-q", "tests/", "-k", "not simulator_rules"], cwd=ROOT, capture_output=True, text=True).stdout.strip().splitlines()
     last = res[-1] if res else "?"
-    log("%s round %d: triage done (rc %s); suite: %s" % (L, rnd, rc, last))
+    log("group %s round %d: triage done (rc %s); suite: %s" % (tag, rnd, rc, last))
     if "failed" in last:
         return False
-    bad = offline_gate("%s-round%d" % (L, rnd))
+    bad = offline_gate("%s-round%d" % (tag, rnd))
     if bad:
         with manifest.open("a") as fh:
             fh.write("\nREGRESSION after round %d fixes: briefs %s no longer emit or self-test offline (runs/loop/gate-*).\n" % (rnd, ",".join(bad)))
@@ -225,44 +241,72 @@ def triage(L, rnd, paths):
     return True
 
 
+def read_missing_tables(group):
+    """Synthetic briefs without a frozen table are read in parallel (one builder process each, yakupkeskin777 account)."""
+    import threading
+    missing = [L for L in group if L not in PUBLIC and not (ROOT / "runs" / "synthetic" / ("build-%s" % L) / "read" / "table.json").exists()]
+    if not missing:
+        return
+    log("reading %s in parallel" % ",".join(missing))
+    ths = [threading.Thread(target=table_synthetic, args=(L,)) for L in missing]
+    for t in ths:
+        t.start()
+    for t in ths:
+        t.join()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("letters", nargs="+")
-    ap.add_argument("--rounds", type=int, default=4)
+    ap.add_argument("--rounds", type=int, default=3)
+    ap.add_argument("--group", type=int, default=3)
     a = ap.parse_args()
-    for L in a.letters:
-        log("== brief %s" % L)
-        public = L in PUBLIC
-        table = None if public else table_synthetic(L)
-        if not public and table is None:
-            continue
-        only = None
+    letters = a.letters
+    groups = [letters[i:i + a.group] for i in range(0, len(letters), a.group)]
+    if len(groups) > 1 and len(groups[-1]) == 1:
+        groups[-2] += groups.pop()
+    for group in groups:
+        tag = "".join(group)
+        log("== group %s" % tag)
+        read_missing_tables(group)
+        tables = {}
+        for L in group:
+            t = None if L in PUBLIC else (ROOT / "runs" / "synthetic" / ("build-%s" % L) / "read" / "table.json")
+            if L not in PUBLIC and not t.exists():
+                log("%s: no table, dropped from the group" % L)
+                continue
+            tables[L] = t
+        only = {L: None for L in tables}
         for rnd in range(1, a.rounds + 1):
-            ok = deploy_public(L) if public else deploy_synthetic(L, table)
-            if not ok:
-                break
-            paths = cases_public(L, rnd, only) if public else cases_synthetic(L, rnd, only)
-            rows = rows_of(paths)
-            if not rows:
-                log("%s: no results after retries, moving on" % L)
-                break
-            failed = [r["id"] for r in rows if not r["pass"]]
-            log("%s round %d: %d / %d passed; failed: %s" % (L, rnd, len(rows) - len(failed), len(rows), ",".join(failed) or "-"))
-            if not failed:
-                log("%s: CLEAN after %d round(s)%s" % (L, rnd, " (rerun of the earlier failures)" if only else ""))
+            paths_by_L, failed_by_L = {}, {}
+            for L in list(tables):
+                ok = deploy_public(L) if L in PUBLIC else deploy_synthetic(L, tables[L])
+                if not ok:
+                    continue
+                paths = cases_public(L, rnd, only[L]) if L in PUBLIC else cases_synthetic(L, rnd, only[L])
+                rows = rows_of(paths)
+                if not rows:
+                    log("%s round %d: no results after retries" % (L, rnd))
+                    continue
+                failed = [r["id"] for r in rows if not r["pass"]]
+                log("%s round %d: %d / %d passed; failed: %s" % (L, rnd, len(rows) - len(failed), len(rows), ",".join(failed) or "-"))
+                paths_by_L[L] = paths
+                failed_by_L[L] = failed
+            if not any(failed_by_L.values()):
+                log("group %s: CLEAN after %d round(s)" % (tag, rnd))
                 break
             if rnd == a.rounds:
-                log("%s: still failing after %d rounds: %s" % (L, rnd, ",".join(failed)))
+                log("group %s: still failing after %d rounds: %s" % (tag, rnd, json.dumps(failed_by_L)))
                 break
-            if not triage(L, rnd, paths):
-                log("%s: triage left the suite red; moving on without redeploy" % L)
+            if not triage(group, rnd, {L: p for L, p in paths_by_L.items()}):
+                log("group %s: triage left the suite red or a regression; no redeploy, moving on" % tag)
                 break
             subprocess.run(["git", "add", "-A", "builder", "tests", "bank"], cwd=ROOT)
-            subprocess.run(["git", "commit", "-q", "-m", "Generic fixes from brief %s round %d (triage agent; runs/night/triage-%s-round%d.md)\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" % (L, rnd, L, rnd)], cwd=ROOT)
-            only = failed
+            subprocess.run(["git", "commit", "-q", "-m", "Generic fixes from briefs %s round %d (triage agent; runs/night/triage-%s-round%d.md)\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" % (", ".join(group), rnd, tag, rnd)], cwd=ROOT)
+            only = {L: (failed_by_L.get(L) or None) for L in tables}
     # closing check: the public cases of A and B once more on whatever is deployed now
     for L in ("A", "B"):
-        if L in a.letters:
+        if L in letters:
             out_dir = ROOT / "runs" / "loop" / ("%s-final" % L)
             out_dir.mkdir(parents=True, exist_ok=True)
             run([PY, "kit/build-the-builder/tools/run_cases.py", PUBLIC[L]["agent"], "--brief", L, "--out", str(out_dir / "public.json")], out_dir / "public.log", timeout=2400)
