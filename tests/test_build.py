@@ -274,3 +274,99 @@ def test_slug_of_a_generic_brief_name_takes_the_directory():
     assert slug("synthetic/C/brief.md") == "c-brief"
     assert slug("/tmp/Hidden Brief 2/README.md") == "hidden-brief-2-readme"
     assert slug("hidden/g.joined.md") == "g-joined"
+
+
+# ---------------------------------------------------------------------------------------------
+# the final's form: <case_folder> <mock_url>
+
+MOCK = "https://our-mock.example.workers.dev"
+
+
+def _case(tmp_path, contract_name="contract/service.json", contract=True):
+    d = tmp_path / "case"
+    (d / "sub").mkdir(parents=True)
+    (d / "BRIEF.md").write_text("# Brief\nread me first\n")
+    (d / "README.md").write_text("# Readme\nwhat each document is\n")
+    (d / "analysis.md").write_text("# Analysis\n")
+    (d / "customers.json").write_text(json.dumps([{"name": "x", "dob": "1990-01-01"}]))
+    (d / "qa.csv").write_text("q,a\nwhy,because\n")
+    (d / "sub" / "announcement.txt").write_text("an announcement\n")
+    (d / "flow.png").write_bytes(b"\x89PNG\r\n\x1a\n\x00\x00")
+    (d / ".DS_Store").write_bytes(b"\x00\x01")
+    if contract:
+        c = d / contract_name
+        c.parent.mkdir(parents=True, exist_ok=True)
+        c.write_text(API_PATH.read_text())
+    return d
+
+
+def test_is_url():
+    assert build.is_url(MOCK) and build.is_url("http://127.0.0.1:8787/v1")
+    assert not build.is_url(str(API_PATH)) and not build.is_url("tools.json")
+
+
+def test_case_folder_reading_order(tmp_path):
+    d = _case(tmp_path)
+    contract = d / "contract" / "service.json"
+    out, used, skipped = build.join_case_dir(d, exclude=[contract])
+    assert used == ["BRIEF.md", "README.md", "analysis.md", "customers.json", "qa.csv", "sub/announcement.txt"]
+    assert skipped == ["flow.png"]
+    text = out.read_text()
+    assert text.index("read me first") < text.index("what each document is") < text.index("an announcement")
+    assert "freya-bank-mock" not in text and "\n\n---\n\n" in text
+
+
+def test_contract_detection(tmp_path):
+    d = _case(tmp_path)
+    p, doc, notes = build.find_contract(build.case_files(d))
+    assert p == d / "contract" / "service.json" and "paths" in doc and not notes   # customers.json is not a contract
+    (d / "contract" / "service.json").unlink()
+    assert build.find_contract(build.case_files(d))[0] is None
+
+
+def test_contract_detection_yaml(tmp_path):
+    y = tmp_path / "api.yaml"
+    y.write_text("openapi: 3.0.3\nservers:\n  - url: https://bank.example/v1\npaths:\n  /verify_identity:\n"
+                 "    post:\n      operationId: verify_identity\n      responses: {'200': {description: ok}}\n")
+    try:
+        build.load_structured(y)
+    except ValueError as e:
+        pytest.skip("no YAML parser here: %s" % e)
+    p, doc, _ = build.find_contract([y])
+    assert p == y and doc["servers"][0]["url"] == "https://bank.example/v1"
+
+
+def test_mock_url_selects_the_mock_base(offline):
+    tmp, floors = offline
+    d = _case(tmp)
+    m = build.run([str(d), MOCK, "--out-dir", str(tmp / "run"), "--no-deploy", "--skip-tests",
+                   "--reuse-table", str(TABLE_A_PATH)])
+    assert m["status"] == "built offline (no deploy)" and not floors
+    assert m["bank_url"] == MOCK + "/v1"                                # the contract's server path on the mock origin
+    assert m["mock_url"] == MOCK and m["contract_path"].endswith("case/contract/service.json")
+    assert m["brief_documents"][:2] == ["BRIEF.md", "README.md"] and m["skipped_documents"] == ["flow.png"]
+    copy = json.loads((tmp / "case.contract.json").read_text())
+    assert copy["servers"] == [{"url": MOCK + "/v1"}]
+    log = (tmp / "run" / "trace.log").read_text()
+    saved = (tmp / "run" / "manifest.json").read_text()
+    assert "tools go to the mock %s/v1" % MOCK in log and "not read (image or binary): flow.png" in log
+    for text in (log, saved):
+        assert str(ROOT) not in text and str(pathlib.Path.home()) not in text
+
+
+def test_mock_url_without_contract_fails_loudly(offline):
+    tmp, floors = offline
+    d = _case(tmp, contract=False)
+    m = build.run([str(d), MOCK, "--out-dir", str(tmp / "run"), "--no-deploy", "--reuse-table", str(TABLE_A_PATH)])
+    assert m["status"] == "failed" and not floors
+    assert "no machine-readable service contract" in m["errors"][0]
+    assert "no machine-readable service contract" in (tmp / "run" / "trace.log").read_text()
+
+
+def test_trace_scrubs_keys_and_paths(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("SOME_API_KEY", "sk-very-secret-value")
+    tr = build.Trace(tmp_path / "t")
+    tr.info("key sk-very-secret-value at %s" % (build.ROOT / "builder" / "build.py"))
+    out = capsys.readouterr().out
+    assert "sk-very-secret-value" not in out and "*** at builder/build.py" in out
+    assert "sk-very-secret-value" not in (tmp_path / "t" / "trace.jsonl").read_text()

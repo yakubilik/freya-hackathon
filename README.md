@@ -7,6 +7,16 @@ The builder reads a bank's brief and its tool API file and creates a phone agent
 - `<brief-dir-or-brief.md>`: a single brief file, or a directory whose `.md`/`.txt` files are the brief material (a mail,
   a policy extract, a memo, a code list: they are joined in file-name order into `<dir>.joined.md` next to the directory).
 - `<api.json>`: the tool API file that comes with the brief.
+- The final's form: `python3 builder/build.py <case_folder> <mock_url> 2>&1 | tee traces/final.log`. The case folder
+  holds `BRIEF.md`, `README.md`, the documents and the service contract (subfolders are read too); `<mock_url>` is the
+  base URL of our mock of the bank. The contract is found in the folder (a `.json`/`.yaml`/`.yml` OpenAPI document;
+  YAML through PyYAML or, without it, macOS's Ruby) and copied as `<case_folder>.contract.json` with its server on the
+  mock (a mock URL without a path gets the contract's server path, e.g. `/v1`), so every tool of the exported workflow
+  calls the mock and nothing else. No machine-readable contract: the build stops with a trace error. The brief is
+  `BRIEF.md`, then `README.md`, then the other text documents (`.md`, `.txt`, `.json`, `.csv`, ...) by path, joined
+  into `<case_folder>.joined.md`; images and binaries are listed in the trace and not read.
+- Every trace line also goes to stdout; paths in the trace and the manifest are repository-relative and key values are
+  masked.
 - `--slot`: the workflow slot. One slot per brief: a rerun updates the same Freya workflow in place (state in
   `builder/.freya-agents.json`). Without it the slot is `<brief-slug>-final`.
 - Output: the published workflow on Freya, its export `submission/<brief-slug>.workflow.json`
