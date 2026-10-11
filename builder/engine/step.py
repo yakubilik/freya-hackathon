@@ -22,7 +22,7 @@ import json
 import re
 from .calendar import (parse_now, parse_date, iso, calendar_from_table, is_business_day,
                        eval_expr, parse_expr, evaluate, ExprError, EvalError, CalendarError)
-from .dates import (UNITS, resolve_date, resolve_time, resolve_amount_cents, to_cents, cents_to_number, money_text, amount_words,
+from .dates import (UNITS, _corrected, tr_to_en, resolve_date, resolve_time, resolve_amount_cents, to_cents, cents_to_number, money_text, amount_words,
                     parse_identity_date, parse_digits, parse_year, parse_code, format_date_words, _weekday_mode)
 
 SPEAKING_STAGES = ("party", "callback", "identity", "negotiate", "readback")
@@ -1482,6 +1482,15 @@ def _normalise_text_answer(text, rule):
     s = str(text or "").strip().rstrip(".,;!?")
     if not s:
         return ""
+    # a self-correction keeps the last piece ("Çelik, pardon, Yılmaz"; the Turkish markers are rewritten by tr_to_en)
+    s2 = tr_to_en(s, "digits")
+    last = _corrected(s2)
+    if last:
+        last = last.strip().rstrip(".,;!?")
+        m = re.search(re.escape(last), s, re.I)                     # the piece in its own spelling and case
+        s = m.group(0) if m else last
+    elif s2 != s and re.search(r"\b(zero|one|two|three|four|five|six|seven|eight|nine|double|triple)\b", s2):
+        s = s2                                                      # Turkish digit words, now English ones
     toks = [t for t in re.split(r"[\s\-]+", s) if t]
     out, i = [], 0
     while i < len(toks):
