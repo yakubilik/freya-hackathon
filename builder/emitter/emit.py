@@ -217,7 +217,10 @@ def emit(table, api, *, variant="final", bank_url=None, model_config=None):
                                                 org=org, address=address),
         "nodes": nodes,
         "global_nodes": {},
-        "test_variables": {v: SAMPLE_CALL_VARS.get(v, "test") for v in ctx.call_vars},
+        # a call variable the sample does not know (the API's own name for the customer id: client_ref, account_no) stays
+        # empty: on the platform test_variables stand in for missing call variables, and a "test" value here was sent to
+        # the bank as the customer id (synthetic brief C, 2026-10-11)
+        "test_variables": {v: SAMPLE_CALL_VARS.get(v, "") for v in ctx.call_vars},
     }
     if model_config:
         wf["agent_config"] = model_config

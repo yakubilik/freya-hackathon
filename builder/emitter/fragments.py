@@ -48,7 +48,7 @@ ENGINE_MARKER = "Freya call engine, rendered by builder/engine/snippet.py"
 COMMON_KINDS = ["question_back", "robot_question", "scam_question", "human", "hardship", "dont_want_to_talk", "other"]
 STAGE_KINDS = {
     "party": ["party_confirmed", "party_other", "party_wrong_number", "party_deceased", "callback_offer"] + COMMON_KINDS,
-    "callback": ["callback_offer", "party_wrong_number", "party_deceased"] + COMMON_KINDS,
+    "callback": ["callback_offer", "party_confirmed", "party_wrong_number", "party_deceased"] + COMMON_KINDS,
     "identity": ["id_answer", "id_decline"] + COMMON_KINDS,
     "negotiate": ["pay_today_yes", "pay_today_no", "date_proposal", "amount_proposal", "too_much", "refuse", "accept_offer",
                   "vague_period", "confirm", "deny", "change", "paid", "dispute", "plan_request"] + COMMON_KINDS,
@@ -92,6 +92,12 @@ KIND_HELP = {
     "dont_want_to_talk": "says they do not want to talk",
     "other": "anything else, including small talk, greetings and unclear replies",
 }
+# a kind whose meaning differs in one stage: in the callback stage the person on the line was taken for someone else,
+# so a confirmation is them saying they are the customer after all, by name; a plain yes to the callback question is not
+KIND_HELP_STAGE = {
+    ("callback", "party_confirmed"): "the person now says that they themselves are the customer asked for, by their own "
+                                     "name or 'that's me', 'speaking'; a plain yes or okay to the callback question is not this",
+}
 
 ENTRY_PROMPT = ("{{say_head_line}}\nSay this to the customer now, in one or two short sentences of your own: {{say_content}}\n"
                 "{{say_tail_line}}\nDo not add anything else and do not call any tool.")
@@ -132,7 +138,9 @@ STAGE_TASK = {
                  "about why you are calling or about any account until the questions are done."),
     "negotiate": ("STEP: the customer is verified and you are discussing the overdue amount. Propose only the amount and "
                   "the day the instruction gives. Never invent an amount, a day, a reduction or an arrangement, and "
-                  "never ask the customer to name an amount."),
+                  "never ask the customer to name an amount. Never say that you are transferring or connecting the "
+                  "customer, or that a payment is being taken or processed: a transfer happens only when the "
+                  "instruction says it does, and a question in the instruction is asked, not acted on."),
     "readback": ("STEP: read-back. The agreed amount and day were read to the customer. Wait for a clear yes; if they "
                  "want to change something, listen. Never say anything is done before the instruction says so."),
 }
@@ -376,8 +384,10 @@ def setup(ctx, first):
     cid = getattr(ctx, "cid_field", "customer_id")
     if cid != "customer_id":
         # the API calls the customer id client_ref / account_no / ...: whichever name the call variables carry, both are set
-        lines += ["vars[%r] = vars.get(%r) or vars.get('customer_id') or ''" % (cid, cid),
-                  "vars['customer_id'] = vars.get('customer_id') or vars.get(%r) or ''" % cid]
+        # whichever name the call variables bring, both carry the real id; a sample value ("test", "c_test") never wins
+        lines += ["_ids = [x for x in (vars.get('customer_id'), vars.get(%r)) if x and str(x) not in ('test', 'c_test')]" % cid,
+                  "vars['customer_id'] = _ids[0] if _ids else (vars.get('customer_id') or vars.get(%r) or '')" % cid,
+                  "vars[%r] = vars['customer_id']" % cid]
     code = "try:\n" + "\n".join("    " + ln for ln in lines) + "\nexcept Exception:\n    pass\n"
     return Fragment({"setup": code_node("setup", code, [always("engine")])})
 
@@ -397,7 +407,7 @@ def extraction_schema(ctx, stage):
     kinds = STAGE_KINDS[stage]
     help_lines = []
     for k in kinds:
-        text = KIND_HELP[k].format(confirm_words=ctx.confirm_words, decline_extra=ctx.decline_extra)
+        text = KIND_HELP_STAGE.get((stage, k), KIND_HELP[k]).format(confirm_words=ctx.confirm_words, decline_extra=ctx.decline_extra)
         help_lines.append("%s: %s" % (k, text))
     node = STAGE_NODE[stage]
     out = []
@@ -499,37 +509,64 @@ _RAW = __RAW__
 try:
     vals = [dict((f, _ob_val(s.get(f))) for f in _FIELDS) for s in _SLOTS]
     kinds = [_ob_val(s.get('reply')) for s in _SLOTS]
+    n = len(_SLOTS)
+    # two products in one reply (seen on the platform 2026-10-11, B EXT-124/127): the extractor filled a value slot per
+    # product but the reply slots positionally, so one reply slot carries the words of another reply while the slot with
+    # its own words has no reply. A reply slot whose words duplicate another reply slot's words gets the orphan's values;
+    # an orphan whose words duplicate a reply slot's words is a second product of that reply.
+    extra = []
+    for j in range(n):
+        if kinds[j] or not any(vals[j][f] for f in _FIELDS):
+            continue
+        wj = vals[j]['words']
+        if not wj:
+            continue
+        if any(kinds[i] and vals[i]['words'] == wj for i in range(n)):
+            continue
+        twins = [i for i in range(n) if kinds[i] and vals[i]['words'] and
+                 any(k != i and kinds[k] and vals[k]['words'] == vals[i]['words'] for k in range(n))]
+        if twins:
+            k = twins[-1]
+            vals[k], vals[j] = vals[j], vals[k]
+    for j in range(n):
+        if kinds[j] or not vals[j]['words']:
+            continue
+        for i in range(n):
+            if kinds[i] and vals[i]['words'] == vals[j]['words'] and any(vals[j][f] != vals[i][f] for f in ('item', 'amount', 'date')):
+                extra.append((kinds[i], dict(vals[j])))
+                vals[j] = dict((f, '') for f in _FIELDS)
+                break
     # the extractor sometimes files the value of the one reply under another slot (seen on the platform 2026-10-10:
     # identity_reply1 = id_answer with identity_words2 = 4471): a slot with a reply and no value adopts the value of
     # a slot without a reply
     for f in _FIELDS:
-        for i in range(len(_SLOTS)):
+        for i in range(n):
             if kinds[i] and not vals[i][f]:
-                for j in range(len(_SLOTS)):
+                for j in range(n):
                     if not kinds[j] and vals[j][f]:
                         vals[i][f], vals[j][f] = vals[j][f], ''
                         break
     evs = []
-    for i in range(len(_SLOTS)):
-        kind = kinds[i]
+    for kind, v in [(kinds[i], vals[i]) for i in range(n)] + extra:
         if not kind:
             continue
         if kind not in _KINDS:
             kind = 'other'
         amount = None
-        a = vals[i]['amount'].replace(',', '')
+        # digits only: the extractor has written a full-width comma in front of an amount (platform 2026-10-11)
+        a = ''.join(ch for ch in v['amount'] if ch.isdigit() or ch in '.,-').replace(',', '')
         if a:
             try:
                 amount = float(a)
             except ValueError:
                 amount = None
-        words = vals[i]['words'] or None
-        if words is None and sum(1 for x in kinds if x) == 1 and not vals[i]['amount'] and not vals[i]['date'] and not vals[i]['time']:
+        words = v['words'] or None
+        if words is None and sum(1 for x in kinds if x) == 1 and not extra and not v['amount'] and not v['date'] and not v['time']:
             words = _ob_val(_RAW) or None   # the one reply of the turn with nothing attached: its words are the whole message
         if a and amount is None and not words:
             words = a
-        ev = dict(kind=kind, item=_ob_item(vals[i]['item']), amount=amount,
-                  date_text=vals[i]['date'] or None, time_text=vals[i]['time'] or None,
+        ev = dict(kind=kind, item=_ob_item(v['item']), amount=amount,
+                  date_text=v['date'] or None, time_text=v['time'] or None,
                   text=words, span=None, qid=None)
         evs.append(ev)
     vars['engine_events'] = json.dumps(evs)
@@ -840,6 +877,12 @@ def _emit_route(v, pre):
     rb = str(v.get('readback_text') or '').strip()
     if nxt == 'readback' and rb:
         allsegs = buf + [['v', rb, '']] + segs
+    # a sentence produced once per write ("You will receive a text message ...", twice after two promises) is said once
+    uniq = []
+    for s in allsegs:
+        if not any(u[0] == s[0] and u[1] == s[1] for u in uniq):
+            uniq.append(s)
+    allsegs = uniq
     tts, content, tail = [], [], []
     seen_i = False
     for s in allsegs:

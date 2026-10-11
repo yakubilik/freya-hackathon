@@ -200,12 +200,12 @@ def resolve_amount_cents(text):
     if re.search(r"\bper ?cent\b|%", raw):
         return None
     # digits first, on the raw text so that "1,250.00" and "455,50" keep their separators; "1.250,00" is the European form
-    m = re.search(r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+)(?:,(\d{1,2}))?(?!\d|[.,]\d)", raw)
+    m = re.search(r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+)(?:,(\d{1,2}))?(?!\d|[.,]\d|(?:st|nd|rd|th)\b)", raw)
     if m:
         whole = m.group(1).replace(".", "")
         frac = m.group(2) or ""
         return int(whole) * 100 + (int(frac.ljust(2, "0")) if frac else 0)
-    m = re.search(r"(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)(?:[.,](\d{1,2}))?(?!\d|,\d)", raw)
+    m = re.search(r"(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)(?:[.,](\d{1,2}))?(?!\d|,\d|(?:st|nd|rd|th)\b)", raw)   # "the 21st" is a day
     if m:
         whole = m.group(1).replace(",", "")
         frac = m.group(2) or ""
@@ -219,20 +219,33 @@ def resolve_amount_cents(text):
         return None
     # drop leading words such as "about", "around", "pay", "the"
     numwords = set(UNITS) | set(TENS) | set(SCALES) | set(["and", "point", "dot", "cents", "cent", "a"])
-    start = None
-    for i, t in enumerate(tokens):
-        if t in numwords and t not in ("and", "a", "point", "dot", "cents", "cent"):
-            start = i
+    value_words = set(UNITS) | set(TENS) | set(SCALES)
+    day_context = set(MONTHS) | set(WEEKDAY_INDEX) | set(["the", "on", "of"])
+    start = 0
+    run = None
+    while start < len(tokens):
+        if tokens[start] not in value_words:
+            start += 1
+            continue
+        end = len(tokens)
+        for i in range(start, len(tokens)):
+            if tokens[i] not in numwords:
+                end = i
+                break
+        # a run of number words that is a day, not an amount: followed by an ordinal word ("twenty third"), or next to
+        # a month or a weekday ("October twenty third", "the twenty second of October"; platform B EXT-116, 2026-10-11)
+        after = tokens[end] if end < len(tokens) else ""
+        before = tokens[start - 1] if start > 0 else ""
+        after2 = tokens[end + 1] if end + 1 < len(tokens) else ""
+        is_day = after in ORDINALS or bool(ORDINAL_SUFFIX.match(after)) or before in MONTHS or before in WEEKDAY_INDEX \
+            or after in MONTHS or (after == "of" and after2 in MONTHS) or (before in ("the", "on") and after in MONTHS)
+        if not is_day:
+            run = tokens[start:end]
             break
-    if start is None:
+        start = end + 1
+    if run is None:
         return None
-    tokens = tokens[start:]
-    end = len(tokens)
-    for i, t in enumerate(tokens):
-        if t not in numwords:
-            end = i
-            break
-    tokens = tokens[:end]
+    tokens = run
     while tokens and tokens[-1] in ("and", "a"):
         tokens.pop()
     if not tokens:

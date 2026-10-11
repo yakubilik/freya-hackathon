@@ -430,7 +430,14 @@ def _offer(C, st, item, amount, d, kind):
     item["status"] = "open"
     _set_current(st, item)
     st["pending"] = "offer"
+    # an offer made while applying this reply has not been heard yet: the same reply's "yes" or "today" cannot accept it
+    # (platform EXT-068/153, 2026-10-11: "I can pay 100 today" became the floor agreed for today in one step)
+    C.setdefault("offered_now", []).append(item["item_id"])
     C["understood"] = True
+
+
+def _offered_now(C, item):
+    return item["item_id"] in (C.get("offered_now") or [])
 
 
 def _agree(C, st, item, amount, d, own_deadline=False):
@@ -600,7 +607,7 @@ def _vague(C, st, item, amount):
     _offer(C, st, item, amount, iso(d), "deadline")
 
 
-def _floor_offer(C, st, item, d, after_too_much):
+def _floor_offer(C, st, item, d, after_too_much, below_cents=None):
     """Offer the floor once (rules 26 and 27); a second time counts as not accepting it."""
     if item["floor"] is None:
         _unsupported(C, st, "amounts.floor_expr")
@@ -613,7 +620,13 @@ def _floor_offer(C, st, item, d, after_too_much):
     if after_too_much:
         _say(C, st, "rest_overdue")
     else:
-        _say(C, st, "below_floor")
+        if below_cents is not None:
+            # the customer's own figure is named: "it cannot be recorded" left the model guessing what "it" was
+            # (platform EXT-068/102/153, 2026-10-11)
+            _line(C, "Say that %s cannot be recorded because it is below the minimum." % _money(below_cents))
+        ph = _phrase(C, "below_floor")
+        if below_cents is None or (ph is not None and ph.get("exact")):
+            _say(C, st, "below_floor")
     _offer(C, st, item, item["floor"], d, "floor")
 
 
@@ -630,7 +643,7 @@ def _handle_amount(C, st, item, ev, cents, resolved_date):
             v, dd = _check_date(C, st, item, date_in_play)
             if v == "ok":
                 d = dd
-        _floor_offer(C, st, item, d or _date_in_play(C, st, item), after_too_much=False)
+        _floor_offer(C, st, item, d or _date_in_play(C, st, item), after_too_much=False, below_cents=cents)
         return
     if verdict == "above":
         _unsupported(C, st, "amounts.range_rule:above_full")
@@ -710,8 +723,14 @@ def _handle_hardship(C, st, ev, bundle):
         st["global"]["support_offered"] = True
         st["global"]["resume_pending"] = st.get("pending")
         _say(C, st, "support_offer")
+        _line(C, OFFER_IS_A_QUESTION)
         st["pending"] = "support_offer"
         C["question_now"] = "support_offer"
+
+
+# the model announced the transfer instead of asking (platform EXT-081/093/094, 2026-10-11): the yes/no offers are questions
+OFFER_IS_A_QUESTION = ("Put this as a question and wait for the answer; do not say that you are transferring or connecting "
+                       "the customer, nothing happens until they answer.")
 
 
 def _support_answer(C, st, accepted):
@@ -736,6 +755,7 @@ def _handle_human(C, st, ev):
         st["global"]["human_asked_once"] = True
         st["global"]["resume_pending"] = st.get("pending")
         _say(C, st, "can_i_help")
+        _line(C, OFFER_IS_A_QUESTION)
         st["pending"] = "can_i_help"
         C["question_now"] = "can_i_help"
         return
@@ -873,6 +893,8 @@ def _handle_dont_want(C, st, ev):
         _trigger(C, st, "dont_want_twice_verified" if verified else "dont_want_twice_unverified")
         st["global"]["dont_want_closed"] = True
         return
+    # below the limit the call goes on: the model said "Have a nice day" and the customer took it as the end (EXT-097)
+    _line(C, "Acknowledge that briefly and continue with the current question; do not say goodbye and do not end the call.")
     if verified and st["stage"] == "negotiate":
         it = _current(st)
         if it is not None:
@@ -1131,8 +1153,16 @@ def _verify_result(C, st, ev):
             st["pending"] = "identity_hint"
             return
     if data.get("ok") is False and data.get("verified") is None:
-        # the service could not read the answer: ask the same question again, no wrong answer counted
+        # the service could not read the answer: ask the same question again, no wrong answer counted; a service that
+        # never gives a verdict must not keep the call in the question for ever (160 turns on synthetic C, 2026-10-11)
         ident["answer"] = None
+        ident["unreadable"] = ident.get("unreadable", 0) + 1
+        if ident["unreadable"] >= UNREADABLE_MAX:
+            _unsupported(C, st, "verify_identity gave no verdict %d times: no rule" % UNREADABLE_MAX)
+            ident["state"] = "failed"
+            _say(C, st, "use_app_or_branch")
+            _trigger(C, st, "identity_failed")
+            return
         st["pending"] = "identity_again"
         return
     hint_counts = isinstance(hint_rule, dict) and bool(hint_rule.get("counts_as_wrong", False))
@@ -1159,6 +1189,7 @@ def _verify_result(C, st, ev):
 
 READBACK_ROUNDS_MAX = 3   # read-backs of the same version without a clear yes before the promise counts as refused
 READBACK_TOTAL_MAX = 6    # read-backs in the whole call, whatever the versions
+UNREADABLE_MAX = 3        # verify_identity answers without a verdict (ok false, no verified) before the check is given up
 
 
 def _agreed_snapshot(st):
@@ -1260,10 +1291,75 @@ def _share_bundle_date(C, st, group, common_date, key, accepted=False):
     return date_src
 
 
+CARRIER_KINDS = ("amount_proposal", "date_proposal", "change", "accept_offer", "vague_period")
+# replies whose slot the extractor sometimes fills with the values of the proposal said in the same breath
+VALUE_DONORS = ("pay_today_no", "pay_today_yes", "refuse", "deny", "too_much", "confirm", "other")
+
+
+def _tidy_bundle(C, st, evs):
+    """Extractor tolerance before the item split. On the platform the amount, the day and the product of one reply are
+    filed under whichever slot came first ("No, I can pay 637.50 on Monday 19 October" -> pay_today_no with amount
+    637.5 and the day; amount_proposal and date_proposal with nothing; EXT-065/072/102/154, B-109/116/122, 2026-10-11):
+      1. a proposal event without its value takes amount, day, words and product from such a reply, which then goes;
+      2. a refusal that still carries an amount is the proposal of that amount (an amount is never a refusal);
+      3. a day proposal that carries an amount is an amount proposal; an amount proposal with no readable amount is
+         dropped (asking "how much" is never allowed), or, alone, the customer saying the amount is too much."""
+    used = set()
+    for e in evs:
+        if e["kind"] not in CARRIER_KINDS:
+            continue
+        for d in evs:
+            if d is e or d["kind"] not in VALUE_DONORS:
+                continue
+            took = False
+            if e.get("amount") is None and d.get("amount") is not None:
+                e["amount"], took = d.get("amount"), True
+            if not e.get("date_text") and d.get("date_text") and e["kind"] != "vague_period":
+                e["date_text"], took = d.get("date_text"), True
+            if not e.get("text") and d.get("text") and e.get("amount") is None:
+                e["text"], took = d.get("text"), True
+            if took:
+                if not e.get("item") and d.get("item"):
+                    e["item"] = d.get("item")
+                used.add(id(d))
+                e["_donor"] = id(d)
+                break
+    for e in evs:
+        if e["kind"] in ("pay_today_no", "pay_today_yes", "refuse", "deny") and e.get("amount") is not None and id(e) not in used:
+            e["kind"] = "amount_proposal"
+        if e["kind"] == "date_proposal" and e.get("amount") is not None:
+            e["kind"] = "amount_proposal"
+    drop = set()
+    for e in evs:
+        if id(e) in used or e["kind"] != "amount_proposal" or _amount_of(e) is not None:
+            continue
+        # an amount proposal with no readable amount: the words it took back to their own reply ("No, not that date, a
+        # smaller amount on the 23rd" is the refusal), else alone it is "too much", else nothing (never ask how much)
+        if e.get("_donor") in used:
+            used.discard(e["_donor"])
+            drop.add(id(e))
+        elif all(x is e or x["kind"] == "other" or id(x) in used or id(x) in drop for x in evs):
+            e["kind"] = "too_much"
+        else:
+            drop.add(id(e))
+    out, seen = [], []
+    for e in evs:
+        e.pop("_donor", None)
+        if id(e) in used or id(e) in drop:
+            continue
+        key = (e["kind"], e.get("item"), e.get("amount"), e.get("date_text"))
+        if e["kind"] in CARRIER_KINDS and key in seen:
+            continue
+        seen.append(key)
+        out.append(e)
+    evs[:] = out
+
+
 def _negotiate_bundle(C, st, evs):
     C["pay_today_pending"] = st.get("pending") == "pay_today"
     if C["pay_today_pending"] and st["items"]:
         st["pay_today_asked"] = True
+    _tidy_bundle(C, st, evs)
     by_item = {}
     order = []
     proposal_items = set()
@@ -1301,11 +1397,12 @@ def _negotiate_bundle(C, st, evs):
                     _prepare_change(it)
                     _handle_amount(C, st, it, e, cents, _date_of(C, st, e) if (e.get("date_text") or e.get("span")) else None)
             elif k == "date_proposal" or (k == "change" and e.get("amount") is None):
-                targets = _targets_for(st, e, current_only=False)
+                targets = [it for it in _targets_for(st, e, current_only=False) if not _offered_now(C, it)]
                 common = e.get("item") is None and len(targets) > 1
                 resolved = _date_of(C, st, e)
                 if resolved is None:
-                    st["pending"] = "which_date"
+                    if targets:
+                        st["pending"] = "which_date"
                     C["understood"] = True
                     continue
                 for it in targets:
@@ -1313,12 +1410,14 @@ def _negotiate_bundle(C, st, evs):
                     _apply_date(C, st, it, _amount_in_play(it), resolved, common=common)
             elif k == "pay_today_yes":
                 for it in _targets_for(st, e, current_only=False):
+                    if _offered_now(C, it):
+                        continue
                     _apply_date(C, st, it, _amount_in_play(it), _today_event(C))
             elif k == "accept_offer":
-                targets = [it for it in _targets_for(st, e, current_only=False) if it.get("offer")]
+                targets = [it for it in _targets_for(st, e, current_only=False) if it.get("offer") and not _offered_now(C, it)]
                 if not targets:
                     cur = _current(st)
-                    targets = [cur] if cur is not None else []
+                    targets = [cur] if cur is not None and not _offered_now(C, cur) else []
                 for it in targets:
                     _accept(C, st, it, e)
             elif k == "vague_period":
@@ -1331,7 +1430,12 @@ def _negotiate_bundle(C, st, evs):
                     continue
                 for it in _targets_for(st, e, current_only=True):
                     it["too_much"] = True
-                    _floor_offer(C, st, it, _date_in_play(C, st, it), after_too_much=True)
+                    d = None
+                    if e.get("date_text"):
+                        r = _date_of(C, st, e)       # "a smaller amount on the 23rd": the floor goes on that day
+                        if r is not None and r.get("kind") == "exact" and _check_date(C, st, it, r["date"])[0] == "ok":
+                            d = r["date"]
+                    _floor_offer(C, st, it, d or _date_in_play(C, st, it), after_too_much=True)
             elif k in ("refuse", "pay_today_no", "deny"):
                 if has_proposal:
                     C["understood"] = True
@@ -1351,7 +1455,9 @@ def _negotiate_bundle(C, st, evs):
                     _confirm_readback(C, st)
                 else:
                     cur = _current(st)
-                    if cur is not None and cur.get("offer"):
+                    if cur is not None and _offered_now(C, cur):
+                        C["understood"] = True
+                    elif cur is not None and cur.get("offer"):
                         _accept(C, st, cur, e)
                     elif C["pay_today_pending"] and cur is not None:
                         _apply_date(C, st, cur, _amount_in_play(cur), _today_event(C))
@@ -1604,9 +1710,12 @@ def _apply_tool_result(C, st, ev):
         else:
             st["callback"]["book_failures"] = st["callback"].get("book_failures", 0) + 1
             if st["callback"]["book_failures"] >= 2:
+                # nothing was booked: the call ends with the row for a callback that could not be arranged, instead of
+                # asking for another time and letting the model announce a booking (synthetic C-02, 2026-10-11)
                 _unsupported(C, st, "schedule_callback failed twice: no rule")
                 st["callback"]["date"], st["callback"]["time"] = None, None
-                st["pending"] = "callback_retry"
+                _trigger(C, st, "callback_refused_twice")
+                st["pending"] = "close"
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1758,6 +1867,7 @@ def _render(C, st, out):
     elif pending in ("support_offer", "can_i_help"):
         if C.get("question_now") != pending:
             _say(C, st, pending)       # the reply did not answer the question: ask it again, after any answer given
+            _line(C, OFFER_IS_A_QUESTION)
         out["engine_next"] = stage if stage in SPEAKING_STAGES else "negotiate"
         out["what_to_do_next"] = "Ask the yes-or-no question again and report accept or decline."
     elif stage == "negotiate":
@@ -1765,6 +1875,9 @@ def _render(C, st, out):
             _say(C, st, "disclosure")
             for it in st["items"]:
                 _line(C, "%s: %s past due, %s days late." % (it["label"], _money(it["past_due"]), it.get("days_late")))
+            if len(st["items"]) > 1:
+                # the model folded three products into one sentence with an invented total (platform B EXT-035, 2026-10-11)
+                _line(C, "One sentence per product, each with its own amount and its own days late; do not add the amounts up.")
         cur = _current(st)
         if pending == "pay_today":
             _say(C, st, "pay_today")
@@ -1886,6 +1999,11 @@ def _answer_lines(C, st, evs):
                 _line(C, "Answer only from the account facts you were given; otherwise say you do not have that information. Then continue.")
             elif st["stage"] == "callback":
                 _line(C, "Do not say why you are calling; say nothing beyond the opening. Then continue.")
+            elif st["stage"] == "party":
+                # "Who is this?" must be answered before the name is asked again; the model deferred the answer until after
+                # verification (platform EXT-003, 2026-10-11)
+                _line(C, "Answer the question now in one sentence: you may say who you are, as in the opening, but nothing "
+                         "about why you are calling or about any account. Then continue.")
             elif st["stage"] == "identity":
                 # "first tell me what this is about": the one explanation the brief allows before verification is that
                 # the questions protect the account (platform EXT-032, 2026-10-10); said once per call
@@ -1897,8 +2015,32 @@ def _answer_lines(C, st, evs):
                 _line(C, "Answer briefly without revealing anything about the account, then continue.")
             C["understood"] = True
         elif k == "other":
-            _line(C, "Do not act on that; offer no term that is not in the brief. Continue with the current question.")
+            # an instruction here is read to the customer ("Please do not act on that", C-04/EXT-094, 2026-10-11): the
+            # aside goes into what_to_do_next, the step's instruction, not into the content to say
+            C["aside"] = True
             C["understood"] = True
+
+
+ASIDE_NOTE = " The customer also said something that changes nothing: do not act on it and offer no term that is not in the brief."
+
+ROBOT_RE = re.compile(r"\b(are you|is this|is that|am i (?:talking|speaking) (?:to|with))\b[^.?!]{0,20}?\b(person|human|robot|machine|bot|ai|computer|automated|real)\b")
+DISPUTE_RE = re.compile(r"\b(not (my|mine|our)|isn'?t mine|is not mine|never (had|took|opened|signed)|don'?t have|do not have|"
+                        r"closed|paid (it |that |this )?off|settled|owe nothing|don'?t owe|do not owe|wrong|incorrect|mistake|error|fraud|dispute)\b")
+REFUSAL_RE = re.compile(r"\b(not|won'?t|will not|never|refuse|refusing|no way)\b[^.?!]{0,30}?\b(pay|paying)\b|\brefuse\b")
+
+
+def _retag(evs):
+    """Extractor tolerance on the kind of a reply, from the words it carries: "Are you a person?" filed as a request for a
+    person is the robot question (EXT-145); "I am not paying anything on that card" filed as a dispute is a refusal
+    (B EXT-119), a dispute names the debt as wrong or not theirs."""
+    for e in evs:
+        low = str(e.get("text") or e.get("span") or "").lower().replace("’", "'")
+        if not low:
+            continue
+        if e["kind"] == "human" and ROBOT_RE.search(low):
+            e["kind"] = "robot_question"
+        elif e["kind"] == "dispute" and not DISPUTE_RE.search(low) and REFUSAL_RE.search(low):
+            e["kind"] = "refuse"
 
 
 def _step(state, events, table, now):
@@ -1912,6 +2054,7 @@ def _step(state, events, table, now):
     cust = [e for e in evs if e["kind"] != "tool_result"]
     unknown = [e for e in cust if e["kind"] not in EVENT_KINDS]
     cust = [e for e in cust if e["kind"] in EVENT_KINDS]
+    _retag(cust)
     for e in tool_evs:
         _apply_tool_result(C, st, e)
     if cust:
@@ -1938,11 +2081,13 @@ def _step(state, events, table, now):
             declined_support = False
             # answers to a pending yes/no offer (support, can-I-help)
             if st.get("pending") == "support_offer":
-                yes = kinds & set(["accept_offer", "confirm", "pay_today_yes"])
+                # "Yes, please transfer me to them" is extracted as human: that is the yes to the offer of a person, not a
+                # new request that gets the can-I-help question (platform EXT-081, 2026-10-11)
+                yes = kinds & set(["accept_offer", "confirm", "pay_today_yes", "human"])
                 no = kinds & set(["refuse", "deny", "pay_today_no", "dont_want_to_talk", "date_proposal", "amount_proposal", "vague_period", "other"])
                 if yes:
                     _support_answer(C, st, True)
-                    cust = [e for e in cust if e["kind"] not in ("accept_offer", "confirm")]
+                    cust = [e for e in cust if e["kind"] not in ("accept_offer", "confirm", "human")]
                 elif no:
                     _support_answer(C, st, False)
                     declined_support = True
@@ -1994,7 +2139,15 @@ def _step(state, events, table, now):
                 elif st["stage"] == "party":
                     _party_events(C, st, [e for e in cust if e["kind"] not in ("human", "hardship", "dont_want_to_talk")])
                 elif st["stage"] == "callback":
-                    _callback_events(C, st, [e for e in cust if e["kind"] == "callback_offer"])
+                    if "party_confirmed" in kinds and "callback_offer" not in kinds:
+                        # the customer comes to the phone after all ("Fine, yes, this is Victor Ionescu" after a first
+                        # answer taken as someone else, platform EXT-138, 2026-10-11): the security questions follow
+                        st["party"] = "customer"
+                        st["stage"] = "identity"
+                        st["pending"] = "identity"
+                        C["understood"] = True
+                    else:
+                        _callback_events(C, st, [e for e in cust if e["kind"] == "callback_offer"])
                 elif st["stage"] == "identity":
                     _identity_events(C, st, [e for e in cust if e["kind"] in ("id_answer", "id_decline")])
                 elif verified and st["stage"] in ("record", "end", "close", "note", "transfer"):
@@ -2021,13 +2174,16 @@ def _step(state, events, table, now):
     if st.get("pending") == "close" and st["stage"] not in ("close", "note"):
         st["stage"] = "close"
     _render(C, st, out)
-    if out["engine_next"] in SPEAKING_STAGES and not C["lines"] and not C["mandatory"] and not out.get("readback_text"):
+    if out["engine_next"] in SPEAKING_STAGES and not out["writes"] and not C["lines"] and not C["mandatory"] and not out.get("readback_text"):
         # never silent: with nothing from the engine the dialogue model invents the rest of the call (a platform run
-        # said "I have processed the payment", 2026-10-10); the pending question is the content
+        # said "I have processed the payment", 2026-10-10); the pending question is the content. Not on a turn that
+        # issues a write: "Schedule the callback, then close" was buffered and read out as a booking (C-02, 2026-10-11)
         if not out.get("what_to_do_next"):
             out["what_to_do_next"] = "Ask the customer to repeat what they said."
             out["ask_clarify"] = True
         _line(C, out["what_to_do_next"])
+    if C.get("aside") and out["engine_next"] in SPEAKING_STAGES and not st["closed"]:
+        out["what_to_do_next"] = (out.get("what_to_do_next") or "").rstrip() + ASIDE_NOTE
     out["mandatory_lines"] = list(C["mandatory"])
     out["say_next"] = " ".join(C["lines"])
     if cust and not C["understood"] and not tool_evs:

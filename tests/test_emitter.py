@@ -477,3 +477,58 @@ def test_write_result_adds_canonical_response_names():
     exec(code, {"vars": v})
     p = json.loads(v["engine_events"])[0]["data"]["products"][0]
     assert p["type"] == "credit_card" and p["past_due"] == 95.5 and p["days_late"] == 4 and p["minimum_payment"] == 30
+
+
+def test_dispatcher_two_products_in_one_reply_filed_positionally(workflows):
+    """Platform B EXT-124 and EXT-127 (2026-10-11): one value slot per product, but the reply slots filled positionally:
+    slot 2's reply ('paid' / 'dispute') sat on the second product's values while its own words were in slot 3 without a
+    reply. The reply slot whose words duplicate slot 1's takes the orphan's values; the orphan with slot 1's words is a
+    second product of slot 1's reply."""
+    code = workflows["B"]["nodes"]["negotiate_observe"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+    state = json.dumps({"items": [{"item_id": "p1", "product": {"type": "credit_card", "card_last4": "2288"}},
+                                  {"item_id": "p2", "product": {"type": "personal_loan"}}, {"item_id": "p3", "product": {"type": "car_loan"}}]})
+    w1 = "I can pay the credit card and the car loan in full today"
+    v = {"negotiate_reply1": "pay_today_yes", "negotiate_item1": "the credit card", "negotiate_date1": "today", "negotiate_words1": w1,
+         "negotiate_reply2": "paid", "negotiate_item2": "the car loan", "negotiate_date2": "today", "negotiate_words2": w1,
+         "negotiate_item3": "The personal loan", "negotiate_date3": "last week", "negotiate_words3": "The personal loan was paid last week",
+         "negotiate_raw": w1 + ". The personal loan was paid last week.", "engine_state": state}
+    exec(code, {"vars": v})
+    evs = json.loads(v["engine_events"])
+    assert sorted((e["kind"], e["item"]) for e in evs) == [("paid", "p2"), ("pay_today_yes", "p1"), ("pay_today_yes", "p3")], evs
+    w1 = "I paid the credit card and the personal loan yesterday"
+    v = {"negotiate_reply1": "paid", "negotiate_item1": "the credit card", "negotiate_date1": "yesterday", "negotiate_words1": w1,
+         "negotiate_reply2": "dispute", "negotiate_item2": "the personal loan", "negotiate_date2": "yesterday", "negotiate_words2": w1,
+         "negotiate_item3": "a car loan", "negotiate_words3": "I have never had a car loan with Freya Bank", "engine_state": state}
+    exec(code, {"vars": v})
+    evs = json.loads(v["engine_events"])
+    assert sorted((e["kind"], e["item"]) for e in evs) == [("dispute", "p3"), ("paid", "p1"), ("paid", "p2")], evs
+    # the ordinary case is untouched: three replies with their own words
+    v = {"negotiate_reply1": "pay_today_no", "negotiate_words1": "no", "negotiate_reply2": "amount_proposal", "negotiate_item2": "the credit card",
+         "negotiate_amount2": "200", "negotiate_words2": "200 on the credit card", "engine_state": state}
+    exec(code, {"vars": v})
+    assert [(e["kind"], e["item"], e["amount"]) for e in json.loads(v["engine_events"])] == [("pay_today_no", None, None), ("amount_proposal", "p1", 200.0)]
+
+
+def test_dispatcher_reads_an_amount_with_a_full_width_comma(workflows):
+    """Platform 2026-10-11 (EXT-068/102/153, B EXT-116): negotiate_amount1 = '，100' (U+FF0C in front), float() failed and
+    the amount was lost."""
+    code = workflows["A"]["nodes"]["negotiate_observe"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+    v = {"negotiate_reply1": "amount_proposal", "negotiate_amount1": "，125.99", "negotiate_date1": "today",
+         "negotiate_words1": "I can pay 125.99 today.", "engine_state": ""}
+    exec(code, {"vars": v})
+    assert json.loads(v["engine_events"])[0]["amount"] == 125.99
+
+
+def test_callback_stage_hears_the_customer_confirming(bank, workflows):
+    """Platform EXT-138 (2026-10-11): after a first answer taken as someone else, 'Fine, yes, this is Victor Ionescu'
+    could only be 'other' in the callback stage. The stage now extracts party_confirmed, with its own description."""
+    wf = workflows["A"]
+    schema = {f["name"]: f for f in wf["nodes"]["callback"]["extraction_schema"]}
+    assert "party_confirmed" in schema["callback_reply1"]["enum_values"]
+    assert "by their own name" in schema["callback_reply1"]["description"]
+    case = EXTENDED["EXT-138"]
+    bundles = [[E("party_other", text="This is Freya Bank IT.")], [E("party_confirmed", text="Fine, yes, this is Victor Ionescu.")],
+               [E("id_answer", text=case["identity"]["date_of_birth"])], [E("id_answer", text=case["identity"]["phone_last4"])],
+               [E("date_proposal", date="Friday 16 October")], [E("confirm")]]
+    rec, led = check(bank, workflows, "EXT-138", bundles)
+    assert len(led["promises"]) == 1 and led["callbacks"] == []
