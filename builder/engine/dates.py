@@ -303,6 +303,10 @@ def tr_to_en(text, mode="date"):
         s = re.sub(r"\b(\d{1,2}):30(ta|da)\b", r"\1:30", s)
     elif mode == "date":
         s = re.sub(r"\b(\d{1,2}) buçuk\b", r"\1", s)
+        # "yirmi altı pazartesi" / "pazartesi 26": a day number next to a weekday is that day of the month, not the weekday
+        wd = r"(monday|tuesday|wednesday|thursday|friday|saturday|sunday)"
+        s = re.sub(r"\b(\d{1,2}) " + wd + r"\b", r"the \1th \2", s)
+        s = re.sub(r"\b" + wd + r" (\d{1,2})\b(?![./:]\d| (january|february|march|april|may|june|july|august|september|october|november|december)\b)", r"\1 the \2th", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
 

@@ -73,3 +73,9 @@ mock/smoke.sh [URL] [CUSTOMER_ID]     # default http://127.0.0.1:8787 PUB-01; ex
 
 34 checks: health, reset, unknown tool/customer, every tool's success and validation errors, the swap hint, wrong-answer
 counting, closed-call refusal, ledger, restart after close with history, practice session.
+
+## Deployed
+
+- https://freya-mock.yakuupkeskin.workers.dev (2026-10-11 18:38 CEST), token file ~/.config/cloudflare/workers.env (Edit Cloudflare Workers), `cd mock/worker && npx -y wrangler@4 deploy`.
+- Cloudflare blocks the `Python-urllib` user agent (error 1010); curl, node and an empty agent pass. Our Python clients send their own agent string.
+- Platform check 18:42: brief A with its tools on this mock, Turkish-speaking customer, PUB-01/02/04/05/06/07/09 all pass.

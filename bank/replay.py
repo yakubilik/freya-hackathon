@@ -23,7 +23,7 @@ def http(base, path, body=None, raw=None, team_key=TEAM_KEY, timeout=30):
     """(status, json) for one request. `raw` sends bytes as they are; `body` None with raw None sends a GET."""
     data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
     method = "POST" if data is not None else "GET"
-    req = urllib.request.Request(base + path, data=data, method=method, headers={"content-type": "application/json", "x-team-key": team_key})
+    req = urllib.request.Request(base + path, data=data, method=method, headers={"content-type": "application/json", "x-team-key": team_key, "user-agent": "freya-bank-replay/0.1"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r: return r.status, json.load(r)
     except urllib.error.HTTPError as e:

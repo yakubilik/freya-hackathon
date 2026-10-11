@@ -28,6 +28,9 @@ def test_turkish_dates():
     assert d("ay sonunda")["kind"] == "vague"
     assert d("maaşımı alınca")["kind"] == "vague"
     assert d("haftaya")["kind"] == "vague"
+    assert resolve_date("yirmi altı pazartesi", "2026-10-14T11:00:00")["date"] == "2026-10-26"
+    assert resolve_date("pazartesi 26", "2026-10-14T11:00:00")["date"] == "2026-10-26"
+    assert resolve_date("pazartesi 26 ekim", "2026-10-14T11:00:00")["date"] == "2026-10-26"
 
 
 def test_turkish_corrections():
