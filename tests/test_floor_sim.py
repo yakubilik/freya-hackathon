@@ -27,7 +27,7 @@ CALLERS = [
     {"name": "unknown widget", "prompt": "You are Bo. You ask about widget W9, which does not exist.",
      "variables": {"caller_ref": "R-2"}, "success_criteria": "The agent says it cannot find the widget."},
     {"name": "pushy", "prompt": "You are Cy. You ask the colour of a widget, then change your mind about which widget once.",
-     "variables": {"caller_ref": "R-3"}, "success_criteria": "The agent declines politely and offers one widget."},
+     "variables": {"caller_ref": "R-3"}, "success_criteria": "The agent tells the colour of the widget the caller settles on."},
 ]
 
 

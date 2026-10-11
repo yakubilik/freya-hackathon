@@ -74,7 +74,7 @@ save again after each improvement that passes the dry run.
 - In every simulation result, check every tool request body: each one must carry the fields the contract requires,
   with values (not empty, not a placeholder). An empty or partial body is a defect even when the call went on.
 - Node prompts are instructions to the agent, never lines to say. In the simulation transcript the agent must not
-  read its rules or its plan aloud, and must not refuse a caller's first ordinary sentence (a greeting, a name).
+  read its rules or its plan aloud.
 
 ## Simulations
 

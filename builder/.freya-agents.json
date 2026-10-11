@@ -85,5 +85,10 @@
   "workflow_id": "ac14de4f-1eab-4f8e-b193-f177fb1e7531",
   "agent_id": "572a9cbd-46a5-4319-8e0e-31be55a00c97",
   "version": 8
+ },
+ "final-case-joined-floor": {
+  "workflow_id": "790026e5-5199-481a-986b-49b8682c4f93",
+  "agent_id": "ee825e04-dab1-4d12-af28-0dd539bebce9",
+  "version": 2
  }
 }
