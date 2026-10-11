@@ -24,3 +24,10 @@ bank/.tunnel.*
 # Builder runs
 /runs/
 /submission-test/
+
+# Kit example-builder runtime output
+/kit/build-the-builder/out/
+/kit/build-the-builder/results/
+/kit/build-the-builder/traces/
+/kit/build-the-builder/.freya-agents.json
+/kit/build-the-builder/.personas.json
