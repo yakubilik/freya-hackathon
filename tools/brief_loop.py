@@ -92,6 +92,13 @@ def cases_public(L, rnd, only_ids=None):
     if only_ids is not None:
         pub = [i for i in pub if i in only_ids]
         ext = [i for i in ext if i in only_ids]
+    elif rnd == 1:
+        # first round: every public case, but of the extended scenarios only the ones that failed on v15 the night before;
+        # the 81 that passed are checked again in the final run over everything (Yakup, 04:30)
+        earlier = rows_of(sorted(glob.glob(str(ROOT / "runs" / "extended" / ("%s-*.json" % L)))))
+        failed_before = {r["id"] for r in earlier if not r["pass"]}
+        if failed_before:
+            ext = [i for i in ext if i in failed_before]
     paths = []
     if pub:
         p = out_dir / "public.json"
