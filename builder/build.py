@@ -511,7 +511,8 @@ def _pipeline(a, schedule, trace, manifest, brief_path, tools_path, bslug, run_i
     if a.no_deploy:
         manifest["status"] = "built offline (no deploy)"
         return
-    slot = a.slot or "%s-final" % bslug          # one slot per brief: a rerun updates the same workflow in place
+    # one slot per brief and variant: a rerun updates the same workflow in place, a test deploy never touches the final
+    slot = a.slot or "%s-%s" % (bslug, getattr(a, "deploy_variant", "final"))
     stage_deploy(schedule, trace, manifest, wf, counts_, slot, bslug, api)
     if not a.skip_tests and not a.no_platform_test:
         stage_platform(schedule, trace, manifest, public)

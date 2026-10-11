@@ -728,8 +728,11 @@ def _join_spoken_digits(tokens, runs=(4, 8)):
     seventy-six" and "twenty four oh six eighty two" are day, month and year as number groups."""
     out, run = [], []
     def flush():
-        if len(run) in runs:
-            out.append("".join(_SPOKEN_DIGIT[t] for t in run))
+        joined = "".join(_SPOKEN_DIGIT[t] for t in run)
+        # four digit words are joined only when they make a year: "oh one oh two nineteen eighty eight" is a day and a
+        # month in digit words before a year in words (codex review 2026-10-11), not the year 0102
+        if len(run) in runs and (len(run) != 4 or re.match(r"^(18|19|20)\d\d$", joined)):
+            out.append(joined)
         else:
             out.extend(run)
         run.clear()

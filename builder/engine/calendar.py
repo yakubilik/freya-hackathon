@@ -87,6 +87,8 @@ def weekday_index(w):
 def make_calendar(holidays=None, business_days=None):
     """Build a calendar dict. holidays: iterable of ISO strings or dates. business_days: weekday names or ints."""
     hol = set()
+    if isinstance(holidays, str):
+        holidays = [holidays]
     for h in holidays or []:
         hol.add(parse_date(h))
     if business_days is None:

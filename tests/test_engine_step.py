@@ -2387,3 +2387,40 @@ def test_identity_date_year_said_digit_by_digit(text, value):
 def test_identity_date_digit_by_digit_year_alone_is_a_partial():
     from builder.engine.dates import parse_identity_date
     assert parse_identity_date("one nine eight eight") == {"status": "partial", "value": None, "parts": {"year": 1988}}
+
+
+def test_identity_date_digit_words_for_day_and_month_before_a_year_in_words():
+    """codex review 2026-10-11: four digit words that are a day and a month, not a year, stay as they were."""
+    from builder.engine.dates import parse_identity_date
+    assert parse_identity_date("oh one oh two nineteen eighty eight")["value"] == "1988-02-01"
+    assert parse_identity_date("one nine eight eight")["parts"] == {"year": 1988}
+
+
+def test_two_failed_transfers_do_not_say_the_promise_could_not_be_recorded():
+    now = "2026-10-14T11:00"
+    st, out = step(new_state(), [E("party_confirmed")], TABLE_A, now)
+    st, out = step(st, [E("human")], TABLE_A, now)
+    st, out = step(st, [E("human")], TABLE_A, now)
+    failed = {"kind": "tool_result", "tool": "transfer_to_agent", "result": "failed", "data": {"ok": False}, "args": out["writes"][0]["args"]}
+    st, out = step(st, [failed], TABLE_A, now)
+    st, out = step(st, [failed], TABLE_A, now)
+    assert [w["tool"] for w in out["writes"]] == ["close_call"]
+    assert "could not record" not in out["say_next"].lower() and "record the promise" not in out["say_next"].lower()
+    assert "transfer could not be completed" in out["say_next"]
+
+
+def test_table_shapes_a_reader_may_produce_are_normalised():
+    """A holiday as one string, attempts as one object, precedence as "1.0", a limit as "2": no crash, same meaning."""
+    table = engine._copy(TABLE_A)
+    p = table["parameters"]
+    p["calendar.holidays"]["value"] = "2026-10-26"
+    p["attempts"]["value"] = p["attempts"]["value"][0]
+    p["identity.max_wrong"]["value"] = "3"
+    for r in p["closing.rows"]["value"]:
+        r["precedence"] = str(float(r.get("precedence") or 99))
+    now = "2026-10-14T11:00"
+    st, out = step(new_state(), [E("party_confirmed")], table, now)
+    assert out["engine_next"] == "identity"
+    C = engine._context(table, now)
+    assert isinstance(engine._param(C, "attempts"), list) and engine._param(C, "identity.max_wrong") == 3
+    assert C["cal"]["holidays"] and C["calendar_ok"]

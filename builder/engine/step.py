@@ -166,9 +166,52 @@ def _trigger(C, st, name):
 # context
 
 
+_LIST_PARAMS = ("attempts", "bands", "closing.rows", "identity.questions")
+_INT_PARAMS = ("identity.max_wrong", "identity.max_wrong_per_question", "tools.retries")
+
+
+def _normalise_params(params):
+    """Shapes a reader may produce for a brief nobody has seen, coerced before the engine reads them (codex review
+    2026-10-11): a single object where a list is expected, a holiday as one string, integer limits as digit strings,
+    a closing row's precedence as "1.0". Nothing changes for a table already in shape."""
+    out = dict(params)
+    def val(k):
+        v = out.get(k)
+        return v.get("value") if isinstance(v, dict) else None
+    def put(k, value):
+        out[k] = dict(out[k]); out[k]["value"] = value
+    for k in _LIST_PARAMS:
+        if isinstance(val(k), dict):
+            put(k, [val(k)])
+    if isinstance(val("calendar.holidays"), str):
+        put("calendar.holidays", [val("calendar.holidays")])
+    for k in _INT_PARAMS:
+        v = val(k)
+        if isinstance(v, str) and v.strip().isdigit():
+            put(k, int(v.strip()))
+    rows = val("closing.rows")
+    if isinstance(rows, list):
+        fixed = []
+        for r in rows:
+            if isinstance(r, dict):
+                r = dict(r)
+                pr = r.get("precedence")
+                if isinstance(pr, str):
+                    try:
+                        r["precedence"] = int(float(pr))
+                    except ValueError:
+                        r["precedence"] = None
+                if isinstance(r.get("triggers"), str):
+                    r["triggers"] = [r["triggers"]]
+            fixed.append(r)
+        put("closing.rows", fixed)
+    return out
+
+
 def _context(table, now):
     table = table or {}
-    params = table.get("parameters") or {}
+    params = _normalise_params(table.get("parameters") or {})
+    table = dict(table); table["parameters"] = params
     cal, missing_cal = calendar_from_table(table)
     phrases = {}
     for ph in table.get("phrases") or []:
@@ -2475,7 +2518,11 @@ def _render(C, st, out):
                 notes_ok = all(it["noted_written"] and it["note_failures"] < 2 for it in notes) \
                     and (not cn or (cn.get("written") and cn.get("failures", 0) < 2))
                 # A contact-request closing phrase may acknowledge the notes. Never speak it after a failed write.
-                if row.get("line") and (not contact_close or notes_ok):
+                # the service-error row reached through a failed transfer keeps its recording-specific line unsaid
+                # (no promise was attempted; the customer already heard the transfer could not be completed)
+                transfer_only = g.get("transfer_failed") and not any(it["record_failures"] for it in st["items"]) \
+                    and "record_failed_twice" in (row.get("triggers") or [])
+                if row.get("line") and (not contact_close or notes_ok) and not transfer_only:
                     _say(C, st, row["line"])
                 phrase = _phrase(C, row.get("line")) if row.get("line") else None
                 if contact_close and notes_ok and not (phrase and phrase.get("exact")):
