@@ -2452,3 +2452,16 @@ def test_amount_cut_short_is_not_a_second_floor_offer(base):
     assert sum(1 for t in says if "637.50" in t and "ropose" in t) == 1
     assert any("did not catch" in t for t in says)
     assert [(p["amount"], p["date"]) for p in led["promises"]] == [(637.5, "2026-10-16")]
+
+
+def test_floor_said_back_without_its_cents_is_the_floor(base):
+    """Public A PUB-06 corrects (2026-10-11): "I can do the six hundred and thirty-seven" after the 637.50 floor offer.
+    The minimum is accepted, not proposed a second time; the customer's Friday is the day."""
+    case = CASES["PUB-06"]
+    st, led, calls, log = drive(base, case, verified(case) + [
+        [E("too_much")],
+        [E("amount_proposal", amount=637, text="I can do the six hundred and thirty-seven")],
+        [E("date_proposal", date="this Friday the sixteenth of October")], [E("confirm")]], TABLE_A)
+    says = [o.get("say_next") or "" for _, o in log]
+    assert sum(1 for t in says if "637.50" in t and "ropose" in t) == 1
+    assert [(p["amount"], p["date"]) for p in led["promises"]] == [(637.5, "2026-10-16")]

@@ -891,6 +891,15 @@ def _handle_amount(C, st, item, ev, cents, resolved_date):
     C["understood"] = True
     _set_current(st, item)
     verdict = _check_amount(item, cents)
+    if verdict == "below" and item.get("floor_offered") and item["floor"] is not None and 0 < item["floor"] - cents < 100:
+        # the floor said back without its cents ("I can do the six hundred and thirty-seven" for 637.50, public A PUB-06
+        # corrects/in_words 2026-10-11): the minimum accepted, not a lower figure; a lower figure would have the floor
+        # proposed a second time, which the judge counts against the brief's "once"
+        if item.get("offer"):
+            _accept(C, st, item, dict(ev, amount=None))      # the offer as made: its amount, its day unless one was said
+            return
+        cents = item["floor"]
+        verdict = "ok"
     date_in_play = resolved_date["date"] if (resolved_date and resolved_date.get("kind") == "exact") else None
     if verdict == "below":
         d = None
