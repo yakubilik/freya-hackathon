@@ -1102,6 +1102,21 @@ def _verify_result(C, st, ev):
     ans = ident.get("answer") or {}
     qid = ans.get("qid")
     max_wrong = _param(C, "identity.max_wrong")
+    if result != "ok" and not isinstance(data.get("verified"), bool) and _has_param(C, "tools.retries"):
+        retries = _param(C, "tools.retries")
+        if isinstance(retries, int) and not isinstance(retries, bool) and retries >= 0:
+            # A service failure is not a wrong customer answer. Retry the same request within the table's budget.
+            ident["service_failures"] = ident.get("service_failures", 0) + 1
+            if ident["service_failures"] <= retries:
+                ident["retried"] += 1
+                st["pending"] = "verify"
+            else:
+                ident["answer"] = None
+                ident["state"] = "failed"
+                _say(C, st, "system_unavailable")
+                _trigger(C, st, "identity_failed")
+            return
+    ident["service_failures"] = 0
     if result == "unknown":
         if ident["retried"] < 1:
             ident["retried"] += 1
@@ -1311,6 +1326,8 @@ def _tidy_bundle(C, st, evs):
         for d in evs:
             if d is e or d["kind"] not in VALUE_DONORS:
                 continue
+            if e.get("item") and d.get("item") and e["item"] != d["item"]:
+                continue  # a misplaced value can be recovered only within the same product's reply
             took = False
             if e.get("amount") is None and d.get("amount") is not None:
                 e["amount"], took = d.get("amount"), True

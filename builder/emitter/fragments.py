@@ -99,7 +99,10 @@ KIND_HELP_STAGE = {
                                      "name or 'that's me', 'speaking'; a plain yes or okay to the callback question is not this",
 }
 
-ENTRY_PROMPT = ("{{say_head_line}}\nSay this to the customer now, in one or two short sentences of your own: {{say_content}}\n"
+ENTRY_PROMPT = ("{{say_head_line}}\nConvey all of this content to the customer now: {{say_content}}\n"
+                "Preserve each supplied product's details and requested sentence structure. Use concise sentences; "
+                "do not combine separate product statements into a total. Instructions about reporting events or "
+                "waiting for a reply are for you, not words to say to the customer.\n"
                 "{{say_tail_line}}\nDo not add anything else and do not call any tool.")
 HEAD_PREFIX = "Start your message with exactly these words:"
 # The close node has no model turn: its tts can only speak sentences. The engine's content lines are instructions for
@@ -118,6 +121,7 @@ CLOSE_SPOKEN = {
     "no_information": "I do not have that information.",
     "use_app_or_branch": "I could not verify your identity, so I cannot go further on this call. Please use the mobile app or visit a branch.",
     "questions_protect": "The security questions protect your account.",
+    "system_unavailable": "I am sorry, the system is unavailable right now.",
 }
 TAIL_PREFIX = "Finish your message with exactly these words:"
 GOODBYE = "Thank you, goodbye."
@@ -126,7 +130,7 @@ REPEAT = "Ask the customer to repeat what they said."
 STAGE_TASK = {
     "party": ("STEP: find out whether the person on the line is {{title}} {{last_name}}. Nobody is verified yet. "
               "Say nothing about why you are calling or about any account, to anyone. You may always say who you are "
-              "(Freya Bank's digital assistant) when asked; that is not account information. Only the person's own "
+              "using the organisation and role from your opening when asked; that is not account information. Only the person's own "
               "confirmation counts."),
     "callback": ("STEP: someone other than {{title}} {{last_name}} answered. Do not say why you are calling and ask them "
                  "no security questions. If they ask what the call is about, say only that it is a personal matter you can "
@@ -145,11 +149,15 @@ STAGE_TASK = {
                  "want to change something, listen. Never say anything is done before the instruction says so."),
 }
 TASK_TAIL = ("\n\nCurrent instruction: {{what_to_do_next}}\n"
+             "Ask the question the instruction specifies. A request to ask whether you can help means asking about "
+             "your own help, not offering a transfer. If a question remains open, continue with it; do not say goodbye "
+             "unless the instruction ends the call.\n"
              "Speak only what the instruction asks. No tool call is allowed in this turn.")
 
 SYSTEM_PROMPT = (
     "You are {label} of {org} on an outbound phone call. Speak English. Address the customer as {address}. "
-    "Keep every turn to one or two short sentences and ask one question at a time.\n"
+    "Use concise sentences, preserving all content and sentence structure required by the current step, "
+    "and ask one question at a time.\n"
     "Rules for every step:\n"
     "- What to say is decided for you in the current step. Never decide amounts, days, outcomes or next steps yourself.\n"
     "- Never claim that something was done in the bank's systems unless your current step says it was. You cannot take "

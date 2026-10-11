@@ -69,6 +69,65 @@ def test_emit_accepts_raw_openapi_and_counts():
     assert c["nodes"] == len(wf["nodes"]) and c["by_type"]["end_call"] == 1
 
 
+def test_speech_prompts_preserve_instructions_without_a_sentence_cap():
+    table = copy.deepcopy(TABLE_B)
+    table["parameters"]["organisation.name"]["value"] = "Example Cooperative"
+    wf = emit(table, API)
+    assert "Example Cooperative" in wf["system_prompt"]
+    assert "one or two" not in wf["system_prompt"]
+    for name in ("greeting", "identity", "negotiate", "readback"):
+        node = wf["nodes"][name]
+        prompt = node["on_enter"]["prompt"]
+        assert "one or two" not in prompt
+        assert "Preserve each supplied product's details" in prompt
+        assert "not words to say to the customer" in prompt
+        assert "your own help, not offering a transfer" in node["task_message"]
+        assert "do not say goodbye" in node["task_message"]
+        assert "Freya Bank" not in node["task_message"]
+
+
+@pytest.mark.parametrize("variables", [
+    {"customer_id": "actual-member", "member_key": "test"},
+    {"customer_id": "c_test", "member_key": "actual-member"},
+    {"member_key": "actual-member"},
+])
+def test_customer_identifier_alias_uses_the_live_call_value(variables):
+    table, api = copy.deepcopy(TABLE_A), copy.deepcopy(API)
+    table["parameters"]["call_variables"]["value"] = [
+        "member_key" if name == "customer_id" else name
+        for name in table["parameters"]["call_variables"]["value"]
+    ]
+    for tool in api["tools"].values():
+        fields = tool["request_fields"]
+        fields["member_key"] = fields.pop("customer_id")
+    wf = emit(table, api)
+    assert wf["test_variables"]["member_key"] == ""
+    code = wf["nodes"]["setup"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+    exec(code, {"vars": variables})
+    assert variables["customer_id"] == variables["member_key"] == "actual-member"
+
+
+def test_verification_service_failure_apology_reaches_close_speech():
+    from builder.engine.step import new_state, step
+    table = copy.deepcopy(TABLE_A)
+    table["parameters"]["tools.retries"] = {"value": 0, "confidence": "quoted"}
+    table["phrases"].append({"id": "system_unavailable", "kind": "mandatory", "exact": False,
+                             "text": "Explain the system is unavailable and apologise."})
+    now = "2026-10-14T11:00"
+    st, _ = step(new_state(), [E("party_confirmed")], table, now)
+    st, _ = step(st, [E("id_answer", text="1984-07-09")], table, now)
+    wf = emit(table, API)
+    code = wf["nodes"]["engine"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+    values = {"now": now, "engine_state": json.dumps(st), "engine_events": json.dumps([
+        {"kind": "tool_result", "tool": "verify_identity", "result": "failed",
+         "data": {"ok": False, "error": "service unavailable"}}
+    ])}
+    exec(code, {"vars": values})
+    assert values["engine_next"] == "close"
+    assert "I am sorry, the system is unavailable right now." in values["close_text"]
+    assert "Explain" not in values["close_text"]
+
+
 def test_close_nodes_one_per_row_reason_absent_when_none():
     wf = emit(TABLE_B, API)
     rows = {(r["outcome"], r["reason"]) for r in TABLE_B["parameters"]["closing.rows"]["value"]}
@@ -457,7 +516,10 @@ def test_emit_handles_an_api_with_other_field_names(letter):
         cb = wf["nodes"]["w_schedule_callback"]["pre_actions"][0]["function"]["parameters"]["properties"]["body"]["properties"]
         assert cb["reason"]["default"] == "unavailable"
     if cid != "customer_id":   # the setup node makes both names carry the id, whichever the call variables bring
-        assert "vars['customer_id'] = vars.get('customer_id') or vars.get(%r)" % cid in wf["nodes"]["setup"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+        values = {"customer_id": "actual-member", cid: "test"}
+        code = wf["nodes"]["setup"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+        exec(code, {"vars": values})
+        assert values[cid] == values["customer_id"] == "actual-member"
 
 
 def test_write_result_adds_canonical_response_names():

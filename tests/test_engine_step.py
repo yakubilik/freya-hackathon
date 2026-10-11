@@ -1856,3 +1856,50 @@ def test_several_products_are_stated_one_sentence_each(base):
     case = EXTENDED["EXT-065"]
     st, led, calls, log = check(base, "EXT-065", verified(case) + [[E("amount_proposal", amount=637.5, date="Monday 19 October")], [E("confirm")]])
     assert not any("One sentence per product" in o["say_next"] for _, o in log)
+
+
+def test_recovered_proposal_values_stay_with_their_product():
+    st = new_state()
+    st["identity"]["state"] = "verified"
+    st["stage"] = st["pending"] = "fetch"
+    products = [
+        {"product_id": "alpha", "type": "personal_loan", "past_due": 800,
+         "days_late": 10, "instalment_amount": 160},
+        {"product_id": "beta", "type": "personal_loan", "past_due": 950,
+         "days_late": 10, "instalment_amount": 190},
+    ]
+    now = "2026-10-14T11:00"
+    st, _ = step(st, [{"kind": "tool_result", "tool": "get_account", "result": "ok",
+                      "data": {"ok": True, "products": products}}], TABLE_B, now)
+    st, out = step(st, [E("pay_today_no", item="alpha", amount=300, date="tomorrow"),
+                       E("date_proposal", item="beta", date="today")], TABLE_B, now)
+    assert [(it["item_id"], it["agreed"]) for it in st["items"]] == [
+        ("alpha", {"amount": 300, "date": "2026-10-15"}),
+        ("beta", {"amount": 950, "date": "2026-10-14"}),
+    ]
+    assert out["engine_next"] == "readback"
+
+
+@pytest.mark.parametrize("retries", [0, 2, 4])
+@pytest.mark.parametrize("result,data", [("failed", {"ok": False, "error": "service unavailable"}),
+                                         ("unknown", {})])
+def test_identity_service_failures_follow_the_table_retry_budget(retries, result, data):
+    table = engine._copy(TABLE_A)
+    table["parameters"]["tools.retries"] = {"value": retries, "confidence": "quoted"}
+    table["phrases"].append({"id": "system_unavailable", "kind": "mandatory", "exact": True,
+                             "text": "The verification service is unavailable."})
+    now = "2026-10-14T11:00"
+    st, _ = step(new_state(), [E("party_confirmed")], table, now)
+    st, out = step(st, [E("id_answer", text="1984-07-09")], table, now)
+    args = out["writes"][0]["args"]
+    for attempt in range(retries + 1):
+        st, out = step(st, [{"kind": "tool_result", "tool": "verify_identity", "result": result,
+                            "data": data, "args": args}], table, now)
+        assert st["identity"]["wrong"] == 0
+        if attempt < retries:
+            assert out["writes"][0]["tool"] == "verify_identity"
+            assert out["writes"][0]["args"] == args
+        else:
+            assert out["writes"][0]["tool"] == "close_call"
+            assert st["identity"]["state"] == "failed"
+            assert "The verification service is unavailable." in out["mandatory_lines"]
