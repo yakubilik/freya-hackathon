@@ -271,7 +271,8 @@ def main():
     letters = a.letters
     groups = [letters[i:i + a.group] for i in range(0, len(letters), a.group)]
     if len(groups) > 1 and len(groups[-1]) == 1:
-        groups[-2] += groups.pop()
+        last = groups.pop()
+        groups[-1] = groups[-1] + last   # (an augmented assignment here lost a group on 2026-10-11: DEF was never triaged)
     for group in groups:
         tag = "".join(group)
         log("== group %s" % tag)
