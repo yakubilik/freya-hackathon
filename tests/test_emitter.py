@@ -86,6 +86,30 @@ def test_speech_prompts_preserve_instructions_without_a_sentence_cap():
         assert "Freya Bank" not in node["task_message"]
 
 
+def test_unconditional_speech_obligations_reach_every_speaking_stage():
+    table = copy.deepcopy(TABLE_A)
+    rule = {"id": "speech-style", "kind": "communication", "scope": "call", "status": "effective",
+            "when": {"state": "any", "guards": [], "event": None},
+            "then": [{"say": {"content": "Express monetary values as words in the supplied currency."}},
+                     {"forbid": "Abbreviating the currency name."}]}
+    table["obligations"].append(rule)
+    for field, value in (("guards", ["verified"]), ("event", "robot_question"), ("state", "closing"),
+                         ("stage_id", "negotiate")):
+        conditional = copy.deepcopy(rule)
+        conditional["when"][field] = value
+        conditional["then"] = [{"say": {"content": "CONDITIONAL: " + field}}]
+        table["obligations"].append(conditional)
+    superseded = copy.deepcopy(rule)
+    superseded.update(status="superseded", then=[{"say": {"content": "OBSOLETE"}}])
+    table["obligations"].append(superseded)
+    wf = emit(table, API)
+    for name in ("greeting", "callback", "identity", "negotiate", "readback"):
+        task = wf["nodes"][name]["task_message"]
+        assert rule["then"][0]["say"]["content"] in task
+        assert "Do not: Abbreviating the currency name." in task
+        assert "CONDITIONAL" not in task and "OBSOLETE" not in task
+
+
 @pytest.mark.parametrize("variables", [
     {"customer_id": "actual-member", "member_key": "test"},
     {"customer_id": "c_test", "member_key": "actual-member"},

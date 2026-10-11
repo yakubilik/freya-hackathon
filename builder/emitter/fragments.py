@@ -597,11 +597,34 @@ def observe(ctx, stage):
     return Fragment({name: code_node(name, code, [always("engine")])})
 
 
+def speech_rules(ctx):
+    """Unconditional call-wide communication requirements supplied by the reader."""
+    lines = []
+    for obligation in ctx.table.get("obligations") or []:
+        when = obligation.get("when") or {}
+        if (obligation.get("status") != "effective" or obligation.get("kind") != "communication"
+                or obligation.get("scope") != "call" or when.get("state") != "any"
+                or when.get("guards") or when.get("event") or when.get("stage_id")):
+            continue
+        for action in obligation.get("then") or []:
+            say = action.get("say")
+            if isinstance(say, dict) and isinstance(say.get("content"), str):
+                lines.append(say["content"])
+            if isinstance(action.get("forbid"), str):
+                lines.append("Do not: " + action["forbid"])
+    if not lines:
+        return ""
+    text = "\nCall-wide speech requirements (apply to the supplied content; do not recite these instructions):\n" + "\n".join(lines)
+    for name in ctx.call_vars:
+        text = re.sub(r"(?<!\{)\{" + re.escape(name) + r"\}(?!\})", lambda m: "{" + m[0] + "}", text)
+    return text
+
+
 def speaking_stage(ctx, stage):
     """S_say (tts of the verbatim lines), S (llm entry with the content) and S_wait (silent), all listening on the
     same extraction schema, plus the stage's dispatcher."""
     node = STAGE_NODE[stage]
-    task = STAGE_TASK[stage] + TASK_TAIL
+    task = STAGE_TASK[stage] + speech_rules(ctx) + TASK_TAIL
     trigger = when_any(node + "_observe", "The customer replied", [filled("%s_reply%d" % (node, k))
                                                                    for k in range(1, slot_count(ctx, stage) + 1)])
     schema = extraction_schema(ctx, stage)

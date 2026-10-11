@@ -717,6 +717,14 @@ def _handle_hardship(C, st, ev, bundle):
     if not st["global"]["hardship"]:
         _say(C, st, "sympathy")
     st["global"]["hardship"] = True
+    if s.get("offer") == "none" and s.get("transfer_queue"):
+        obligation = next((o for o in C["table"].get("obligations", [])
+                           if o.get("id") == s.get("obligation") and o.get("status") == "effective"), {})
+        when = obligation.get("when") or {}
+        if st["identity"]["state"] == "verified" or (when.get("state") == "any" and not when.get("guards")
+                                                    and not when.get("stage_id")):
+            _request_transfer(C, st, s["transfer_queue"], "hardship")
+        return
     if st["identity"]["state"] != "verified":
         return
     if s.get("transfer_queue") and not st["global"]["support_offered"]:
@@ -772,8 +780,10 @@ def _request_transfer(C, st, queue, reason):
     g["pending_transfer"] = queue
     g["transfer_reason"] = reason
     st["pending"] = None
-    rule = _param(C, "transfer.unrecorded_rule") if _has_param(C, "transfer.unrecorded_rule") else None
-    keep = (_sit(C, reason) or {}).get("voluntary_promise") == "record"
+    rule = (_sit(C, reason) or {}).get("voluntary_promise")
+    if rule is None:
+        rule = _param(C, "transfer.unrecorded_rule") if _has_param(C, "transfer.unrecorded_rule") else None
+    keep = rule == "record"
     g["transfer_keeps_promises"] = keep
     if keep:
         return
