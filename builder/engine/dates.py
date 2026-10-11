@@ -756,12 +756,19 @@ def _year_in_words_span(tokens):
         if tokens[i] in ("nineteen", "twenty", "eighteen") and i + 1 < len(tokens):
             first = UNITS.get(tokens[i]) or TENS.get(tokens[i])   # "twenty" is in TENS; "twenty-eighth of April" starts here too
             rest = _small_groups(tokens[i + 1:i + 3])
-            if rest:
-                if len(rest) >= 1 and rest[0] >= 10:
-                    used = 2 if (tokens[i + 1] in TENS and i + 2 < len(tokens) and tokens[i + 2] in UNITS and UNITS[tokens[i + 2]] < 10) else 1
-                    return first * 100 + rest[0], i, i + 1 + used
-                if tokens[i + 1] == "hundred":
-                    return first * 100, i, i + 2
+            if rest and rest[0] >= 10:
+                used = 2 if (tokens[i + 1] in TENS and i + 2 < len(tokens) and tokens[i + 2] in UNITS and UNITS[tokens[i + 2]] < 10) else 1
+                return first * 100 + rest[0], i, i + 1 + used
+            if tokens[i + 1] == "hundred":
+                # "nineteen hundred", "nineteen hundred and sixty-eight" (the kit's in_words customers, synthetic C-03)
+                j = i + 2
+                if j < len(tokens) and tokens[j] == "and":
+                    j += 1
+                rest2 = _small_groups(tokens[j:j + 2])
+                if rest2 and 0 <= rest2[0] < 100 and j < len(tokens):
+                    used = 2 if (tokens[j] in TENS and j + 1 < len(tokens) and tokens[j + 1] in UNITS and UNITS[tokens[j + 1]] < 10) else 1
+                    return first * 100 + rest2[0], i, j + used
+                return first * 100, i, i + 2
     return None
 
 
@@ -832,6 +839,11 @@ def parse_digits(text, n):
         i += 1
     digits = digits2
     if not digits:
+        return res
+    if n is None:
+        # a number of unknown length (a company or reference number): three digits or fewer is the first piece of a
+        # number said in parts (the kit's "pieces" customers), four or more is the whole number
+        res["status"], res["value"] = ("partial", digits) if len(digits) <= 3 else ("complete", digits)
         return res
     if len(digits) == n:
         res["status"], res["value"] = "complete", digits
@@ -906,21 +918,37 @@ def parse_code(text):
         i += 1
     if not out:
         return res
-    if len(out) < CODE_MIN_LEN or any(rx.match(out) for rx in CODE_PARTIAL_RES):
+    if len(out) < CODE_MIN_LEN or any(rx.match(out) for rx in CODE_PARTIAL_RES) or (out.isdigit() and len(out) <= 3):
+        # three digits alone is the first piece of a number said in parts ("four two seven" / "seven one nine", synthetic E)
         res["status"], res["value"] = "partial", out
     else:
         res["status"], res["value"] = "complete", out
     return res
 
 
+YEAR_CENTURY_PIECES = {"eighteen": "18", "nineteen": "19", "twenty": "20", "18": "18", "19": "19", "20": "20", "two thousand": "20"}
+
+
 def parse_year(text):
+    """A year: '1968', 'nineteen sixty-eight', 'nineteen hundred and sixty-eight', 'one nine six eight' (digit by
+    digit). A century alone ('nineteen', 'twenty') is the first piece of a year said in parts (partial; the engine asks
+    for the rest and joins). A year without its century ('sixty-eight') is 'none': the brief wants the full year."""
     s = _norm(str(text or ""))
     m = re.search(r"\b((?:18|19|20)\d{2})\b", s)
     if m:
         return {"status": "complete", "value": m.group(1)}
-    y = _year_in_words(s.split(" "))
+    toks = s.split(" ")
+    y = _year_in_words(toks)
     if y:
         return {"status": "complete", "value": str(y)}
+    digits = [str(UNITS[t]) if t in UNITS and UNITS[t] < 10 else ("0" if t in ("oh", "o", "zero", "nought") else t) for t in toks]
+    digits = [d for d in digits if d]
+    if len(digits) == 4 and all(len(d) == 1 and d.isdigit() for d in digits) and digits[0] + digits[1] in ("18", "19", "20"):
+        return {"status": "complete", "value": "".join(digits)}
+    core = re.sub(r"\b(it's|it s|it is|that's|that s|the year|year|of birth|is|was|in|born|i|yes)\b", " ", s)
+    core = " ".join(core.split())
+    if core in YEAR_CENTURY_PIECES:
+        return {"status": "partial", "value": core}
     return {"status": "none", "value": None}
 
 
@@ -930,3 +958,53 @@ def format_date_words(d):
     return "%s %d %s %d" % (WEEKDAY_NAMES[d.weekday()].capitalize(), d.day,
                             ["January", "February", "March", "April", "May", "June", "July", "August",
                              "September", "October", "November", "December"][d.month - 1], d.year)
+
+
+# ---------------------------------------------------------------------------------------------
+# numbers in words (for briefs that want amounts spoken in words)
+
+_ONES_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen",
+               "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+_TENS_WORDS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+
+
+def number_words(n):
+    """A whole number in British English words: 380 -> 'three hundred and eighty', 1240 -> 'one thousand two hundred
+    and forty', 2005 -> 'two thousand and five'."""
+    n = int(n)
+    if n < 0:
+        return "minus " + number_words(-n)
+    if n < 20:
+        return _ONES_WORDS[n]
+    if n < 100:
+        t, u = divmod(n, 10)
+        return _TENS_WORDS[t] + ("-" + _ONES_WORDS[u] if u else "")
+    if n < 1000:
+        h, r = divmod(n, 100)
+        return _ONES_WORDS[h] + " hundred" + (" and " + number_words(r) if r else "")
+    for scale, word in ((10 ** 9, "billion"), (10 ** 6, "million"), (1000, "thousand")):
+        if n >= scale:
+            big, r = divmod(n, scale)
+            head = number_words(big) + " " + word
+            if not r:
+                return head
+            return head + (" and " if r < 100 else " ") + number_words(r)
+    return str(n)
+
+
+_MINOR_UNIT = {"pounds": "pence", "euros": "cents", "dollars": "cents", "francs": "centimes", "liras": "kurus"}
+
+
+def amount_words(cents, currency=""):
+    """An amount spoken in words with its currency: (38000, 'euros') -> 'three hundred and eighty euros',
+    (61240, 'euros') -> 'six hundred and twelve euros and forty cents'; no currency -> the number alone."""
+    whole, frac = divmod(int(cents), 100)
+    cur = (currency or "").strip()
+    main = number_words(whole)
+    if cur:
+        unit = cur[:-1] if whole == 1 and cur.endswith("s") else cur
+        main += " " + unit
+    if frac:
+        minor = _MINOR_UNIT.get(cur, "cents") if cur else ""
+        main += " and " + number_words(frac) + ((" " + minor) if minor else "")
+    return main

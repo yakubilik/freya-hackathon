@@ -2191,8 +2191,12 @@ def test_amounts_carry_the_tables_currency_word(base):
     table = _with(TABLE_A, amounts__currency="pounds sterling, spoken in words")
     case = PUBLIC["PUB-01"]
     st, led, calls, log = check(base, "PUB-01", verified(case) + [[E("pay_today_yes")], [E("confirm")]], table=table)
+    # "spoken in words" in the currency note: the amount is said in words (synthetic C-01, 2026-10-11)
+    assert any("four hundred and twenty pounds past due" in o["say_next"] for _, o in log)
+    assert any("four hundred and twenty pounds on" in o["readback_text"] for _, o in log)
+    table = _with(TABLE_A, amounts__currency="pounds sterling")
+    st, led, calls, log = check(base, "PUB-01", verified(case) + [[E("pay_today_yes")], [E("confirm")]], table=table)
     assert any("420 pounds past due" in o["say_next"] for _, o in log)
-    assert any("420 pounds on" in o["readback_text"] for _, o in log)
     st, led, calls, log = drive(base, case, verified(case), TABLE_A)
     assert any("420 past due" in o["say_next"] for _, o in log)       # no currency in the table: the bare number
 
@@ -2209,3 +2213,57 @@ def test_exhausted_under_hardship_is_a_hardship_note():
     engine._build_items(C, st, [{"product_id": "p1", "type": "personal_loan", "past_due": 500, "days_late": 20, "instalment_amount": 100}])
     engine._exhaust(C, st, st["items"][0])
     assert st["items"][0]["noted"]["canonical"] == "refused"
+
+
+
+def test_number_of_unknown_length_said_in_pieces_is_joined():
+    """Synthetic E (platform, 2026-10-11): "four two seven" then "seven one nine" for a six-digit company number; the first
+    piece was sent alone and counted as wrong. A number of unknown length: three digits or fewer is a piece."""
+    from builder.engine.step import _parse_answer
+    from builder.engine.dates import parse_digits
+    assert parse_digits("four two seven", None) == {"status": "partial", "value": "427"}
+    assert parse_digits("four two seven seven one nine", None) == {"status": "complete", "value": "427719"}
+    assert parse_digits("4471", None)["status"] == "complete"
+    q = {"id": "company_number", "type": "text", "parse_rule": "digits only; join a number said in pieces"}
+    assert _parse_answer(q, "four two seven.") == ("partial", "427")
+    assert _parse_answer(q, "four two seven. seven one nine") == ("complete", "427719")
+    assert _parse_answer({"id": "company_number", "type": "digits"}, "one two three four five six") == ("complete", "123456")
+
+
+
+def test_year_said_in_words_or_pieces():
+    """Synthetic C-03 (in_words customer: "nineteen hundred and sixty-eight") and C-06 (pieces: "nineteen" then "eighty-two")
+    looped on the year question (platform 2026-10-11). A century alone is the first piece; a year without century stays none."""
+    from builder.engine.dates import parse_year
+    from builder.engine.step import _parse_answer
+    assert parse_year("Nineteen hundred and sixty-eight.") == {"status": "complete", "value": "1968"}
+    assert parse_year("nineteen hundred") == {"status": "complete", "value": "1900"}
+    assert parse_year("one nine six eight") == {"status": "complete", "value": "1968"}
+    assert parse_year("Nineteen.") == {"status": "partial", "value": "nineteen"}
+    assert parse_year("It's twenty") == {"status": "partial", "value": "twenty"}
+    assert parse_year("nineteen eighty-two") == {"status": "complete", "value": "1982"}
+    assert parse_year("sixty-eight")["status"] == "none"
+    assert parse_year("nineteen sixty-eight") == {"status": "complete", "value": "1968"}
+    q = {"id": "birth_year", "type": "year", "parse_rule": "four digits"}
+    assert _parse_answer(q, "nineteen") == ("partial", "nineteen")
+
+
+def test_amounts_in_words_when_the_brief_asks():
+    """Synthetic C-01 (2026-10-11): the brief says 'Say amounts as "three hundred and eighty euros", never as "380.00"'; the
+    agent said "1240 euros". The engine speaks amounts in words when the table carries that rule, digits otherwise."""
+    from builder.engine.dates import amount_words, number_words
+    from builder.engine.step import _money, _amount_words_text
+    assert number_words(380) == "three hundred and eighty"
+    assert number_words(1240) == "one thousand two hundred and forty"
+    assert number_words(2005) == "two thousand and five"
+    assert amount_words(38000, "euros") == "three hundred and eighty euros"
+    assert amount_words(61240, "euros") == "six hundred and twelve euros and forty cents"
+    assert amount_words(15405, "pounds") == "one hundred and fifty-four pounds and five pence"
+    assert amount_words(100, "pounds") == "one pound"
+    C = {"table": {"obligations": [{"then": [{"say": {"content": "say amounts in words in euros, e.g. three hundred and eighty euros"}}]}]},
+         "phrases": {}, "params": {}, "missing": []}
+    assert _amount_words_text(C, None)
+    C["amount_words"], C["currency"] = True, "euros"
+    assert _money(124000, C) == "one thousand two hundred and forty euros"
+    assert _money(124000, {"currency": "pounds", "amount_words": False}) == "1240 pounds"
+    assert not _amount_words_text({"table": {"obligations": [{"then": [{"say": {"content": "name the product in words"}}]}]}, "phrases": {}}, None)

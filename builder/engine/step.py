@@ -22,7 +22,7 @@ import json
 import re
 from .calendar import (parse_now, parse_date, iso, calendar_from_table, is_business_day,
                        eval_expr, ExprError, EvalError, CalendarError)
-from .dates import (resolve_date, resolve_time, resolve_amount_cents, to_cents, cents_to_number, money_text,
+from .dates import (resolve_date, resolve_time, resolve_amount_cents, to_cents, cents_to_number, money_text, amount_words,
                     parse_identity_date, parse_digits, parse_year, parse_code, format_date_words, _weekday_mode)
 
 SPEAKING_STAGES = ("party", "callback", "identity", "negotiate", "readback")
@@ -200,7 +200,14 @@ def _context(table, now):
         rules["bare_weekday_unspecified"] = True
     C["rules"] = rules
     C["notes_mode"] = bool(_has_param(C, "notes.reasons"))
-    C["currency"] = _currency_word(_param(C, "amounts.currency") if _has_param(C, "amounts.currency") else None)
+    cur_note = _param(C, "amounts.currency") if _has_param(C, "amounts.currency") else None
+    C["currency"] = _currency_word(cur_note)
+    # the brief wants amounts spoken in words ("three hundred and eighty euros", never "380.00"): the currency note
+    # says so, or an obligation/phrase does; the currency word then comes from that text when no note names it
+    words_text = _amount_words_text(C, cur_note)
+    C["amount_words"] = bool(words_text)
+    if words_text and not C["currency"]:
+        C["currency"] = _currency_word(words_text)
     sits = _param(C, "situations") if _has_param(C, "situations") else None
     C["situations"] = sits if isinstance(sits, dict) else {}
     return C
@@ -408,13 +415,36 @@ def _currency_word(value):
     return m.group(1).lower() if m else ""
 
 
+AMOUNT_WORDS_RE = re.compile(r"\b(amounts?|currency|euros?|pounds?|dollars?|sterling)\b(?:(?!product)[^.;]){0,60}\b(in|into) words", re.I)
+
+
+def _amount_words_text(C, cur_note):
+    """The table text that asks for amounts in words (synthetic C, D, F, G, H, J 2026-10-11), or ''."""
+    if isinstance(cur_note, str) and AMOUNT_WORDS_RE.search(cur_note):
+        return cur_note
+    for o in (C.get("table") or {}).get("obligations") or []:
+        for step in o.get("then") or []:
+            for v in (step.values() if isinstance(step, dict) else []):
+                txt = v.get("content") if isinstance(v, dict) else v
+                if isinstance(txt, str) and AMOUNT_WORDS_RE.search(txt):
+                    return txt
+    for ph in (C.get("phrases") or {}).values():
+        txt = " ".join(str(ph.get(k) or "") for k in ("text", "when", "id"))
+        if "amount" in txt.lower() and AMOUNT_WORDS_RE.search(txt):
+            return txt
+    return ""
+
+
 def _money(cents, C=None):
     """An amount for the model's lines, with the brief's currency word when the table names one (the model said
-    a currency of its own when none was given, synthetic G-01 2026-10-11)."""
+    a currency of its own when none was given, synthetic G-01 2026-10-11); in words when the brief wants amounts
+    spoken in words (synthetic C-01: "1240 euros" was said as digits)."""
     if cents is None:
         return "?"
-    text = money_text(cents)
     cur = (C or {}).get("currency") if isinstance(C, dict) else ""
+    if isinstance(C, dict) and C.get("amount_words"):
+        return amount_words(cents, cur)
+    text = money_text(cents)
     return text + " " + cur if cur else text
 
 
@@ -1178,7 +1208,7 @@ def _parse_answer(q, text):
         r = parse_identity_date(text, rule)
         return r["status"], r["value"]
     if typ.startswith("digits"):
-        n = int(typ.split(":")[1]) if ":" in typ else 4
+        n = int(typ.split(":")[1]) if ":" in typ else None   # no length given: see parse_digits
         r = parse_digits(text, n)
         return r["status"], r["value"]
     if typ == "year":
@@ -1188,6 +1218,10 @@ def _parse_answer(q, text):
         r = parse_code(text)
         return r["status"], r["value"]
     s = _normalise_text_answer(text, str(q.get("parse_rule") or ""))
+    if s.isdigit() and len(s) <= 3:
+        # "four two seven" for a company number said in two pieces (synthetic E, the kit's "pieces" style): the first
+        # piece; the engine asks for the rest and joins (the identity partials)
+        return "partial", s
     return ("complete", s) if s else ("none", None)
 
 
