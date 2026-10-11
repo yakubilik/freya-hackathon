@@ -55,6 +55,21 @@ opened adapt the input path only:
 - `9f2c42a`, `76d5dbb` (after the submitted run, used only by later runs that were not submitted): `R4_MODEL` chooses
   the second family's model; a self-test simulation refused because another one is running waits for the slot.
 
+### Results and known weaknesses (honest account)
+
+- The submitted agent (`ee825e04`, version 18) passed 5 of 6 and then 6 of 6 of the case's example scenarios in
+  independent platform simulations after its run; inside the run its self-tests went 4/6, 5/6, 6/6 on the example
+  scenarios and 2/4, 2/4, 4/4 on harder callers it wrote itself. A local static review (gpt-6.1-sol, test tooling,
+  not part of the builder) scored it 58/100: debt reading, confirmations and most service error codes are sound;
+  cards with the same name and the same last four digits, and a failing e-mail lookup, are handled wrongly.
+- Why weaker than our practice results: the builder's main path (reader, rule table, deterministic engine) was built
+  for the announced form and domain and does not apply here, so the whole case falls to the floor, adapted on the day.
+  Every run's first workflow fell into a platform trap (model-filled fields inside a nested body arrive empty; an
+  example value in a field description gets copied; a code node's output does not reach a prompt) and only the
+  self-test simulations exposed them. Runs vary: the same commit produced this agent and, in another run, one that
+  stayed at 0/4; a Fable 5.1 run and two runs with gpt-6.1-sol as the reviewer ended at 3/5 and 3/4 and were not
+  submitted (their traces are kept locally).
+
 Reader, engine and emitter are unchanged. No rule, value, name, path or sentence from the case is in the builder; the
 tests of these changes use invented data. `bfae95e` and `c2f22c0` (stop early when the Freya or Claude keys are
 missing) are operational checks.
