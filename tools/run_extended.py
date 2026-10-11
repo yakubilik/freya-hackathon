@@ -30,7 +30,11 @@ def main():
     ap.add_argument("--chunk", type=int, default=15)
     ap.add_argument("--only")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--out-dir", help="result directory (default runs/extended)")
     a = ap.parse_args()
+    global OUT
+    if a.out_dir:
+        OUT = pathlib.Path(a.out_dir)
     cases = json.load(open(CASES))
     by_id = {c["id"]: c for c in cases}
     real_http = score.http
