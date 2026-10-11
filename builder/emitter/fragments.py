@@ -181,7 +181,15 @@ def close_spoken_for(table, lang="en"):
         if not isinstance(ph, dict) or ph.get("kind") != "mandatory" or ph.get("exact"):
             continue
         pid, text = ph.get("id"), str(ph.get("text") or "").strip()
-        if pid not in CLOSE_FROM_TABLE or not text or "{" in text or INSTRUCTION_START_RE.match(text):
+        if pid not in CLOSE_FROM_TABLE or not text or "{" in text:
+            continue
+        # "Tell the customer to use the mobile app or a branch." is the sentence's content in instruction shape: said
+        # as "Please use the mobile app or a branch." (public A PUB-03 with a fresh table, 2026-10-11); any other
+        # instruction shape keeps the generic sentence
+        m = re.match(r"^(?:tell|ask|advise)\s+(?:the customer|the caller|them)\s+to\s+(.+)$", text, re.I)
+        if m:
+            text = "Please " + m.group(1)
+        elif INSTRUCTION_START_RE.match(text):
             continue
         sentence = _as_sentence(text)
         if sentence:
