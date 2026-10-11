@@ -51,6 +51,11 @@ no such rule, give the path with `"confidence": "not_specified"` and no `value`,
   - `scam`, `robot`, `unknown_question`: `{"obligation", "say": .., "then": "continue"}`
   - `deceased`, `wrong_number`: `{"obligation", "say_exact"?: .., "close": [<outcome>, <reason>]}`
   - `dont_want_to_talk`: `{"obligation", "count": <integer>, "close_verified": [..], "close_unverified": [..]}`
+  - `do_not_call` (only when the brief has a rule for a customer who asks not to be called again, distinct from not
+    wanting to talk now): `{"obligation", "note": <exact note reason or null>, "close_verified": [<outcome>, <reason>],
+    "close_unverified": [<outcome>, <reason>], "after_promise_close": [<outcome>, <reason>] (only when the brief says
+    what closes after a recorded promise)}`. The engine writes the note, ends the call at the first request and makes
+    no transfer.
   - `service_error`: `{"obligation", "note": <note reason>, "continue": true}` (only when a failed write is noted per product)
 - `recording.retries`: integer, extra tries after the first failure.
 - `multi.max_items`: integer. `multi.order`: string. `multi.pay_today_once`: true when the pay-today question is asked once

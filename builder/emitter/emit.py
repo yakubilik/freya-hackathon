@@ -67,6 +67,8 @@ class Ctx:
             isinstance(s, dict) and isinstance(s.get("callback"), dict) for s in situations.values())
         self.has_transfer = any(isinstance(s, dict) and s.get("transfer_queue") for s in situations.values())
         self.has_notes = self.param("notes.reasons") is not None
+        dnc = situations.get("do_not_call") or situations.get("no_contact")
+        self.do_not_call = dnc if isinstance(dnc, dict) else None
         self.stages = ["party"] + (["callback"] if self.has_callback else []) + ["identity", "negotiate", "readback"]
 
     def param(self, path):

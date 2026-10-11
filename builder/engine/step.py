@@ -30,13 +30,13 @@ DEBUG_RAISE = False   # tests may set this to see the traceback instead of the n
 WRITE_STAGES = ("verify", "fetch", "record", "transfer", "note", "close")
 # triggers that end the call before verification or after a callback was booked
 TERMINAL_TRIGGERS = ("party_unclear_twice", "wrong_number", "deceased", "callback_booked", "callback_refused_twice",
-                     "identity_failed", "identity_declined", "dont_want_twice_unverified", "fetch_failed_twice")
+                     "identity_failed", "identity_declined", "dont_want_twice_unverified", "fetch_failed_twice", "do_not_call")
 EVENT_KINDS = set([
     "party_confirmed", "party_other", "party_wrong_number", "party_deceased", "id_answer", "id_decline",
     "question_back", "callback_offer", "pay_today_yes", "pay_today_no", "date_proposal", "amount_proposal",
     "too_much", "refuse", "accept_offer", "vague_period", "confirm", "deny", "change", "paid", "dispute",
     "plan_request", "human", "hardship", "complaint", "scam_question", "robot_question", "dont_want_to_talk", "other",
-    "tool_result"])
+    "do_not_call", "tool_result"])
 
 # Wording used only when the table carries no phrase for an obligation it does state.
 FALLBACK_TEXT = {
@@ -1154,6 +1154,42 @@ def _handle_dont_want(C, st, ev):
             _refuse(C, st, it)
 
 
+def _do_not_call_entry(C):
+    """The table's do-not-call situation (key `do_not_call`; `no_contact` is the other name a reader gave it)."""
+    return _sit(C, "do_not_call") or _sit(C, "no_contact")
+
+
+def _handle_do_not_call(C, st, s):
+    """The customer asks not to be called again: the entry's note is written (on every open or agreed-but-unrecorded
+    item once the account is known, else once for the call with no product), the entry's close pair ends the call at
+    the first request (`close_verified` / `close_unverified`), nothing else in the reply is acted on and no transfer
+    follows; a recorded promise stays and takes `after_promise_close` when the entry has one, else the closing rows
+    decide between the promise and the request (synthetic C rule 16, F, G; 2026-10-11)."""
+    C["understood"] = True
+    g = st["global"]
+    verified = st["identity"]["state"] == "verified"
+    recorded = any(it["recorded"] for it in st["items"])
+    items = _open_items(st) + _agreed_items(st)
+    reason = s.get("note")
+    if isinstance(reason, str) and reason and items:
+        for it in items:
+            _note_item(C, st, it, reason)
+    else:
+        for it in items:
+            it["agreed"] = None
+            it["status"] = "skipped"
+        if isinstance(reason, str) and reason and not g.get("call_note"):
+            g["call_note"] = {"reason": reason, "written": False, "failures": 0}
+    pair = s.get("after_promise_close") if recorded else (s.get("close_verified") if verified else s.get("close_unverified"))
+    if isinstance(pair, list) and len(pair) == 2:
+        g["forced_close"] = [pair[0], pair[1]]
+    if not g["transfer_done"]:
+        g["pending_transfer"] = None
+    g["dont_want_closed"] = True
+    st["pending"] = "close"
+    _trigger(C, st, "do_not_call")
+
+
 # ---------------------------------------------------------------------------------------------
 # stages: party and callback
 
@@ -2079,6 +2115,16 @@ def _apply_tool_result(C, st, ev):
                 if cand["noted"] and not cand["noted_written"]:
                     it = cand
                     break
+        cn = g.get("call_note")
+        if it is None and cn and not cn.get("written"):
+            if res == "ok":
+                cn["written"] = True
+            else:
+                cn["failures"] = cn.get("failures", 0) + 1
+                if cn["failures"] >= 2:
+                    _unsupported(C, st, "add_note failed twice: no rule")
+                    cn["written"] = True
+            return
         if it is None:
             return
         if res == "ok":
@@ -2128,6 +2174,13 @@ def _close_row(C, st):
         _unsupported(C, st, "closing.rows")
         return None
     g = st["global"]
+    forced = g.get("forced_close")
+    if isinstance(forced, list) and len(forced) == 2:
+        # a situation entry that names its own close pair (do-not-call): the table's row for it when there is one
+        for row in rows:
+            if isinstance(row, dict) and [row.get("outcome"), row.get("reason")] == list(forced):
+                return row
+        return {"outcome": forced[0], "reason": forced[1]}
     active = []
     if g["transfer_done"]:
         active.append("transfer_done:" + str(g["transfer_done"]))
@@ -2356,6 +2409,11 @@ def _render(C, st, out):
                 if it["noted"] and not it["noted_written"] and not it["recorded"]:
                     writes.append({"tool": "add_note", "args": {"product_id": it["item_id"], "reason": it["noted"]["reason"]},
                                    "item_id": it["item_id"], "intent_key": "note:%s:%s" % (it["item_id"], it["noted"]["reason"])})
+        cn = g.get("call_note")
+        if cn and not cn.get("written") and not g["transfer_done"] and not g["pending_transfer"]:
+            # a note on the call, no product (a do-not-call request before the account is known)
+            writes.append({"tool": "add_note", "args": {"product_id": None, "reason": cn["reason"]}, "item_id": None,
+                           "intent_key": "note:call:%s:%d" % (cn["reason"], cn.get("failures", 0))})
         if writes:
             st["stage"] = "note"
             out["engine_next"] = "note"
@@ -2376,8 +2434,10 @@ def _render(C, st, out):
                 writes.append({"tool": "close_call", "args": args, "item_id": None,
                                "intent_key": "close:%s:%s" % (row.get("outcome"), row.get("reason"))})
                 notes = [it for it in st["items"] if it["noted"]]
-                contact_close = g.get("dont_want_closed") and bool(notes)
-                notes_ok = all(it["noted_written"] and it["note_failures"] < 2 for it in notes)
+                cn = g.get("call_note")
+                contact_close = g.get("dont_want_closed") and (bool(notes) or bool(cn))
+                notes_ok = all(it["noted_written"] and it["note_failures"] < 2 for it in notes) \
+                    and (not cn or (cn.get("written") and cn.get("failures", 0) < 2))
                 # A contact-request closing phrase may acknowledge the notes. Never speak it after a failed write.
                 if row.get("line") and (not contact_close or notes_ok):
                     _say(C, st, row["line"])
@@ -2592,6 +2652,17 @@ def _step(state, events, table, now):
             if farewell and st["stage"] in SPEAKING_STAGES and not declined_support:
                 _end_conversation(C, st)
                 cust = [e for e in cust if e["kind"] not in ("other", "dont_want_to_talk")]
+                kinds = set(e["kind"] for e in cust)
+            if "do_not_call" in kinds:
+                dnc = _do_not_call_entry(C)
+                if dnc is not None:
+                    # the request ends the call whatever else the reply carries: only questions are still answered
+                    _handle_do_not_call(C, st, dnc)
+                    cust = [e for e in cust if e["kind"] in ("question_back", "robot_question", "scam_question")]
+                else:
+                    for e in cust:
+                        if e["kind"] == "do_not_call":
+                            e["kind"] = "dont_want_to_talk"     # no such rule in the table: the ordinary refusal to talk
                 kinds = set(e["kind"] for e in cust)
             if "complaint" in kinds:
                 if _handle_complaint(C, st):

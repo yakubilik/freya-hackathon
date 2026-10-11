@@ -91,6 +91,7 @@ KIND_HELP = {
     "hardship": "mentions a hardship: illness, a death in the family, job loss",
     "complaint": "says they want to make a complaint or are going to complain, or asks how to complain",
     "dont_want_to_talk": "says they do not want to talk",
+    "do_not_call": "asks not to be called again or to stop the calls",
     "other": "anything else, including small talk, greetings and unclear replies",
 }
 # a kind whose meaning differs in one stage: in the callback stage the person on the line was taken for someone else,
@@ -458,8 +459,17 @@ def slot_vars(ctx, stage):
     return ["%s_%s%d" % (node, f, k) for k in range(1, slot_count(ctx, stage) + 1) for f in STAGE_FIELDS[stage]] + [node + "_raw"]
 
 
+def stage_kinds(ctx, stage):
+    """The event kinds a stage extracts: STAGE_KINDS plus `do_not_call` when the table has such a situation (the
+    engine ends the call on the first request with the entry's note and close pair)."""
+    kinds = list(STAGE_KINDS[stage])
+    if getattr(ctx, "do_not_call", None):
+        kinds.insert(kinds.index("other"), "do_not_call")
+    return kinds
+
+
 def extraction_schema(ctx, stage):
-    kinds = STAGE_KINDS[stage]
+    kinds = stage_kinds(ctx, stage)
     help_lines = []
     for k in kinds:
         text = KIND_HELP_STAGE.get((stage, k), KIND_HELP[k]).format(confirm_words=ctx.confirm_words, decline_extra=ctx.decline_extra)
@@ -649,7 +659,7 @@ def observe(ctx, stage):
     for k in range(1, slot_count(ctx, stage) + 1):
         slots.append({f: "%s_%s%d" % (node, f, k) for f in STAGE_FIELDS[stage]})
     names = slot_vars(ctx, stage)
-    code = (DISPATCH.replace("__KINDS__", py(STAGE_KINDS[stage])).replace("__SLOTS__", py(slots))
+    code = (DISPATCH.replace("__KINDS__", py(stage_kinds(ctx, stage))).replace("__SLOTS__", py(slots))
             .replace("__RAW__", py(node + "_raw")))
     code = code + "".join("vars[%r] = ''\n" % n for n in names)
     name = node + "_observe"
