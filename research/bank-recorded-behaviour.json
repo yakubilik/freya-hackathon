@@ -1,0 +1,3789 @@
+[
+ {
+  "title": "happy path, then extras after close",
+  "case": "PUB-01",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_729060ee-34f",
+    "first_name": "Daniel",
+    "last_name": "Reyes",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1988-03-14"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "4471"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": true
+    }
+   },
+   {
+    "tool": "get_account",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": true,
+     "products": [
+      {
+       "product_id": "p1",
+       "type": "credit_card",
+       "card_last4": "4821",
+       "past_due": 420,
+       "days_late": 6,
+       "minimum_payment": 126
+      }
+     ]
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 420,
+     "date": "2026-10-14"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "promise_id": "pr1"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 420,
+     "date": "2026-10-15"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "this product already has a promise"
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "promise"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "promise"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "the call is already closed"
+    }
+   },
+   {
+    "tool": "get_account",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "the call is already closed"
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-01",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true,
+    "phone_last4": true
+   },
+   "wrong": 0,
+   "hinted": false,
+   "promises": [
+    {
+     "promise_id": "pr1",
+     "product_id": "p1",
+     "type": "credit_card",
+     "amount": 420,
+     "date": "2026-10-14"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": "promise",
+   "reason": null,
+   "failures": {
+    "verify_identity": 0,
+    "get_account": 0,
+    "create_promise": 0,
+    "close_call": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1988-03-14"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 2,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "4471"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": true
+     }
+    },
+    {
+     "n": 3,
+     "tool": "get_account",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": true,
+      "products": [
+       {
+        "product_id": "p1",
+        "type": "credit_card",
+        "card_last4": "4821",
+        "past_due": 420,
+        "days_late": 6,
+        "minimum_payment": 126
+       }
+      ]
+     }
+    },
+    {
+     "n": 4,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 420,
+      "date": "2026-10-14"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "promise_id": "pr1"
+     }
+    },
+    {
+     "n": 5,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 420,
+      "date": "2026-10-15"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "this product already has a promise"
+     }
+    },
+    {
+     "n": 6,
+     "tool": "close_call",
+     "args": {
+      "outcome": "promise"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 7,
+     "tool": "close_call",
+     "args": {
+      "outcome": "promise"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "the call is already closed"
+     }
+    },
+    {
+     "n": 8,
+     "tool": "get_account",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "the call is already closed"
+     }
+    }
+   ],
+   "last_at": 1791641165758
+  }
+ },
+ {
+  "title": "tools before verification",
+  "case": "PUB-01",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_63942d14-7e1",
+    "first_name": "Daniel",
+    "last_name": "Reyes",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "get_account",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "identity not verified"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 420,
+     "date": "2026-10-14"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "identity not verified"
+    }
+   },
+   {
+    "tool": "add_note",
+    "body": {
+     "product_id": "p1",
+     "reason": "refused"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "schedule_callback",
+    "body": {
+     "date": "2026-10-15",
+     "time": "11:00"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "transfer_to_agent",
+    "body": {
+     "queue": "general"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "not_reached",
+     "reason": "callback"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-01",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {},
+   "wrong": 0,
+   "hinted": false,
+   "promises": [],
+   "notes": [
+    {
+     "product_id": "p1",
+     "reason": "refused",
+     "text": ""
+    }
+   ],
+   "callbacks": [
+    {
+     "date": "2026-10-15",
+     "time": "11:00"
+    }
+   ],
+   "transfers": [
+    {
+     "queue": "general"
+    }
+   ],
+   "outcome": "not_reached",
+   "reason": "callback",
+   "failures": {
+    "get_account": 0,
+    "create_promise": 0,
+    "add_note": 0,
+    "schedule_callback": 0,
+    "transfer_to_agent": 0,
+    "close_call": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "get_account",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "identity not verified"
+     }
+    },
+    {
+     "n": 2,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 420,
+      "date": "2026-10-14"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "identity not verified"
+     }
+    },
+    {
+     "n": 3,
+     "tool": "add_note",
+     "args": {
+      "product_id": "p1",
+      "reason": "refused"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 4,
+     "tool": "schedule_callback",
+     "args": {
+      "date": "2026-10-15",
+      "time": "11:00"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 5,
+     "tool": "transfer_to_agent",
+     "args": {
+      "queue": "general"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 6,
+     "tool": "close_call",
+     "args": {
+      "outcome": "not_reached",
+      "reason": "callback"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    }
+   ],
+   "last_at": 1791641167451
+  }
+ },
+ {
+  "title": "three wrong answers across fields, then more",
+  "case": "PUB-03",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_a8b7931f-7c2",
+    "first_name": "Owen",
+    "last_name": "Park",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1991-07-12"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 2,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "0000"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 1,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1990-07-21"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 0,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1992-07-21"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "verified": false,
+     "wrong_answers_left": 0,
+     "error": "identity check is over"
+    }
+   },
+   {
+    "tool": "get_account",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "identity not verified"
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-03",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {},
+   "wrong": 3,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0,
+    "get_account": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1991-07-12"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 2,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 2,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "0000"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 1,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 3,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1990-07-21"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 0,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 4,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1992-07-21"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "verified": false,
+      "wrong_answers_left": 0,
+      "error": "identity check is over"
+     }
+    },
+    {
+     "n": 5,
+     "tool": "get_account",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "identity not verified"
+     }
+    }
+   ],
+   "last_at": 1791641168597
+  }
+ },
+ {
+  "title": "swap hint, unreadable, formats, repeat of passed field",
+  "case": "PUB-03",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_5e9e6ec8-e9b",
+    "first_name": "Owen",
+    "last_name": "Park",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1992-21-07"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 3,
+     "hint": "day_month_swapped"
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "21 July 1992"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "07/21/1992"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1992-07-21"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1992-07-21"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "66 30"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": true
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "663"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "6630"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "birth_year",
+     "answer": "1992"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "field must be date_of_birth or phone_last4"
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-03",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true,
+    "phone_last4": true
+   },
+   "wrong": 0,
+   "hinted": true,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1992-21-07"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 3,
+      "hint": "day_month_swapped"
+     }
+    },
+    {
+     "n": 2,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "21 July 1992"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 3,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "07/21/1992"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3
+     }
+    },
+    {
+     "n": 4,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1992-07-21"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3
+     }
+    },
+    {
+     "n": 5,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1992-07-21"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3
+     }
+    },
+    {
+     "n": 6,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "66 30"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": true
+     }
+    },
+    {
+     "n": 7,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "663"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3
+     }
+    },
+    {
+     "n": 8,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "6630"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3
+     }
+    },
+    {
+     "n": 9,
+     "tool": "verify_identity",
+     "args": {
+      "field": "birth_year",
+      "answer": "1992"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "field must be date_of_birth or phone_last4"
+     }
+    }
+   ],
+   "last_at": 1791641170441
+  }
+ },
+ {
+  "title": "phone first then dob; partial get_account",
+  "case": "PUB-04",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_c3ace4e8-c8f",
+    "first_name": "Lena",
+    "last_name": "Hoffmann",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "2219"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "get_account",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "identity not verified"
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1984-01-30"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": true
+    }
+   },
+   {
+    "tool": "get_account",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": true,
+     "products": [
+      {
+       "product_id": "p1",
+       "type": "car_loan",
+       "past_due": 1250,
+       "days_late": 14,
+       "instalment_amount": 400
+      }
+     ]
+    }
+   },
+   {
+    "tool": "get_account",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": true,
+     "products": [
+      {
+       "product_id": "p1",
+       "type": "car_loan",
+       "past_due": 1250,
+       "days_late": 14,
+       "instalment_amount": 400
+      }
+     ]
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-04",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "phone_last4": true,
+    "date_of_birth": true
+   },
+   "wrong": 0,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0,
+    "get_account": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "2219"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 2,
+     "tool": "get_account",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "identity not verified"
+     }
+    },
+    {
+     "n": 3,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1984-01-30"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": true
+     }
+    },
+    {
+     "n": 4,
+     "tool": "get_account",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": true,
+      "products": [
+       {
+        "product_id": "p1",
+        "type": "car_loan",
+        "past_due": 1250,
+        "days_late": 14,
+        "instalment_amount": 400
+       }
+      ]
+     }
+    },
+    {
+     "n": 5,
+     "tool": "get_account",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": true,
+      "products": [
+       {
+        "product_id": "p1",
+        "type": "car_loan",
+        "past_due": 1250,
+        "days_late": 14,
+        "instalment_amount": 400
+       }
+      ]
+     }
+    }
+   ],
+   "last_at": 1791641171878
+  }
+ },
+ {
+  "title": "bad inputs to create_promise",
+  "case": "PUB-04",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_f0dec4a9-78e",
+    "first_name": "Lena",
+    "last_name": "Hoffmann",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1984-01-30"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "2219"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": true
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p9",
+     "amount": 1250,
+     "date": "2026-10-23"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "unknown product_id"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": "1250",
+     "date": "2026-10-23"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "promise_id": "pr1"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": -5,
+     "date": "2026-10-23"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "amount must be a positive number"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 1250,
+     "date": "23 October"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "date must be YYYY-MM-DD"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 1250
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "date must be YYYY-MM-DD"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 99999,
+     "date": "2026-10-25"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "this product already has a promise"
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "promise"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "no_promise"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "the call is already closed"
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "no_promise",
+     "reason": "banana"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "the call is already closed"
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "paid",
+     "reason": "refused"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "the call is already closed"
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-04",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true,
+    "phone_last4": true
+   },
+   "wrong": 0,
+   "hinted": false,
+   "promises": [
+    {
+     "promise_id": "pr1",
+     "product_id": "p1",
+     "type": "car_loan",
+     "amount": 1250,
+     "date": "2026-10-23"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": "promise",
+   "reason": null,
+   "failures": {
+    "verify_identity": 0,
+    "create_promise": 0,
+    "close_call": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1984-01-30"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 2,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "2219"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": true
+     }
+    },
+    {
+     "n": 3,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p9",
+      "amount": 1250,
+      "date": "2026-10-23"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "unknown product_id"
+     }
+    },
+    {
+     "n": 4,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": "1250",
+      "date": "2026-10-23"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "promise_id": "pr1"
+     }
+    },
+    {
+     "n": 5,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": -5,
+      "date": "2026-10-23"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "amount must be a positive number"
+     }
+    },
+    {
+     "n": 6,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 1250,
+      "date": "23 October"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "date must be YYYY-MM-DD"
+     }
+    },
+    {
+     "n": 7,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 1250
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "date must be YYYY-MM-DD"
+     }
+    },
+    {
+     "n": 8,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 99999,
+      "date": "2026-10-25"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "this product already has a promise"
+     }
+    },
+    {
+     "n": 9,
+     "tool": "close_call",
+     "args": {
+      "outcome": "promise"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 10,
+     "tool": "close_call",
+     "args": {
+      "outcome": "no_promise"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "the call is already closed"
+     }
+    },
+    {
+     "n": 11,
+     "tool": "close_call",
+     "args": {
+      "outcome": "no_promise",
+      "reason": "banana"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "the call is already closed"
+     }
+    },
+    {
+     "n": 12,
+     "tool": "close_call",
+     "args": {
+      "outcome": "paid",
+      "reason": "refused"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "the call is already closed"
+     }
+    }
+   ],
+   "last_at": 1791641173786
+  }
+ },
+ {
+  "title": "fault account: failing create_promise",
+  "case": "PUB-10",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_04398a8a-51b",
+    "first_name": "Grace",
+    "last_name": "Lin",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1989-02-23"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "9904"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": true
+    }
+   },
+   {
+    "tool": "get_account",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": true,
+     "products": [
+      {
+       "product_id": "p1",
+       "type": "credit_card",
+       "card_last4": "7740",
+       "past_due": 365,
+       "days_late": 8,
+       "minimum_payment": 109.5
+      }
+     ]
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 365,
+     "date": "2026-10-16"
+    },
+    "status": 500,
+    "result": {
+     "ok": false,
+     "error": "service unavailable, nothing was recorded"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 365,
+     "date": "2026-10-16"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "promise_id": "pr1"
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "promise"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-10",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true,
+    "phone_last4": true
+   },
+   "wrong": 0,
+   "hinted": false,
+   "promises": [
+    {
+     "promise_id": "pr1",
+     "product_id": "p1",
+     "type": "credit_card",
+     "amount": 365,
+     "date": "2026-10-16"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": "promise",
+   "reason": null,
+   "failures": {
+    "verify_identity": 0,
+    "get_account": 0,
+    "create_promise": 1,
+    "close_call": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1989-02-23"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 2,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "9904"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": true
+     }
+    },
+    {
+     "n": 3,
+     "tool": "get_account",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": true,
+      "products": [
+       {
+        "product_id": "p1",
+        "type": "credit_card",
+        "card_last4": "7740",
+        "past_due": 365,
+        "days_late": 8,
+        "minimum_payment": 109.5
+       }
+      ]
+     }
+    },
+    {
+     "n": 4,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 365,
+      "date": "2026-10-16"
+     },
+     "status": 500,
+     "result": {
+      "ok": false,
+      "error": "service unavailable, nothing was recorded"
+     }
+    },
+    {
+     "n": 5,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 365,
+      "date": "2026-10-16"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "promise_id": "pr1"
+     }
+    },
+    {
+     "n": 6,
+     "tool": "close_call",
+     "args": {
+      "outcome": "promise"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    }
+   ],
+   "last_at": 1791641175654
+  }
+ },
+ {
+  "title": "multi product: notes, promises, transfer, callback",
+  "case": "PUB-12",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_96077e7d-617",
+    "first_name": "Marcus",
+    "last_name": "Bell",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1983-10-19"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "4410"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": true
+    }
+   },
+   {
+    "tool": "get_account",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": true,
+     "products": [
+      {
+       "product_id": "p1",
+       "type": "credit_card",
+       "card_last4": "9015",
+       "past_due": 510,
+       "days_late": 16,
+       "minimum_payment": 153
+      },
+      {
+       "product_id": "p2",
+       "type": "personal_loan",
+       "past_due": 1320,
+       "days_late": 16,
+       "instalment_amount": 440
+      },
+      {
+       "product_id": "p3",
+       "type": "car_loan",
+       "past_due": 140,
+       "days_late": 7,
+       "instalment_amount": 46
+      }
+     ]
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 510,
+     "date": "2026-10-15"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "promise_id": "pr1"
+    }
+   },
+   {
+    "tool": "add_note",
+    "body": {
+     "product_id": "p2",
+     "reason": "refused"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "add_note",
+    "body": {
+     "product_id": "p2",
+     "reason": "refused"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "add_note",
+    "body": {
+     "product_id": "p3",
+     "reason": "nope"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "unknown reason"
+    }
+   },
+   {
+    "tool": "add_note",
+    "body": {
+     "product_id": "p1",
+     "reason": "paid",
+     "text": "x"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "transfer_to_agent",
+    "body": {
+     "queue": "vip"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "unknown queue"
+    }
+   },
+   {
+    "tool": "transfer_to_agent",
+    "body": {
+     "queue": "support"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "schedule_callback",
+    "body": {
+     "date": "2026-10-17",
+     "time": "25:00"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "schedule_callback",
+    "body": {
+     "date": "2026-10-15",
+     "time": "11:00"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "transferred",
+     "reason": "support"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-12",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true,
+    "phone_last4": true
+   },
+   "wrong": 0,
+   "hinted": false,
+   "promises": [
+    {
+     "promise_id": "pr1",
+     "product_id": "p1",
+     "type": "credit_card",
+     "amount": 510,
+     "date": "2026-10-15"
+    }
+   ],
+   "notes": [
+    {
+     "product_id": "p2",
+     "reason": "refused",
+     "text": ""
+    },
+    {
+     "product_id": "p2",
+     "reason": "refused",
+     "text": ""
+    },
+    {
+     "product_id": "p1",
+     "reason": "paid",
+     "text": "x"
+    }
+   ],
+   "callbacks": [
+    {
+     "date": "2026-10-17",
+     "time": "25:00"
+    },
+    {
+     "date": "2026-10-15",
+     "time": "11:00"
+    }
+   ],
+   "transfers": [
+    {
+     "queue": "support"
+    }
+   ],
+   "outcome": "transferred",
+   "reason": "support",
+   "failures": {
+    "verify_identity": 0,
+    "get_account": 0,
+    "create_promise": 0,
+    "add_note": 0,
+    "transfer_to_agent": 0,
+    "schedule_callback": 0,
+    "close_call": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1983-10-19"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 2,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "4410"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": true
+     }
+    },
+    {
+     "n": 3,
+     "tool": "get_account",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": true,
+      "products": [
+       {
+        "product_id": "p1",
+        "type": "credit_card",
+        "card_last4": "9015",
+        "past_due": 510,
+        "days_late": 16,
+        "minimum_payment": 153
+       },
+       {
+        "product_id": "p2",
+        "type": "personal_loan",
+        "past_due": 1320,
+        "days_late": 16,
+        "instalment_amount": 440
+       },
+       {
+        "product_id": "p3",
+        "type": "car_loan",
+        "past_due": 140,
+        "days_late": 7,
+        "instalment_amount": 46
+       }
+      ]
+     }
+    },
+    {
+     "n": 4,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 510,
+      "date": "2026-10-15"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "promise_id": "pr1"
+     }
+    },
+    {
+     "n": 5,
+     "tool": "add_note",
+     "args": {
+      "product_id": "p2",
+      "reason": "refused"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 6,
+     "tool": "add_note",
+     "args": {
+      "product_id": "p2",
+      "reason": "refused"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 7,
+     "tool": "add_note",
+     "args": {
+      "product_id": "p3",
+      "reason": "nope"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "unknown reason"
+     }
+    },
+    {
+     "n": 8,
+     "tool": "add_note",
+     "args": {
+      "product_id": "p1",
+      "reason": "paid",
+      "text": "x"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 9,
+     "tool": "transfer_to_agent",
+     "args": {
+      "queue": "vip"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "unknown queue"
+     }
+    },
+    {
+     "n": 10,
+     "tool": "transfer_to_agent",
+     "args": {
+      "queue": "support"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 11,
+     "tool": "schedule_callback",
+     "args": {
+      "date": "2026-10-17",
+      "time": "25:00"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 12,
+     "tool": "schedule_callback",
+     "args": {
+      "date": "2026-10-15",
+      "time": "11:00"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 13,
+     "tool": "close_call",
+     "args": {
+      "outcome": "transferred",
+      "reason": "support"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    }
+   ],
+   "last_at": 1791641178378
+  }
+ },
+ {
+  "title": "unknown customer",
+  "tool": "get_account",
+  "body": {
+   "customer_id": "c_nope"
+  },
+  "status": 404,
+  "result": {
+   "ok": false,
+   "error": "unknown customer_id"
+  }
+ },
+ {
+  "title": "missing customer_id",
+  "tool": "get_account",
+  "body": {},
+  "status": 404,
+  "result": {
+   "ok": false,
+   "error": "unknown customer_id"
+  }
+ },
+ {
+  "title": "unknown tool",
+  "tool": "pay_now",
+  "body": {
+   "customer_id": "c_nope"
+  },
+  "status": 404,
+  "result": {
+   "ok": false,
+   "error": "not found"
+  }
+ },
+ {
+  "title": "invalid json",
+  "tool": "get_account",
+  "body": null,
+  "status": 404,
+  "result": {
+   "ok": false,
+   "error": "unknown customer_id"
+  }
+ },
+ {
+  "title": "empty body",
+  "tool": "get_account",
+  "body": null,
+  "status": 404,
+  "result": {
+   "ok": false,
+   "error": "unknown customer_id"
+  }
+ },
+ {
+  "title": "date formats A",
+  "case": "PUB-03",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_47b5ab34-6d7",
+    "first_name": "Owen",
+    "last_name": "Park",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "garbage"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "answer is not a date. Send it as YYYY-MM-DD."
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": ""
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "answer is not a date. Send it as YYYY-MM-DD."
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1992-13-45"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 2,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "21/07/1992"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 2,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1992-21-07"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 2
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1992-21-07"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 2
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1992-07-21"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 2
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-03",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true
+   },
+   "wrong": 1,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "garbage"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "answer is not a date. Send it as YYYY-MM-DD."
+     }
+    },
+    {
+     "n": 2,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": ""
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "answer is not a date. Send it as YYYY-MM-DD."
+     }
+    },
+    {
+     "n": 3,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1992-13-45"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 2,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 4,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "21/07/1992"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 2,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 5,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1992-21-07"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 2
+     }
+    },
+    {
+     "n": 6,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1992-21-07"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 2
+     }
+    },
+    {
+     "n": 7,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1992-07-21"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 2
+     }
+    }
+   ],
+   "last_at": 1791641220297
+  }
+ },
+ {
+  "title": "date formats B",
+  "case": "PUB-03",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_ba796a5d-a9b",
+    "first_name": "Owen",
+    "last_name": "Park",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "21.07.1992"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": false
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-03",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true
+   },
+   "wrong": 0,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "21.07.1992"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": false
+     }
+    }
+   ],
+   "last_at": 1791641220741
+  }
+ },
+ {
+  "title": "date formats C",
+  "case": "PUB-03",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_9c5ccb78-9a5",
+    "first_name": "Owen",
+    "last_name": "Park",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "July 21, 1992"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": false
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-03",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true
+   },
+   "wrong": 0,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "July 21, 1992"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": false
+     }
+    }
+   ],
+   "last_at": 1791641221370
+  }
+ },
+ {
+  "title": "date formats D",
+  "case": "PUB-03",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_8e3a8701-662",
+    "first_name": "Owen",
+    "last_name": "Park",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "21-07-1992"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": false
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-03",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true
+   },
+   "wrong": 0,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "21-07-1992"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": false
+     }
+    }
+   ],
+   "last_at": 1791641221778
+  }
+ },
+ {
+  "title": "date formats E (us numeric wrong order per brief)",
+  "case": "PUB-03",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_6595c30a-50c",
+    "first_name": "Owen",
+    "last_name": "Park",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "07/21/1992"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 3,
+     "hint": "day_month_swapped"
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-03",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {},
+   "wrong": 0,
+   "hinted": true,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "07/21/1992"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 3,
+      "hint": "day_month_swapped"
+     }
+    }
+   ],
+   "last_at": 1791641222443
+  }
+ },
+ {
+  "title": "date formats F",
+  "case": "PUB-03",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_0c44d6bb-f1b",
+    "first_name": "Owen",
+    "last_name": "Park",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "21 Jul 92"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "answer is not a date. Send it as YYYY-MM-DD."
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-03",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {},
+   "wrong": 0,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "21 Jul 92"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "answer is not a date. Send it as YYYY-MM-DD."
+     }
+    }
+   ],
+   "last_at": 1791641222962
+  }
+ },
+ {
+  "title": "date formats G wrong but readable",
+  "case": "PUB-03",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_4e549bc0-82a",
+    "first_name": "Owen",
+    "last_name": "Park",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "12 July 1991"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 2,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "x"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 1,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "12345"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 0,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": ""
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "verified": false,
+     "wrong_answers_left": 0,
+     "error": "identity check is over"
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-03",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {},
+   "wrong": 3,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "12 July 1991"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 2,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 2,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "x"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 1,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 3,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "12345"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 0,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 4,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": ""
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "verified": false,
+      "wrong_answers_left": 0,
+      "error": "identity check is over"
+     }
+    }
+   ],
+   "last_at": 1791641224089
+  }
+ },
+ {
+  "title": "swap with both-valid date (5 Dec vs 12 May)",
+  "case": "PUB-07",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_6f1bfff0-b84",
+    "first_name": "Samuel",
+    "last_name": "Ortiz",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1975-05-12"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 3,
+     "hint": "day_month_swapped"
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1975-05-12"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": false,
+     "wrong_answers_left": 2,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "05/12/1975"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 2,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1975-12-05"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 2
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-07",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true
+   },
+   "wrong": 1,
+   "hinted": true,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1975-05-12"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 3,
+      "hint": "day_month_swapped"
+     }
+    },
+    {
+     "n": 2,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1975-05-12"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": false,
+      "wrong_answers_left": 2,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 3,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "05/12/1975"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 2,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 4,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1975-12-05"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 2
+     }
+    }
+   ],
+   "last_at": 1791641225167
+  }
+ },
+ {
+  "title": "close_call validation before closing",
+  "case": "PUB-08",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_7662311a-be9",
+    "first_name": "Hannah",
+    "last_name": "Schmidt",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "close_call",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "unknown outcome"
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "nope"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "unknown outcome"
+    }
+   },
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "no_promise",
+     "reason": "banana"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "this outcome needs one of these reasons: refused, hardship, dispute, service_error"
+    }
+   },
+   {
+    "tool": "get_account",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "identity not verified"
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-08",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {},
+   "wrong": 0,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "close_call": 0,
+    "get_account": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "close_call",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "unknown outcome"
+     }
+    },
+    {
+     "n": 2,
+     "tool": "close_call",
+     "args": {
+      "outcome": "nope"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "unknown outcome"
+     }
+    },
+    {
+     "n": 3,
+     "tool": "close_call",
+     "args": {
+      "outcome": "no_promise",
+      "reason": "banana"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "this outcome needs one of these reasons: refused, hardship, dispute, service_error"
+     }
+    },
+    {
+     "n": 4,
+     "tool": "get_account",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "identity not verified"
+     }
+    }
+   ],
+   "last_at": 1791641226174
+  }
+ },
+ {
+  "title": "close: paid with reason / promise without promise",
+  "case": "PUB-08",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_2042510d-de4",
+    "first_name": "Hannah",
+    "last_name": "Schmidt",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "paid",
+     "reason": "refused"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "this outcome needs one of these reasons: "
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-08",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {},
+   "wrong": 0,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "close_call": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "close_call",
+     "args": {
+      "outcome": "paid",
+      "reason": "refused"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "this outcome needs one of these reasons: "
+     }
+    }
+   ],
+   "last_at": 1791641226685
+  }
+ },
+ {
+  "title": "close: promise with no promise recorded, no reason for not_reached",
+  "case": "PUB-08",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_a263c717-b9c",
+    "first_name": "Hannah",
+    "last_name": "Schmidt",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "close_call",
+    "body": {
+     "outcome": "not_reached"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "this outcome needs one of these reasons: callback, no_callback, wrong_number, deceased, unclear"
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-08",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {},
+   "wrong": 0,
+   "hinted": false,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "close_call": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "close_call",
+     "args": {
+      "outcome": "not_reached"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "this outcome needs one of these reasons: callback, no_callback, wrong_number, deceased, unclear"
+     }
+    }
+   ],
+   "last_at": 1791641227067
+  }
+ },
+ {
+  "title": "notes/callback/transfer validation",
+  "case": "PUB-11",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_c42965ba-417",
+    "first_name": "Sofia",
+    "last_name": "Almeida",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "add_note",
+    "body": {
+     "product_id": "p9",
+     "reason": "refused"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "add_note",
+    "body": {
+     "reason": "refused"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "add_note",
+    "body": {
+     "product_id": "p1"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "unknown reason"
+    }
+   },
+   {
+    "tool": "schedule_callback",
+    "body": {
+     "date": "tomorrow",
+     "time": "11"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "date must be YYYY-MM-DD and time HH:MM"
+    }
+   },
+   {
+    "tool": "schedule_callback",
+    "body": {
+     "date": "2026-10-15"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "date must be YYYY-MM-DD and time HH:MM"
+    }
+   },
+   {
+    "tool": "schedule_callback",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "date must be YYYY-MM-DD and time HH:MM"
+    }
+   },
+   {
+    "tool": "transfer_to_agent",
+    "body": {},
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "unknown queue"
+    }
+   },
+   {
+    "tool": "transfer_to_agent",
+    "body": {
+     "queue": "general"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   },
+   {
+    "tool": "transfer_to_agent",
+    "body": {
+     "queue": "general"
+    },
+    "status": 200,
+    "result": {
+     "ok": true
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-11",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {},
+   "wrong": 0,
+   "hinted": false,
+   "promises": [],
+   "notes": [
+    {
+     "product_id": "p9",
+     "reason": "refused",
+     "text": ""
+    },
+    {
+     "product_id": null,
+     "reason": "refused",
+     "text": ""
+    }
+   ],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "general"
+    },
+    {
+     "queue": "general"
+    }
+   ],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "add_note": 0,
+    "schedule_callback": 0,
+    "transfer_to_agent": 0
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "add_note",
+     "args": {
+      "product_id": "p9",
+      "reason": "refused"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 2,
+     "tool": "add_note",
+     "args": {
+      "reason": "refused"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 3,
+     "tool": "add_note",
+     "args": {
+      "product_id": "p1"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "unknown reason"
+     }
+    },
+    {
+     "n": 4,
+     "tool": "schedule_callback",
+     "args": {
+      "date": "tomorrow",
+      "time": "11"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "date must be YYYY-MM-DD and time HH:MM"
+     }
+    },
+    {
+     "n": 5,
+     "tool": "schedule_callback",
+     "args": {
+      "date": "2026-10-15"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "date must be YYYY-MM-DD and time HH:MM"
+     }
+    },
+    {
+     "n": 6,
+     "tool": "schedule_callback",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "date must be YYYY-MM-DD and time HH:MM"
+     }
+    },
+    {
+     "n": 7,
+     "tool": "transfer_to_agent",
+     "args": {},
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "unknown queue"
+     }
+    },
+    {
+     "n": 8,
+     "tool": "transfer_to_agent",
+     "args": {
+      "queue": "general"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    },
+    {
+     "n": 9,
+     "tool": "transfer_to_agent",
+     "args": {
+      "queue": "general"
+     },
+     "status": 200,
+     "result": {
+      "ok": true
+     }
+    }
+   ],
+   "last_at": 1791641228909
+  }
+ },
+ {
+  "title": "fault ordering: invalid input on failing tool, and amounts",
+  "case": "PUB-10",
+  "session": {
+   "ok": true,
+   "variables": {
+    "customer_id": "c_2bab6977-137",
+    "first_name": "Grace",
+    "last_name": "Lin",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   }
+  },
+  "steps": [
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "date_of_birth",
+     "answer": "1989-02-23"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": false
+    }
+   },
+   {
+    "tool": "verify_identity",
+    "body": {
+     "field": "phone_last4",
+     "answer": "9904"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "verified": true,
+     "wrong_answers_left": 3,
+     "all_verified": true
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p9",
+     "amount": 1,
+     "date": "x"
+    },
+    "status": 500,
+    "result": {
+     "ok": false,
+     "error": "service unavailable, nothing was recorded"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 365.555,
+     "date": "2026-10-16"
+    },
+    "status": 200,
+    "result": {
+     "ok": true,
+     "promise_id": "pr1"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": 0,
+     "date": "2026-10-16"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "amount must be a positive number"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "amount": "abc",
+     "date": "2026-10-16"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "amount must be a positive number"
+    }
+   },
+   {
+    "tool": "create_promise",
+    "body": {
+     "product_id": "p1",
+     "date": "2026-10-16"
+    },
+    "status": 200,
+    "result": {
+     "ok": false,
+     "error": "amount must be a positive number"
+    }
+   }
+  ],
+  "ledger": {
+   "ok": true,
+   "case": "PUB-10",
+   "team": "438e7ead27d044b695861d4b",
+   "now": "2026-10-14T11:00",
+   "verified": {
+    "date_of_birth": true,
+    "phone_last4": true
+   },
+   "wrong": 0,
+   "hinted": false,
+   "promises": [
+    {
+     "promise_id": "pr1",
+     "product_id": "p1",
+     "type": "credit_card",
+     "amount": 365.555,
+     "date": "2026-10-16"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [],
+   "outcome": null,
+   "reason": null,
+   "failures": {
+    "verify_identity": 0,
+    "create_promise": 1
+   },
+   "calls": [
+    {
+     "n": 1,
+     "tool": "verify_identity",
+     "args": {
+      "field": "date_of_birth",
+      "answer": "1989-02-23"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": false
+     }
+    },
+    {
+     "n": 2,
+     "tool": "verify_identity",
+     "args": {
+      "field": "phone_last4",
+      "answer": "9904"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "verified": true,
+      "wrong_answers_left": 3,
+      "all_verified": true
+     }
+    },
+    {
+     "n": 3,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p9",
+      "amount": 1,
+      "date": "x"
+     },
+     "status": 500,
+     "result": {
+      "ok": false,
+      "error": "service unavailable, nothing was recorded"
+     }
+    },
+    {
+     "n": 4,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 365.555,
+      "date": "2026-10-16"
+     },
+     "status": 200,
+     "result": {
+      "ok": true,
+      "promise_id": "pr1"
+     }
+    },
+    {
+     "n": 5,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": 0,
+      "date": "2026-10-16"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "amount must be a positive number"
+     }
+    },
+    {
+     "n": 6,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "amount": "abc",
+      "date": "2026-10-16"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "amount must be a positive number"
+     }
+    },
+    {
+     "n": 7,
+     "tool": "create_promise",
+     "args": {
+      "product_id": "p1",
+      "date": "2026-10-16"
+     },
+     "status": 200,
+     "result": {
+      "ok": false,
+      "error": "amount must be a positive number"
+     }
+    }
+   ],
+   "last_at": 1791641230503
+  }
+ }
+]
