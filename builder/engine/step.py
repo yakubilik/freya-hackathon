@@ -30,13 +30,13 @@ DEBUG_RAISE = False   # tests may set this to see the traceback instead of the n
 WRITE_STAGES = ("verify", "fetch", "record", "transfer", "note", "close")
 # triggers that end the call before verification or after a callback was booked
 TERMINAL_TRIGGERS = ("party_unclear_twice", "wrong_number", "deceased", "callback_booked", "callback_refused_twice",
-                     "identity_failed", "identity_declined", "dont_want_twice_unverified", "fetch_failed_twice")
+                     "identity_failed", "identity_declined", "dont_want_twice_unverified", "fetch_failed_twice", "do_not_call")
 EVENT_KINDS = set([
     "party_confirmed", "party_other", "party_wrong_number", "party_deceased", "id_answer", "id_decline",
     "question_back", "callback_offer", "pay_today_yes", "pay_today_no", "date_proposal", "amount_proposal",
     "too_much", "refuse", "accept_offer", "vague_period", "confirm", "deny", "change", "paid", "dispute",
     "plan_request", "human", "hardship", "complaint", "scam_question", "robot_question", "dont_want_to_talk", "other",
-    "tool_result"])
+    "do_not_call", "tool_result"])
 
 # Wording used only when the table carries no phrase for an obligation it does state.
 FALLBACK_TEXT = {
@@ -200,6 +200,9 @@ def _context(table, now):
         rules["bare_weekday"] = bw["rule"]
     else:
         rules["bare_weekday_unspecified"] = True
+    order = _param(C, "dates.numeric_order") if _has_param(C, "dates.numeric_order") else None
+    if isinstance(order, str) and order.strip().lower().startswith("month"):
+        rules["month_first"] = True      # "4/28" is April 28 (synthetic I: bare numbers are month, day, year)
     C["rules"] = rules
     C["notes_mode"] = bool(_has_param(C, "notes.reasons"))
     sits = _param(C, "situations") if _has_param(C, "situations") else None
@@ -252,10 +255,30 @@ def _expr_ctx(C, st, item=None):
     return ctx
 
 
+CENTS_FIELD_RE = re.compile(r"\bproduct\.([A-Za-z_][A-Za-z0-9_]*)")
+
+
 def _eval(C, st, text, item=None):
-    """Evaluate a table expression; None (and an unsupported mark) when it cannot be evaluated."""
+    """Evaluate a table expression; None (and an unsupported mark) when it cannot be evaluated.
+
+    An expression over a product field whose name says cents (`product.past_due_cents <= 100000`,
+    `round(product.past_due_cents * 3 / 10, 100, 'up')`) is written in cents, as the field is; the wire normaliser has
+    already turned the value into units, so those fields go back to cents for the evaluation and a numeric result comes
+    back as units (synthetic E: the floor rounded up to the next hundred dollars and every product fell in the first
+    band, 2026-10-11)."""
     try:
-        return eval_expr(text, _expr_ctx(C, st, item))
+        ctx = _expr_ctx(C, st, item)
+        cents = [n for n in set(CENTS_FIELD_RE.findall(str(text or ""))) if "cents" in n.lower()]
+        if cents and isinstance(ctx.get("product"), dict):
+            prod = dict(ctx["product"])
+            for n in cents:
+                v = prod.get(n)
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    prod[n] = int(round(float(v) * 100))
+            ctx["product"] = prod
+            r = eval_expr(text, ctx)
+            return r / 100.0 if isinstance(r, (int, float)) and not isinstance(r, bool) else r
+        return eval_expr(text, ctx)
     except (ExprError, EvalError, CalendarError, ValueError, TypeError, KeyError):
         _unsupported(C, st, "expression:" + str(text))
         return None
@@ -265,8 +288,13 @@ def _eval(C, st, text, item=None):
 # items
 
 
-def _product_label(p):
-    t = str(p.get("type") or "product").replace("_", " ")
+def _product_label(p, labels=None):
+    """The spoken name of a product: the table's label for a coded type (products.labels, "CC" -> "credit card",
+    synthetic G), else the type with its underscores as spaces."""
+    code = str(p.get("type") or "product")
+    labels = labels if isinstance(labels, dict) else {}
+    label = labels.get(code) or labels.get(code.upper()) or labels.get(code.lower())
+    t = str(label) if isinstance(label, str) and label.strip() else code.replace("_", " ")
     if p.get("card_last4"):
         return t + " ending " + str(p.get("card_last4"))
     return t
@@ -276,12 +304,13 @@ def _build_items(C, st, products):
     bands = _param(C, "bands") or []
     floor_expr = _param(C, "amounts.floor_expr")
     max_items = _param(C, "multi.max_items") if _has_param(C, "multi.max_items") else None
+    labels = _param(C, "products.labels") if _has_param(C, "products.labels") else None
     items = []
     for n, p in enumerate(products or []):
         if not isinstance(p, dict):
             continue
         pid = p.get("product_id") or ("p%d" % (n + 1))
-        item = {"item_id": pid, "type": p.get("type"), "label": _product_label(p), "product": p,
+        item = {"item_id": pid, "type": p.get("type"), "label": _product_label(p, labels), "product": p,
                 "past_due": to_cents(p.get("past_due")), "floor": None, "days_late": p.get("days_late"),
                 "band": None, "deadline": None, "attempts_allowed": 0, "attempts_used": 0, "offers_made": [],
                 "floor_offered": False, "too_much": False, "agreed": None, "readback_version": 0,
@@ -1155,6 +1184,42 @@ def _handle_dont_want(C, st, ev):
             _refuse(C, st, it)
 
 
+def _do_not_call_entry(C):
+    """The table's do-not-call situation (key `do_not_call`; `no_contact` is the other name a reader gave it)."""
+    return _sit(C, "do_not_call") or _sit(C, "no_contact")
+
+
+def _handle_do_not_call(C, st, s):
+    """The customer asks not to be called again: the entry's note is written (on every open or agreed-but-unrecorded
+    item once the account is known, else once for the call with no product), the entry's close pair ends the call at
+    the first request (`close_verified` / `close_unverified`), nothing else in the reply is acted on and no transfer
+    follows; a recorded promise stays and takes `after_promise_close` when the entry has one, else the closing rows
+    decide between the promise and the request (synthetic C rule 16, F, G; 2026-10-11)."""
+    C["understood"] = True
+    g = st["global"]
+    verified = st["identity"]["state"] == "verified"
+    recorded = any(it["recorded"] for it in st["items"])
+    items = _open_items(st) + _agreed_items(st)
+    reason = s.get("note")
+    if isinstance(reason, str) and reason and items:
+        for it in items:
+            _note_item(C, st, it, reason)
+    else:
+        for it in items:
+            it["agreed"] = None
+            it["status"] = "skipped"
+        if isinstance(reason, str) and reason and not g.get("call_note"):
+            g["call_note"] = {"reason": reason, "written": False, "failures": 0}
+    pair = s.get("after_promise_close") if recorded else (s.get("close_verified") if verified else s.get("close_unverified"))
+    if isinstance(pair, list) and len(pair) == 2:
+        g["forced_close"] = [pair[0], pair[1]]
+    if not g["transfer_done"]:
+        g["pending_transfer"] = None
+    g["dont_want_closed"] = True
+    st["pending"] = "close"
+    _trigger(C, st, "do_not_call")
+
+
 # ---------------------------------------------------------------------------------------------
 # stages: party and callback
 
@@ -1428,6 +1493,15 @@ def _identity_events(C, st, evs):
                 st["pending"] = "identity"
 
 
+def _per_question_limit(C, q):
+    """The wrong answers on one question that end the check: the question's own `max_wrong`, else
+    `identity.max_wrong_per_question`; None when the table counts in total only (then nothing changes)."""
+    v = (q or {}).get("max_wrong")
+    if not isinstance(v, int) or isinstance(v, bool):
+        v = _param(C, "identity.max_wrong_per_question") if _has_param(C, "identity.max_wrong_per_question") else None
+    return v if isinstance(v, int) and not isinstance(v, bool) and v > 0 else None
+
+
 def _verify_result(C, st, ev):
     ident = st["identity"]
     qs = _questions(C, st)
@@ -1435,7 +1509,9 @@ def _verify_result(C, st, ev):
     result = ev.get("result") or ("ok" if data.get("ok") else "failed")
     ans = ident.get("answer") or {}
     qid = ans.get("qid")
-    max_wrong = _param(C, "identity.max_wrong")
+    per_q = _per_question_limit(C, next((x for x in qs if x.get("id") == qid), None))
+    # the total is read as before; with a per-question limit only, a silent total is not a missing rule
+    max_wrong = _param(C, "identity.max_wrong") if (per_q is None or _has_param(C, "identity.max_wrong")) else None
     if result != "ok" and not isinstance(data.get("verified"), bool) and _has_param(C, "tools.retries"):
         retries = _param(C, "tools.retries")
         if isinstance(retries, int) and not isinstance(retries, bool) and retries >= 0:
@@ -1487,7 +1563,9 @@ def _verify_result(C, st, ev):
     over = data.get("ok") is False and bool(re.search(r"\bover\b|exhausted|too many attempts|no (more |further )?attempts", err))
     if left is not None and left <= 0 and data.get("verified") is not True:
         over = True
-    bank_wrong = (max_wrong - left) if (left is not None and isinstance(max_wrong, int)) else 0
+    bank_wrong = (max_wrong - left) if (left is not None and isinstance(max_wrong, int) and per_q is None) else 0
+    # a bank that counts per question reports the answers left on this question (synthetic C: wrong_left_on_question)
+    bank_wrong_q = (per_q - left) if (left is not None and per_q is not None) else 0
     wc = data.get("wrong_count")   # an API that counts wrong answers so far instead of answers left (wire normaliser)
     if isinstance(wc, int) and not isinstance(wc, bool):
         bank_wrong = max(bank_wrong, wc)
@@ -1530,14 +1608,22 @@ def _verify_result(C, st, ev):
         # counter does not move (or counts per question) must not let a fourth wrong answer through, and a bank that
         # says no answers are left ends the check even when the engine counted fewer (platform EXT-027/028, 2026-10-10)
         ident["wrong"] += 1
+        if per_q is not None:
+            wq = ident.setdefault("wrong_by_q", {})
+            wq[str(qid)] = wq.get(str(qid), 0) + 1
     ident["wrong"] = max(ident["wrong"], bank_wrong)
     ident["answer"] = None
-    if isinstance(max_wrong, int) and ident["wrong"] >= max_wrong:
+    over_q = False
+    if per_q is not None:
+        wq = ident.setdefault("wrong_by_q", {})
+        wq[str(qid)] = max(wq.get(str(qid), 0), bank_wrong_q)
+        over_q = wq[str(qid)] >= per_q
+    if (isinstance(max_wrong, int) and ident["wrong"] >= max_wrong) or over_q:
         ident["state"] = "failed"
         _say(C, st, "use_app_or_branch")
         _trigger(C, st, "identity_failed")
         return
-    if max_wrong is None:
+    if max_wrong is None and per_q is None:
         _unsupported(C, st, "identity.max_wrong")
     st["pending"] = "identity_again"
 
@@ -2065,6 +2151,16 @@ def _apply_tool_result(C, st, ev):
                 if cand["noted"] and not cand["noted_written"]:
                     it = cand
                     break
+        cn = g.get("call_note")
+        if it is None and cn and not cn.get("written"):
+            if res == "ok":
+                cn["written"] = True
+            else:
+                cn["failures"] = cn.get("failures", 0) + 1
+                if cn["failures"] >= 2:
+                    _unsupported(C, st, "add_note failed twice: no rule")
+                    cn["written"] = True
+            return
         if it is None:
             return
         if res == "ok":
@@ -2114,6 +2210,13 @@ def _close_row(C, st):
         _unsupported(C, st, "closing.rows")
         return None
     g = st["global"]
+    forced = g.get("forced_close")
+    if isinstance(forced, list) and len(forced) == 2:
+        # a situation entry that names its own close pair (do-not-call): the table's row for it when there is one
+        for row in rows:
+            if isinstance(row, dict) and [row.get("outcome"), row.get("reason")] == list(forced):
+                return row
+        return {"outcome": forced[0], "reason": forced[1]}
     active = []
     if g["transfer_done"]:
         active.append("transfer_done:" + str(g["transfer_done"]))
@@ -2342,6 +2445,11 @@ def _render(C, st, out):
                 if it["noted"] and not it["noted_written"] and not it["recorded"]:
                     writes.append({"tool": "add_note", "args": {"product_id": it["item_id"], "reason": it["noted"]["reason"]},
                                    "item_id": it["item_id"], "intent_key": "note:%s:%s" % (it["item_id"], it["noted"]["reason"])})
+        cn = g.get("call_note")
+        if cn and not cn.get("written") and not g["transfer_done"] and not g["pending_transfer"]:
+            # a note on the call, no product (a do-not-call request before the account is known)
+            writes.append({"tool": "add_note", "args": {"product_id": None, "reason": cn["reason"]}, "item_id": None,
+                           "intent_key": "note:call:%s:%d" % (cn["reason"], cn.get("failures", 0))})
         if writes:
             st["stage"] = "note"
             out["engine_next"] = "note"
@@ -2362,8 +2470,10 @@ def _render(C, st, out):
                 writes.append({"tool": "close_call", "args": args, "item_id": None,
                                "intent_key": "close:%s:%s" % (row.get("outcome"), row.get("reason"))})
                 notes = [it for it in st["items"] if it["noted"]]
-                contact_close = g.get("dont_want_closed") and bool(notes)
-                notes_ok = all(it["noted_written"] and it["note_failures"] < 2 for it in notes)
+                cn = g.get("call_note")
+                contact_close = g.get("dont_want_closed") and (bool(notes) or bool(cn))
+                notes_ok = all(it["noted_written"] and it["note_failures"] < 2 for it in notes) \
+                    and (not cn or (cn.get("written") and cn.get("failures", 0) < 2))
                 # A contact-request closing phrase may acknowledge the notes. Never speak it after a failed write.
                 if row.get("line") and (not contact_close or notes_ok):
                     _say(C, st, row["line"])
@@ -2578,6 +2688,17 @@ def _step(state, events, table, now):
             if farewell and st["stage"] in SPEAKING_STAGES and not declined_support:
                 _end_conversation(C, st)
                 cust = [e for e in cust if e["kind"] not in ("other", "dont_want_to_talk")]
+                kinds = set(e["kind"] for e in cust)
+            if "do_not_call" in kinds:
+                dnc = _do_not_call_entry(C)
+                if dnc is not None:
+                    # the request ends the call whatever else the reply carries: only questions are still answered
+                    _handle_do_not_call(C, st, dnc)
+                    cust = [e for e in cust if e["kind"] in ("question_back", "robot_question", "scam_question")]
+                else:
+                    for e in cust:
+                        if e["kind"] == "do_not_call":
+                            e["kind"] = "dont_want_to_talk"     # no such rule in the table: the ordinary refusal to talk
                 kinds = set(e["kind"] for e in cust)
             if "complaint" in kinds:
                 if _handle_complaint(C, st):

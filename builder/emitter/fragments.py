@@ -91,6 +91,7 @@ KIND_HELP = {
     "hardship": "mentions a hardship: illness, a death in the family, job loss",
     "complaint": "says they want to make a complaint or are going to complain, or asks how to complain",
     "dont_want_to_talk": "says they do not want to talk",
+    "do_not_call": "asks not to be called again or to stop the calls",
     "other": "anything else, including small talk, greetings and unclear replies",
 }
 # a kind whose meaning differs in one stage: in the callback stage the person on the line was taken for someone else,
@@ -459,8 +460,17 @@ def slot_vars(ctx, stage):
     return ["%s_%s%d" % (node, f, k) for k in range(1, slot_count(ctx, stage) + 1) for f in STAGE_FIELDS[stage]] + [node + "_raw"]
 
 
+def stage_kinds(ctx, stage):
+    """The event kinds a stage extracts: STAGE_KINDS plus `do_not_call` when the table has such a situation (the
+    engine ends the call on the first request with the entry's note and close pair)."""
+    kinds = list(STAGE_KINDS[stage])
+    if getattr(ctx, "do_not_call", None):
+        kinds.insert(kinds.index("other"), "do_not_call")
+    return kinds
+
+
 def extraction_schema(ctx, stage):
-    kinds = STAGE_KINDS[stage]
+    kinds = stage_kinds(ctx, stage)
     help_lines = []
     for k in kinds:
         text = KIND_HELP_STAGE.get((stage, k), KIND_HELP[k]).format(confirm_words=ctx.confirm_words, decline_extra=ctx.decline_extra)
@@ -545,7 +555,7 @@ def _ob_item(words):
         last4 = str(p.get('card_last4') or '')
         if last4 and last4 in low:
             score += 10
-        for tok in str(p.get('type') or '').lower().split('_'):
+        for tok in __TYPE_TOKENS__:
             if tok and tok in low:
                 score += 1
         if score > best_score:
@@ -560,7 +570,7 @@ def _ob_item(words):
 
 
 _FIELDS = ('words', 'amount', 'date', 'time', 'item')
-_RAW = __RAW__
+_RAW = __RAW____LABELS__
 
 try:
     vals = [dict((f, _ob_val(s.get(f))) for f in _FIELDS) for s in _SLOTS]
@@ -643,6 +653,19 @@ except Exception:
 '''
 
 
+LABEL_TOKENS = """
+_LABELS = __MAP__
+
+
+def _ob_tokens(t):
+    \"\"\"Match tokens for a coded product type: the code and the words of its spoken name ('CC' -> cc, credit, card);
+    tokens under three letters are left out (a bare 'cc' is inside 'account').\"\"\"
+    t = str(t or '')
+    label = _LABELS.get(t) or _LABELS.get(t.upper()) or _LABELS.get(t.lower()) or ''
+    return [x for x in t.lower().split('_') + str(label).lower().replace('_', ' ').split(' ') if len(x) >= 3]
+"""
+
+
 def observe(ctx, stage):
     """The one observation dispatcher of a stage: snapshot every slot, build engine_events, clear every slot."""
     node = STAGE_NODE[stage]
@@ -650,8 +673,13 @@ def observe(ctx, stage):
     for k in range(1, slot_count(ctx, stage) + 1):
         slots.append({f: "%s_%s%d" % (node, f, k) for f in STAGE_FIELDS[stage]})
     names = slot_vars(ctx, stage)
-    code = (DISPATCH.replace("__KINDS__", py(STAGE_KINDS[stage])).replace("__SLOTS__", py(slots))
+    code = (DISPATCH.replace("__KINDS__", py(stage_kinds(ctx, stage))).replace("__SLOTS__", py(slots))
             .replace("__RAW__", py(node + "_raw")))
+    # coded product types (products.labels, "CC" -> "credit card", synthetic G): the customer's words are matched against
+    # the code and its spoken name; without a map the matching is the type's own words, as before
+    labels = getattr(ctx, "product_labels", None) or {}
+    code = code.replace("__TYPE_TOKENS__", "_ob_tokens(p.get('type'))" if labels else "str(p.get('type') or '').lower().split('_')")
+    code = code.replace("__LABELS__", LABEL_TOKENS.replace("__MAP__", py(labels)) if labels else "")
     code = code + "".join("vars[%r] = ''\n" % n for n in names)
     name = node + "_observe"
     return Fragment({name: code_node(name, code, [always("engine")])})

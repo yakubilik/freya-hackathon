@@ -2,7 +2,8 @@
 
 Pure functions, standard library only. Date resolution needs `now` and a rules dict:
   rules = {"this": "current_week|forward", "next": "following_week|forward",
-           "bare_weekday": "next_occurrence|on_or_after|current_week", "end_of_month": "vague|exact"}
+           "bare_weekday": "next_occurrence|on_or_after|current_week", "end_of_month": "vague|exact",
+           "month_first": bool}   (numbers only, "4/28": month then day when true; day then month otherwise)
 resolve_date returns {"kind": "exact|vague|none", "date": iso|None, "text": original, "how": str}.
 """
 import re
@@ -551,10 +552,12 @@ def resolve_date(text, now, rules=None):
             return exact(date(int(m.group(1)), int(m.group(2)), int(m.group(3))), "iso")
         except ValueError:
             return out
-    # 21/07, 21/07/2026, 21.07.2026 (day first)
+    # 21/07, 21/07/2026, 21.07.2026 (day first; month first when the table says the brief writes dates that way)
     m = re.search(r"\b(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?\b", s)
     if m:
         day, month = int(m.group(1)), int(m.group(2))
+        if rules.get("month_first"):
+            day, month = month, day
         year = int(m.group(3)) if m.group(3) else None
         if year is not None and year < 100:
             year += 2000

@@ -17,7 +17,10 @@ no such rule, give the path with `"confidence": "not_specified"` and no `value`,
   "type": "date" | "digits:<N>" | "year" | "text", "order": 1.., "text": <the question>,
   "parse_rule": <how to read the answer; for a date say "day, then month, then year" or "month, then day, then year">}`.
   Use the wire field itself as `id`.
-- `identity.max_wrong`: integer (total wrong answers that end the check).
+- `identity.max_wrong`: integer (total wrong answers that end the check). Set it only when the brief states a total.
+- `identity.max_wrong_per_question`: integer, only when the brief's limit is per question (two wrong answers on the
+  same question end the check; one wrong answer on each of two questions does not). A question entry may carry its own
+  `max_wrong` instead when the limits differ per question.
 - `identity.hint_rule`: `{"hint": <exact hint value the verify tool returns>, "ask": <what to ask>, "counts_as_wrong": true|false}`.
 - `identity.decline_rule`: `{"explain_once": <what to explain>, "max_declines": <integer: declines that close>,
   "question_about_call_counts_as_decline": true|false}`.
@@ -30,6 +33,11 @@ no such rule, give the path with `"confidence": "not_specified"` and no `value`,
 - `dates.this_next_rule`: `{"this": "this_weekday(w)" | <other>, "next": "next_weekday(w)" | <other>}`; the engine's
   `this_weekday` is the day in the current calendar week, `next_weekday` the day in the following calendar week.
 - `dates.bare_weekday_rule`: `{"rule": "next_occurrence" | "current_week"}` or not_specified.
+- `dates.numeric_order`: `"month_day_year"` only when the brief says a payment date given as bare numbers ("4/28") is
+  month then day; `"day_month_year"` or not_specified otherwise (day first is the default).
+- Amounts in expressions are in the unit the product field uses: over a field named in cents (`product.past_due_cents`)
+  write the expression in cents (`round(product.past_due_cents * 3 / 10, 100, 'up')` is the next whole dollar,
+  `product.past_due_cents <= 100000` is up to 1000 dollars); over a field in units, in units.
 - `amounts.floor_expr`: ONE expression, conditional with `a if cond else b` (never `?:`), e.g.
   `product.<field_a> if product.type == '<type>' else product.<field_b>`.
 - `amounts.range_rule`: `{"min": "floor", "max": "product.<field>", "inclusive": true|false, "below_floor": <text>}`.
@@ -48,11 +56,19 @@ no such rule, give the path with `"confidence": "not_specified"` and no `value`,
   - `scam`, `robot`, `unknown_question`: `{"obligation", "say": .., "then": "continue"}`
   - `deceased`, `wrong_number`: `{"obligation", "say_exact"?: .., "close": [<outcome>, <reason>]}`
   - `dont_want_to_talk`: `{"obligation", "count": <integer>, "close_verified": [..], "close_unverified": [..]}`
+  - `do_not_call` (only when the brief has a rule for a customer who asks not to be called again, distinct from not
+    wanting to talk now): `{"obligation", "note": <exact note reason or null>, "close_verified": [<outcome>, <reason>],
+    "close_unverified": [<outcome>, <reason>], "after_promise_close": [<outcome>, <reason>] (only when the brief says
+    what closes after a recorded promise)}`. The engine writes the note, ends the call at the first request and makes
+    no transfer.
   - `service_error`: `{"obligation", "note": <note reason>, "continue": true}` (only when a failed write is noted per product)
 - `recording.retries`: integer, extra tries after the first failure.
 - `multi.max_items`: integer. `multi.order`: string. `multi.pay_today_once`: true when the pay-today question is asked once
   for all products. `multi.common_date_rule`: string, set only when one date named for all products is recorded on each
   product's own deadline where it is too late. `multi.readback`: string.
+- `products.labels`: `{"<type value the account tool returns>": "<its spoken name>"}`, only when the brief or its code
+  list gives product types as codes (`CC`: credit card, `PL`: personal loan); the engine speaks the name and matches the
+  customer's words against both. Not set when the type values are already words.
 - `notes.reasons`: list of exact note reasons, set only when the brief requires per-product notes.
   `notes.on_transfer`: string. `transfer.unrecorded_rule`: string, what happens to agreed-but-unrecorded promises on a transfer.
 - `closing.rows`: list of `{"outcome", "reason" (null for none), "triggers": [<engine trigger names, below>],

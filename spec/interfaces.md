@@ -65,15 +65,16 @@ Wire strings are exact. `not_specified` is explicit; no silent defaults.
 
 **Well-known parameter paths** (absent when the brief is silent):
 `party.confirmation_words`, `party.max_asks`, `third_party.callback.window{days_expr,start,end,inclusive}`, `identity.questions[]{id, wire_field, type: date|digits:N|year|text, parse_rule, order}`,
-`identity.max_wrong`, `identity.hint_rule`, `identity.decline_rule`, `calendar.holidays[]`, `calendar.business_days`, `bands[]{id, condition, deadline_expr, attempts}`,
-`dates.vague_rule`, `dates.this_next_rule`, `dates.bare_weekday_rule`, `amounts.floor_expr`, `amounts.range_rule`, `attempts[]{n, amount_rule, date_expr, band}`,
-`situations{hardship, paid, dispute, plan_request, human, scam, robot, deceased, wrong_number, dont_want_to_talk}`, `recording.retries`, `multi.max_items`, `multi.order`,
-`closing.rows[]{outcome, reason, triggers[], precedence}`, `call_variables[]`.
+`identity.max_wrong`, `identity.max_wrong_per_question` (2026-10-11, engine-gaps: per-question limit; a question entry may carry `max_wrong`), `identity.hint_rule`, `identity.decline_rule`, `calendar.holidays[]`, `calendar.business_days`, `bands[]{id, condition, deadline_expr, attempts}`,
+`dates.vague_rule`, `dates.this_next_rule`, `dates.bare_weekday_rule`, `dates.numeric_order` (2026-10-11, engine-gaps: month_day_year | day_month_year for customer dates in numbers), `amounts.floor_expr`, `amounts.range_rule`, `attempts[]{n, amount_rule, date_expr, band}`,
+`situations{hardship, paid, dispute, plan_request, human, scam, robot, deceased, wrong_number, dont_want_to_talk, do_not_call}` (do_not_call: 2026-10-11, engine-gaps), `recording.retries`, `multi.max_items`, `multi.order`,
+`closing.rows[]{outcome, reason, triggers[], precedence}`, `call_variables[]`, `products.labels{code: spoken name}` (2026-10-11, engine-gaps).
 
 **Expression language** (dates and amounts): arithmetic, `min`, `max`, `round(x, step, mode)`, fields of `product`, `customer`, `call`;
 `today`, `tomorrow`, `business_days_after(anchor, n)`, `calendar_days_after(anchor, n)`, `next_business_day(d)`, `on_or_next_business_day(d)`,
 `this_weekday(w)`, `next_weekday(w)`, `last_business_day_of_week(d)`, `last_business_day_of_next_week(d)`, `end_of_month(d)`, `deadline`, `deadline - n`,
 `in_window(t, start, end, inclusive)`. Calendar named `default`. Unparseable is a mechanical failure; unevaluable disables the dependent family and marks the capability.
+An expression over a product field named in cents is written in cents: the engine scales the (unit-converted) field back for the evaluation and returns a numeric result in units (2026-10-11, engine-gaps).
 
 **Plan** (addendum): types `party, verify, consent, say, ask, fetch, disclose, negotiate, readback, record, note, close, prompt_only`;
 `transfer` and `callback` are situation fragments. Default plan: `party, verify, fetch, disclose, negotiate, readback, record, note, close`.
@@ -94,7 +95,7 @@ def step(state: dict, events: list[dict], table: dict, now: str) -> tuple[dict, 
 
 ```
 { "rev": int, "stage": str, "party": "unknown|customer|representative|third_party|wrong_number|deceased",
-  "identity": {"q_index": int, "wrong": int, "hinted": bool, "partials": {qid: str}, "passed": [qid], "state": "pending|verified|failed|declined"},
+  "identity": {"q_index": int, "wrong": int, "wrong_by_q": {qid: int} (only with a per-question limit), "hinted": bool, "partials": {qid: str}, "passed": [qid], "state": "pending|verified|failed|declined"},
   "callback": {"date": str|null, "time": str|null, "invalid": int},
   "items": [ {"item_id", "type", "label", "past_due", "floor", "days_late", "band", "deadline", "attempts_allowed",
               "attempts_used", "offers_made": [{"amount","date","kind"}], "floor_offered": bool, "too_much": bool,
@@ -117,7 +118,8 @@ def step(state: dict, events: list[dict], table: dict, now: str) -> tuple[dict, 
 
 Kinds: `party_confirmed, party_other, party_wrong_number, party_deceased, id_answer, id_decline, question_back, callback_offer,
 pay_today_yes, pay_today_no, date_proposal, amount_proposal, too_much, refuse, accept_offer, vague_period, confirm, deny, change,
-paid, dispute, plan_request, human, hardship, scam_question, robot_question, dont_want_to_talk, other`.
+paid, dispute, plan_request, human, hardship, scam_question, robot_question, dont_want_to_talk, other`,
+plus `do_not_call` when the table has that situation (2026-10-11, engine-gaps).
 
 **Outputs**:
 
