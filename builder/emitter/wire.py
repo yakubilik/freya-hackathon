@@ -67,6 +67,10 @@ def request_field_map(api):
         if tool == "verify_identity":
             m["field"] = _pick(fields, used, is_enum, named("field", "question", "check", "kind", "type", "key"))
             m["answer"] = _pick(fields, used, named("answer", "value", "response", "reply"), is_str)
+            if m["field"] is None and len(fields) == 1:
+                # one question only, the answer goes into a field named after it ("birth_date"): no question field is sent
+                m["answer"] = next(iter(fields))
+                m["field"] = ""   # "" = the engine's argument has no wire field and is left out of the request
         elif tool == "create_promise":
             m["product_id"] = _pick(fields, used, named("product", "item", "account", "debt", "loan"), lambda n, s: n.lower().endswith("id"))
             m["amount"] = _pick(fields, used, named("amount", "sum", "value", "cents"), is_num)
@@ -83,7 +87,7 @@ def request_field_map(api):
         elif tool == "close_call":
             m["outcome"] = _pick(fields, used, named("outcome", "result", "status", "disposition"), is_enum)
             m["reason"] = _pick(fields, used, named("reason", "code", "detail", "cause"), is_str)
-        out[tool] = {c: (m.get(c) or c) for c in CANONICAL_REQUEST.get(tool, [])}
+        out[tool] = {c: (m[c] if m.get(c) is not None else c) for c in CANONICAL_REQUEST.get(tool, [])}   # "" = no wire field
     return out
 
 
@@ -161,3 +165,31 @@ def _wire_norm(tool, data):
         data['products'] = [fix(p, spec.get('item') or {}, spec.get('cents') or []) if isinstance(p, dict) else p for p in data['products']]
     return data
 '''
+
+
+# a required request field the engine never fills (E's schedule_callback asked for a `reason` enum): a fixed, neutral value
+_PREFER = {"schedule_callback": ("unavail", "not_reached", "no_answer", "third", "relative", "busy", "callback", "customer"),
+           "transfer_to_agent": ("general", "default", "support", "agent"),
+           "add_note": ("other", "general", "note", "info"),
+           "close_call": ("other", "none", "general"),
+           "create_promise": ("call", "phone", "agent", "default"),
+           "verify_identity": ("phone", "call")}
+
+
+def required_default(tool, name, schema):
+    """A literal for a required field with no engine source, or None when nothing sensible exists (then the emitter
+    raises). Enums: the value whose name fits the tool best, else the first; free strings: a neutral text; booleans: False."""
+    enum = schema.get("enum") or []
+    if enum:
+        low = [str(v).lower() for v in enum]
+        for w in _PREFER.get(tool, ()):
+            for v, lv in zip(enum, low):
+                if w in lv:
+                    return v
+        return enum[0]
+    t = schema.get("type", "string")
+    if t == "string":
+        return "set by the phone agent during the call"
+    if t == "boolean":
+        return False
+    return None

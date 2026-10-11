@@ -301,6 +301,17 @@ def api_tool(ctx, tool, body_defaults, description):
             lf["description"] = e["description"]
         props[f] = lf
     missing = [f for f, e in fields.items() if e.get("required") and "." not in f and f not in props]
+    for f in list(missing):
+        from builder.emitter.wire import required_default
+        val = required_default(tool, f, fields[f])
+        if val is not None:
+            lf = {"type": fields[f].get("type") or "string", "default": val}
+            if fields[f].get("enum"):
+                lf["enum"] = list(fields[f]["enum"])
+            if fields[f].get("description"):
+                lf["description"] = fields[f]["description"]
+            props[f] = lf
+            missing.remove(f)
     if missing:
         raise EmitError("%s: required API fields without a source: %s" % (tool, missing))
     return {"type": "function", "config": {"timeoutMs": 12000, "maxRetries": 0},
@@ -337,6 +348,8 @@ def engine_write_defaults(ctx, tool):
     out = call_var_defaults(ctx, tool)
     for key in ENGINE_ARGS[tool]:
         wire = ctx.field_map.get(tool, {}).get(key, key)
+        if wire == "":
+            continue   # this API has no such field (one-question verify_identity without a question field)
         if wire not in fields:
             raise EmitError("%s: the engine sends %r but the API request schema has no field %r" % (tool, key, wire))
         out[wire] = "{{%s}}" % write_var(tool, wire)
@@ -355,7 +368,9 @@ def setup(ctx, first):
               "wr_json", "wr_body", "engine_events"]
     for tool in ctx.write_tools:
         for key in ENGINE_ARGS[tool]:
-            names.append(write_var(tool, ctx.field_map.get(tool, {}).get(key, key)))
+            wire = ctx.field_map.get(tool, {}).get(key, key)
+            if wire:
+                names.append(write_var(tool, wire))
     lines = ["vars[%r] = ''" % n for n in names]
     lines += ["vars['speech_buf'] = '[]'", "vars['last_stage'] = %r" % first]
     cid = getattr(ctx, "cid_field", "customer_id")
@@ -866,7 +881,7 @@ def engine_node(ctx, snippet, routes):
     """The single engine code node: snapshot of vars, the engine snippet, the emitter epilogue; routes on engine_next."""
     cfg = {"stages": [s for s in ctx.stages], "first_stage": "party", "goodbye": GOODBYE, "repeat": REPEAT,
            "head_prefix": HEAD_PREFIX, "tail_prefix": TAIL_PREFIX, "close_spoken": CLOSE_SPOKEN, "close_tool": CLOSE_TOOL, "write_stage": {t: WRITE_STAGE[t] for t in ctx.write_tools},
-           "write_vars": {t: {k: write_var(t, ctx.field_map.get(t, {}).get(k, k)) for k in ENGINE_ARGS[t]} for t in ctx.write_tools}}
+           "write_vars": {t: {k: write_var(t, ctx.field_map.get(t, {}).get(k, k)) for k in ENGINE_ARGS[t] if ctx.field_map.get(t, {}).get(k, k)} for t in ctx.write_tools}}
     prologue = "_EMIT_PRE = dict(vars)\n"
     if "import base64\n" in snippet:
         snippet = snippet.replace("import base64\n", BASE64_SHIM, 1)
