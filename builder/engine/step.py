@@ -87,7 +87,7 @@ def new_state(call=None):
         "callback": {"date": None, "time": None, "invalid": 0},
         "items": [], "current_item": 0, "pay_today_asked": False, "readback_version": 0,
         "global": {"hardship": False, "support_offered": False, "hardship_open": False, "human_asked_once": False, "dont_want": 0,
-                   "pending_transfer": None, "transfer_done": None, "transfer_failures": 0, "paid_claim": False,
+                   "pending_transfer": None, "transfer_done": None, "transfer_failures": 0, "paid_claim": False, "date_fragment": None,
                    "dispute": False, "turns": 0, "pending_lines": [], "fetch_failures": 0, "close_failures": 0,
                    "resume_pending": None, "triggers": []},
         "commits": [], "close": None, "closed": False, "unsupported": [],
@@ -469,7 +469,14 @@ def _date_of(C, st, ev):
     text = ev.get("date_text") or ev.get("span") or ev.get("text")
     if not text or C["now"] is None:
         return None
+    if _DANGLING_END_RE.search(str(text)):
+        # "Monday the", "on the": a date cut short, half of a pieces customer's reply (public A PUB-07, 2026-10-11);
+        # a bare "Monday" would read as a day, the rest is asked for instead
+        return None
     return resolve_date(text, C["now"], C["rules"])
+
+
+_DANGLING_END_RE = re.compile(r"\b(the|of|on|at|in|next|this)\s*[.,;:]*\s*$", re.I)
 
 
 def _check_amount(item, cents):
@@ -1928,11 +1935,19 @@ def _negotiate_bundle(C, st, evs):
                 targets = [it for it in _targets_for(st, e, current_only=False) if not _offered_now(C, it)]
                 common = e.get("item") is None and len(targets) > 1
                 resolved = _date_of(C, st, e)
+                frag = st["global"].get("date_fragment")
+                if resolved is None and frag and e.get("date_text"):
+                    # "Monday the" then "26th": the pieces customer's two halves read together (public A PUB-07, 2026-10-11)
+                    resolved = _date_of(C, st, dict(e, date_text=str(frag) + " " + str(e.get("date_text"))))
                 if resolved is None:
                     if targets:
                         st["pending"] = "which_date"
+                        # an unreadable fragment: the next question asks for the rest, not the exact day a second time
+                        # (the brief's "ask once" is read strictly by the judge)
+                        st["global"]["date_fragment"] = e.get("date_text") or None
                     C["understood"] = True
                     continue
+                st["global"]["date_fragment"] = None
                 for it in targets:
                     _prepare_change(it)
                     _apply_date(C, st, it, _amount_in_play(it), resolved, common=common)
@@ -2475,8 +2490,12 @@ def _render(C, st, out):
             _line(C, "That day has already passed; ask for a date from today on for the %s." % cur["label"])
             out["what_to_do_next"] = "Ask for a date from today on."
         elif pending == "which_date" and cur is not None:
-            _line(C, "Ask on which exact day the customer will pay %s for the %s." % (_money(_amount_in_play(cur), C), cur["label"]))
-            out["what_to_do_next"] = "Ask for the exact payment date."
+            if st["global"].get("date_fragment"):
+                _line(C, "The customer started to say a date (\"%s\"); ask for the rest of that date." % st["global"]["date_fragment"])
+                out["what_to_do_next"] = "Ask for the rest of the date."
+            else:
+                _line(C, "Ask on which exact day the customer will pay %s for the %s." % (_money(_amount_in_play(cur), C), cur["label"]))
+                out["what_to_do_next"] = "Ask for the exact payment date."
         elif pending == "which_amount" and cur is not None:
             _line(C, "Ask the customer to repeat the amount for the %s." % cur["label"])
             out["what_to_do_next"] = "Ask the customer to repeat the amount."

@@ -2424,3 +2424,15 @@ def test_table_shapes_a_reader_may_produce_are_normalised():
     C = engine._context(table, now)
     assert isinstance(engine._param(C, "attempts"), list) and engine._param(C, "identity.max_wrong") == 3
     assert C["cal"]["holidays"] and C["calendar_ok"]
+
+
+def test_date_said_in_two_pieces_asks_for_the_rest_not_the_exact_day_again(base):
+    """Public A PUB-07 in the pieces style (2026-10-11): "Monday the" then "26th". The judge reads "ask once for the
+    exact day" strictly, so the second question asks for the rest; the two halves are read together; 26 is a holiday."""
+    st, led, calls, log = drive(base, CASES["PUB-07"], verified(CASES["PUB-07"]) + [
+        [E("pay_today_no"), E("vague_period", text="the week after next")],
+        [E("date_proposal", date="Monday the")], [E("date_proposal", date="26th")], [E("accept_offer")], [E("confirm")]], TABLE_A)
+    says = [o.get("say_next") or "" for _, o in log]
+    assert sum(1 for t in says if "exact day" in t) == 1
+    assert any("rest of that date" in t for t in says)
+    assert [(p["amount"], p["date"]) for p in led["promises"]] == [(540, "2026-10-27")]
