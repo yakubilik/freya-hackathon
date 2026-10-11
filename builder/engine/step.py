@@ -476,7 +476,7 @@ def _date_of(C, st, ev):
     return resolve_date(text, C["now"], C["rules"])
 
 
-_DANGLING_END_RE = re.compile(r"\b(the|of|on|at|in|next|this)\s*[.,;:]*\s*$", re.I)
+_DANGLING_END_RE = re.compile(r"\b(the|of|on|at|in|next|this|and|dollars and|euros and|pounds and)\s*[.,;:]*\s*$", re.I)
 
 
 def _check_amount(item, cents):
@@ -1719,6 +1719,16 @@ def _agreed_snapshot(st):
 
 def _negotiate_events(C, st, evs):
     """Item-scoped events after verification. Proposals beat refusals in the same bundle."""
+    # an amount cut short ("I can pay six hundred and thirty-seven dollars and", read as 637 against a floor of 637.50:
+    # public A PUB-06 in_words, 2026-10-11) is not acted on: the floor would be proposed a second time; the customer is
+    # asked to repeat instead, and the rest of the bundle is processed as it is
+    cut = [e for e in evs if e["kind"] == "amount_proposal" and _DANGLING_END_RE.search(str(e.get("span") or e.get("text") or ""))]
+    if cut:
+        evs = [e for e in evs if e not in cut]
+        C["understood"] = True
+        if not evs:
+            st["pending"] = "repeat_cut"
+            return
     at_readback = st.get("pending") in ("readback", "readback_deny")
     if at_readback:
         # "yes, that is fine" extracted as accept_offer at the read-back (no new day, no new amount) is the confirmation
@@ -2080,7 +2090,7 @@ def _advance(C, st):
             st["pending"] = pending = "offer"
     if pending == "readback_deny" and _agreed_items(st):
         return
-    if pending in ("past_date", "which_date", "which_amount", "exact_day") and cur is not None:
+    if pending in ("past_date", "which_date", "which_amount", "exact_day", "repeat_cut") and cur is not None:
         # a question about an item that is no longer open (noted, agreed in the same reply) must not be asked
         return
     if pending == "offer" and cur is not None and cur.get("offer"):
@@ -2496,6 +2506,10 @@ def _render(C, st, out):
             else:
                 _line(C, "Ask on which exact day the customer will pay %s for the %s." % (_money(_amount_in_play(cur), C), cur["label"]))
                 out["what_to_do_next"] = "Ask for the exact payment date."
+        elif pending == "repeat_cut" and cur is not None:
+            _line(C, "Say you did not catch the end of what the customer said and ask them to say it again. Do not ask how much they can pay.")
+            out["what_to_do_next"] = "Ask the customer to repeat."
+            out["ask_clarify"] = True
         elif pending == "which_amount" and cur is not None:
             _line(C, "Ask the customer to repeat the amount for the %s." % cur["label"])
             out["what_to_do_next"] = "Ask the customer to repeat the amount."

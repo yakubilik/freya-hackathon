@@ -2436,3 +2436,19 @@ def test_date_said_in_two_pieces_asks_for_the_rest_not_the_exact_day_again(base)
     assert sum(1 for t in says if "exact day" in t) == 1
     assert any("rest of that date" in t for t in says)
     assert [(p["amount"], p["date"]) for p in led["promises"]] == [(540, "2026-10-27")]
+
+
+def test_amount_cut_short_is_not_a_second_floor_offer(base):
+    """Public A PUB-06 in_words (2026-10-11): after the floor offer the customer's reply was cut at "six hundred and
+    thirty-seven dollars and" (637 against a floor of 637.50). The engine asks them to repeat instead of proposing the
+    floor again; the full reply then goes straight to the read-back."""
+    case = CASES["PUB-06"]
+    st, led, calls, log = drive(base, case, verified(case) + [
+        [E("too_much")],
+        [E("amount_proposal", amount=637, text="I can pay six hundred and thirty-seven dollars and")],
+        [E("amount_proposal", amount=637.5, text="I can pay six hundred and thirty-seven dollars and fifty cents this Friday the sixteenth of October", date="this Friday the sixteenth of October")],
+        [E("confirm")]], TABLE_A)
+    says = [o.get("say_next") or "" for _, o in log]
+    assert sum(1 for t in says if "637.50" in t and "ropose" in t) == 1
+    assert any("did not catch" in t for t in says)
+    assert [(p["amount"], p["date"]) for p in led["promises"]] == [(637.5, "2026-10-16")]
