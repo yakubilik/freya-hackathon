@@ -1,6 +1,7 @@
 """Run the extended scenario set (scenarios/extended-test-set.json) on a deployed agent through the kit's scorer.
 
     .venv/bin/python tools/run_extended.py <agent_id> --brief A [--chunk 15] [--only EXT-001,EXT-002] [--list]
+                                           [--cases scenarios/stability-set.json] [--reps 3]
 
 Each scenario plays on the practice-bank account of its `session_case` (the bank knows only the 13 official
 accounts), so the session request is rewritten from the scenario id to that account. Scenarios run in chunks, one
@@ -31,10 +32,14 @@ def main():
     ap.add_argument("--only")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--out-dir", help="result directory (default runs/extended)")
+    ap.add_argument("--cases", help="scenario file in the extended set's format (default scenarios/extended-test-set.json)")
+    ap.add_argument("--reps", type=int, default=1, help="runs per case; a case passes only when every run passes (run_cases.py)")
     a = ap.parse_args()
-    global OUT
+    global OUT, CASES
     if a.out_dir:
         OUT = pathlib.Path(a.out_dir)
+    if a.cases:
+        CASES = pathlib.Path(a.cases).resolve()
     cases = json.load(open(CASES))
     by_id = {c["id"]: c for c in cases}
     real_http = score.http
@@ -57,7 +62,7 @@ def main():
             print("skip", out.name, "(done)", flush=True)
             continue
         print("== chunk %d of %d: %s" % (n, len(chunks), ",".join(chunk)), flush=True)
-        sys.argv = ["run_cases.py", a.agent_id, "--brief", a.brief, "--cases", str(CASES), "--only", ",".join(chunk), "--out", str(out)]
+        sys.argv = ["run_cases.py", a.agent_id, "--brief", a.brief, "--cases", str(CASES), "--only", ",".join(chunk), "--out", str(out), "--reps", str(a.reps)]
         try:
             run_cases.main()
         except Exception as e:  # noqa: BLE001 - one bad chunk must not stop the night

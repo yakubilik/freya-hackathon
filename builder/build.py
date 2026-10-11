@@ -39,6 +39,7 @@ if str(ROOT) not in sys.path:
 KIT = ROOT / "kit" / "build-the-builder"
 STATE_FILE = ROOT / "builder" / ".freya-agents.json"
 SUBMISSION = ROOT / "submission"
+EXPORT_DIR = SUBMISSION                        # test-variant deploys export next to it, not into the deliverables
 PUBLIC_BRIEFS = {"A": KIT / "briefs" / "brief-a.md", "B": KIT / "briefs" / "brief-b.md"}
 # a public brief that builds on another one; the reader gets the base as an earlier document of the same source
 PUBLIC_BASES = {"B": ["A"]}
@@ -441,6 +442,8 @@ def run(argv=None, schedule=None):
     schedule = schedule or Schedule(a.budget)
     started = _now_iso()
     brief_path, tools_path = pathlib.Path(a.brief).resolve(), pathlib.Path(a.tools).resolve()
+    global EXPORT_DIR
+    EXPORT_DIR = ROOT / "submission-test" if getattr(a, "deploy_variant", "final") == "test" else SUBMISSION
     if brief_path.is_dir():
         brief_path = join_brief_dir(brief_path)
     bslug = slug(brief_path)
@@ -508,7 +511,7 @@ def _pipeline(a, schedule, trace, manifest, brief_path, tools_path, bslug, run_i
     if a.no_deploy:
         manifest["status"] = "built offline (no deploy)"
         return
-    slot = a.slot or "%s-final" % run_id          # run_id already carries the brief slug
+    slot = a.slot or "%s-final" % bslug          # one slot per brief: a rerun updates the same workflow in place
     stage_deploy(schedule, trace, manifest, wf, counts_, slot, bslug, api)
     if not a.skip_tests and not a.no_platform_test:
         stage_platform(schedule, trace, manifest, public)
@@ -744,8 +747,8 @@ def stage_deploy(schedule, trace, manifest, wf, counts_, slot, bslug, api):
 
 
 def _export(freya, trace, manifest, workflow_id, bslug, dl):
-    SUBMISSION.mkdir(exist_ok=True)
-    path = SUBMISSION / ("%s.workflow.json" % bslug)
+    EXPORT_DIR.mkdir(exist_ok=True)
+    path = EXPORT_DIR / ("%s.workflow.json" % bslug)
     with_retry(freya.export_workflow, dl, trace, "export", workflow_id, str(path))
     manifest["export_path"] = str(path.relative_to(ROOT))
     manifest["export_hash"] = sha256_file(path)

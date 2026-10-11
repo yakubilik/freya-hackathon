@@ -93,10 +93,13 @@ def run_once(agent_id, cases, ids):
         led = http("/v1/practice/ledger/" + sessions[c["id"]]["customer_id"])
         r = score_ledger(c, led)
         j = judge.get(ids[c["id"]], {})                      # the conversation checks, read from the transcript by the judge model
-        if j.get("outcome") != "pass": r["failed"].append("conversation: " + " ".join(str(j.get("reason") or "no verdict").split())[:400])
+        reason = " ".join(str(j.get("reason") or "no verdict").split())
+        # the platform's judge did not run ("Call ended but analysis never arrived"): the row is inconclusive, not a fail (2026-10-11)
+        inconclusive = j.get("outcome") in ("inconclusive", "error", None) and ("analysis never arrived" in reason or j.get("outcome") is None and not j)
+        if j.get("outcome") != "pass": r["failed"].append(("judge missing: " if inconclusive else "conversation: ") + reason[:400])
         r["pass"] = not r["failed"]
-        rows.append({"id": c["id"], "level": c["level"], "family": c["family"], "pass": r["pass"], "failed": r["failed"], "call_id": j.get("callId"), "tools": [x["tool"] for x in led["calls"]], "customer_id": sessions[c["id"]]["customer_id"]})
-        print(("PASS" if r["pass"] else "FAIL"), c["id"], f"{c['level']:<6}", f"{c['family']:<14}", "|", " > ".join(x["tool"].replace("verify_identity", "verify").replace("create_promise", "promise") for x in led["calls"]) or "(no tool calls)")
+        rows.append({"id": c["id"], "level": c["level"], "family": c["family"], "pass": r["pass"], "inconclusive": inconclusive, "failed": r["failed"], "call_id": j.get("callId"), "tools": [x["tool"] for x in led["calls"]], "customer_id": sessions[c["id"]]["customer_id"]})
+        print(("PASS" if r["pass"] else "INCONCLUSIVE" if inconclusive else "FAIL"), c["id"], f"{c['level']:<6}", f"{c['family']:<14}", "|", " > ".join(x["tool"].replace("verify_identity", "verify").replace("create_promise", "promise") for x in led["calls"]) or "(no tool calls)")
         for f in r["failed"]: print("       -", f[:260])
     # How long the phone agent kept the customer waiting. A call whose customer hung up after long silences says
     # something about the speed of the model at that moment, not only about the agent.
@@ -116,6 +119,8 @@ def run_once(agent_id, cases, ids):
         waits.sort(); med = waits[len(waits) // 2]; hung = sum(r.get("ended") == "customer-ended-call" and not r["pass"] for r in rows)
         print(f"\nslowest agent turn per call: median {med:.0f} s, worst {waits[-1]:.0f} s. Failed calls where the customer hung up: {hung}.")
         if med > 10: print("WARNING: the phone agent was slow in this run. If the same agent is fast in another run, the model was busy and this score is too low.")
+    inc = [r["id"] for r in rows if r.get("inconclusive")]
+    if inc: print(f"\n{len(inc)} INCONCLUSIVE (platform judge never answered, not the agent): {', '.join(inc)}. Rerun these before counting.", flush=True)
     return rows, sim_id, it_id, status, took, (med if waits else 0)
 
 if __name__ == "__main__": main()

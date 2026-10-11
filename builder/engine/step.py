@@ -58,6 +58,7 @@ FALLBACK_TEXT = {
     # without replacement must hear none, synthetic J-01 2026-10-11)
     "promise_recorded": "Say the promise is recorded.",
     "could_not_record": "Say you could not record the promise because of a technical problem.",
+    "could_not_transfer": "Say the transfer could not be completed because of a technical problem.",
     "change_in_app": "Say a recorded promise cannot be changed in this call; it can be changed in the mobile app.",
     "paid_takes_day": "Say that payments can take one business day to appear.",
     "sympathy": "Say one short sentence of sympathy.",
@@ -2045,8 +2046,14 @@ def _apply_tool_result(C, st, ev):
             return
         g["transfer_failures"] += 1
         if g["transfer_failures"] >= 2:
+            # the transfer did not happen: transfer_done stays unset, so the close row is not the transferred one
+            # (submission audit 2026-10-11: two failed transfers used to select a transferred outcome)
             _unsupported(C, st, "transfer failed twice: no rule")
-            g["transfer_done"] = g["pending_transfer"]
+            _say(C, st, "could_not_transfer")
+            g["transfer_failed"] = g["pending_transfer"]
+            g["pending_transfer"] = None            # no third attempt: the routing would re-enter the transfer stage
+            _trigger(C, st, "transfer_failed_twice")
+            _trigger(C, st, "record_failed_twice")  # the table's service-error row, when it has no transfer-specific one
             st["pending"] = "close"
         return
     if tool == "add_note":

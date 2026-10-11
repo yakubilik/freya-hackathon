@@ -1,8 +1,8 @@
 # Synthetic briefs C to J: manifest
 
-Eight invented collections-call briefs with their own tool API files and practice cases, written 2026-10-11 to test the reader and the emitter on material they have never seen. Everything is synthetic and in English. Nothing here is copied from the public briefs A and B; the rules and values differ everywhere, the structure is deliberately similar because the hidden briefs are "the same kind of call with different rules".
+Eight invented collections-call briefs with their own tool API files and practice cases, written 2026-10-11 to test the reader and the emitter on material they have never seen. Since the test clean-up of 2026-10-11 (runs/night/test-plan.md) only **D** (clean) and **I** (raw) stay in the platform loop, each grown to **30 cases** that mirror the hidden benchmark (`_tools/cases_30.py`, ids D-07..D-30 and I-07..I-30; D-01..D-06 and I-01..I-06 unchanged); C, E, F, G, H, J keep their 6 cases and are checked offline only (`tools/offline_gate.py`: cached table, final emitter, static walk). The raw brief I also exists as the single file `I/brief.md` (mail, procedure, change notice, code sheet in reading order, byte-identical to `I.joined.md`), which is the form the hidden raw brief will take; `tools/brief_loop.py` and `tools/run_synthetic.py` use it when it exists. Everything is synthetic and in English. Nothing here is copied from the public briefs A and B; the rules and values differ everywhere, the structure is deliberately similar because the hidden briefs are "the same kind of call with different rules".
 
-Authoritative constraints followed (runs/night/facts.md): every `api.json` has exactly the seven public tool names (`verify_identity`, `get_account`, `create_promise`, `schedule_callback`, `transfer_to_agent`, `add_note`, `close_call`); only fields, allowed values, response shapes and the calendar vary. Each brief states its own holidays and business-day definition. `now` varies across cases. Every brief carries the five talking styles on at least two cases and at least one case whose correct outcome is a non-promise.
+Authoritative constraints followed (runs/night/facts.md): every `api.json` has exactly the seven public tool names (`verify_identity`, `get_account`, `create_promise`, `schedule_callback`, `transfer_to_agent`, `add_note`, `close_call`); only fields, allowed values, response shapes and the calendar vary. Each brief states its own holidays and business-day definition. `now` varies across cases. Every brief carries the five talking styles on at least two cases and at least one case whose correct outcome is a non-promise; D and I carry each style on five cases (D: 26 styled, 4 plain; I: 25 styled, 5 plain).
 
 ## Conventions in cases.json
 
@@ -31,25 +31,25 @@ Other axes: callback windows (C next business day only 09-17; D today or next tw
 
 | Failure mode | Cases |
 |---|---|
-| "the full amount" as words in a product slot | C-01 |
+| "the full amount" as words in a product slot | C-01, D-08, I-08 |
 | dates in words, year included; "fourteen oh three eighty-eight" | D-01, G-03, I-01; F-01 |
-| full stop after a number | E-03, H-04, I-02 |
-| two things in one message ("8864. How much do I owe?") | G-01 |
+| full stop after a number | E-03, H-04, I-02, D-12 |
+| two things in one message ("8864. How much do I owe?") | G-01, D-12 |
 | "I do not want to be transferred" after a support offer | D-03, G-06, J-05 |
-| "paid it off last year, I owe nothing" is a dispute | C-04, H-05 |
+| "paid it off last year, I owe nothing" is a dispute | C-04, H-05, D-29, I-27 |
 | hardship plus a concrete amount and date in one breath | C-05, F-04, H-06 (transfer wins); D-03, J-05 (recorded) |
-| human or plan request right after the promise is recorded | F-06, H-03 |
-| third party who offers to pay | C-02, E-02 |
+| human or plan request right after the promise is recorded | F-06, H-03, I-24 (depends on the customer getting a turn after the recording sentence); D-21 is the deterministic form, the request at the read-back instead of the confirmation |
+| third party who offers to pay | C-02, E-02, D-09, I-09 |
 | refusal that is only "I will have to see" | D-06, F-02 |
-| vague period then "I do not know exactly" | C-03, I-05 |
-| full amount too much and "you tell me" | C-03, H-02, J-02 |
-| wrong answer then the right one | C-04, D-05, E-06, H-05, I-05 |
+| vague period then "I do not know exactly" | C-03, I-05, D-15 |
+| full amount too much and "you tell me" | C-03, H-02, J-02, D-17, I-20 |
+| wrong answer then the right one | C-04, D-05, E-06, H-05, I-05, D-12, I-11 |
 | three wrong answers split across two questions | D-01 (and G-03: two on one question under the memo) |
-| never confirms the name ("go ahead", "hello?") | E-03, H-01 |
-| goodbye while the agent still has a question | C-06 |
-| tool failure on create_promise | not included: the mock bank's `faults` field needs the harness; add `"faults": [{"tool": "create_promise", "fail_first_n": 1}]` to any promise case to exercise it |
+| never confirms the name ("go ahead", "hello?") | E-03, H-01, I-13 |
+| goodbye while the agent still has a question | C-06, D-30 |
+| tool failure on create_promise | D-22, I-25 (fails once, retried), D-23, I-26 (fails twice: service_error note, nothing said to be recorded); `faults` is passed to our mock bank by tools/run_synthetic.py |
 
-`now` values cover a Friday 17:30 (C-01, D-02, E-02, F-04, H-02, I-01, J-01), Saturdays (C-02, D-04, E-06, F-03, G-04, H-04, I-04, J-03), the day before a holiday (D-01, E-01, G-01, H-01, I-01, I-03), month end (C-04, D-03, E-03, F-05, G-03, H-03, I-02) and late evenings (C-03, D-03, E-03, F-05, G-06, H-06, I-02, J-04).
+`now` values cover a Friday 17:30 (C-01, D-02, E-02, F-04, H-02, I-01, J-01), Saturdays (C-02, D-04, E-06, F-03, G-04, H-04, I-04, J-03), the day before a holiday (D-01, E-01, G-01, H-01, I-01, I-03), month end (C-04, D-03, E-03, F-05, G-03, H-03, I-02) and late evenings (C-03, D-03, E-03, F-05, G-06, H-06, I-02, J-04). D's 30 cases sit on 15 calendar days and I's on 16 (see each README); they add a call on a closing day (D-10 on Founders' Day, I-16 on 12 October), a Sunday evening (D-27), Christmas Eve (D-14, D-24, I-14, I-23, I-28) and New Year's Eve at 20:30 (I-17).
 
 ## Review
 
@@ -90,4 +90,5 @@ Three rounds were run on all eight briefs (every brief changed after each round)
 - **Expected-value units.** `expected.promises[].amount` follows the brief's unit (cents in E, strings in I). A harness comparing against the ledger must do the same conversion the agent does.
 - **Styles are declared, not simulated.** The `style` field is passed to the kit's persona builder; whether the simulated customer actually splits numbers or self-corrects depends on the persona model.
 - **Judge wording.** Checks were tightened in round 1 where a literal reading would penalise a compliant call (E-01, C-05). Other checks still assume the judge reads "before any ask" as "before any payment question".
-- **No `faults` cases.** No synthetic case exercises a failing `create_promise`; add the public set's `faults` field to any promise case when the harness supports it.
+- **`faults` cases.** D-22, D-23, I-25 and I-26 exercise a failing `create_promise` through our mock bank (`faults` in the case, read by bank/server.py); the other six briefs have none.
+- **Post-recording requests.** I-24 (a person asked for right after "recorded") is only heard if the agent's recording sentence is a turn of its own; the engine says the recording and confirmation sentences together and may close in the same turn (scenarios/COVERAGE.md, "Not written: harness limits"). A 3/3 failure of I-24 alone is a harness finding, not a rule finding.

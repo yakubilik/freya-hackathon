@@ -13,10 +13,16 @@ def api(method, path, body=None, **params):
     """Call the API and return the `result` part of its {success, data: {message, result}} envelope."""
     q = "?" + urllib.parse.urlencode(params) if params else ""
     req = urllib.request.Request(URL + path + q, data=json.dumps(body).encode() if body is not None else None, headers=HEADERS, method=method)
-    try:
-        with urllib.request.urlopen(req, timeout=120) as r: out = json.load(r)
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"{method} {path} -> {e.code}: {e.read().decode()[:1500]}") from None
+    for attempt in range(3):  # 5xx: the platform flaps; retry 3 times 10 s apart (organiser advice, 2026-10-11)
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r: out = json.load(r)
+            break
+        except urllib.error.HTTPError as e:
+            if e.code >= 500 and attempt < 2: time.sleep(10); continue
+            raise RuntimeError(f"{method} {path} -> {e.code}: {e.read().decode()[:1500]}") from None
+        except (urllib.error.URLError, TimeoutError, OSError):
+            if attempt < 2: time.sleep(10); continue
+            raise
     return out.get("data", {}).get("result", out) if isinstance(out, dict) else out
 
 _ws = None
@@ -98,9 +104,20 @@ def run_simulation(agent_id, name, variables_by_persona, max_seconds=420, concur
             if "concurrent simulations" not in str(e): raise
             print("another simulation is running in this workspace, waiting 30 s", flush=True); time.sleep(30)
     sim_id = (sim.get("simulation") or sim)["id"]
+    bad_since = None                 # the API flaps (2026-10-11): a failed poll must not abandon a running simulation
     while True:
         time.sleep(10)
-        s = api("GET", f"/api/v2/simulations/{sim_id}"); s = s.get("simulation") or s
-        if s.get("status") in ("completed", "failed", "paused"): break
-    its = api("GET", f"/api/v2/simulations/{sim_id}/iterations"); its = its.get("iterations") or its.get("items") or its
+        try:
+            s = api("GET", f"/api/v2/simulations/{sim_id}"); s = s.get("simulation") or s
+        except Exception as e:
+            bad_since = bad_since or time.time()
+            if time.time() - bad_since > 2700: raise RuntimeError(f"simulation {sim_id}: API unreachable for 45 min: {e}") from None
+            print(f"poll failed ({str(e)[:60]}), simulation {sim_id} keeps running on Freya, retrying", flush=True); continue
+        bad_since = None
+        if s.get("status") in ("completed", "failed", "paused", "cancelled"): break
+    for _ in range(30):
+        try:
+            its = api("GET", f"/api/v2/simulations/{sim_id}/iterations"); its = its.get("iterations") or its.get("items") or its; break
+        except Exception: time.sleep(30)
+    else: raise RuntimeError(f"simulation {sim_id}: iterations unreadable for 15 min")
     return sim_id, its[0]["id"], s.get("status")

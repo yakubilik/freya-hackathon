@@ -2349,3 +2349,22 @@ def test_vague_period_carried_on_the_proposal_is_not_counted_twice(base):
         [E("pay_today_no"), E("amount_proposal", item="p1", amount=780, date="next week"), E("vague_period", date="next week")],
         [E("date_proposal", date="Wednesday 21 October")], [E("confirm")]])
     assert sum(1 for _, o in log if "exact day" in o["say_next"]) == 1
+
+
+def test_two_failed_transfers_close_as_service_error_not_transferred():
+    """Submission audit 2026-10-11: two failed transfer_to_agent calls used to set transfer_done and close the call
+    as transferred. The transfer did not happen: the close is the service-error row and the customer hears so."""
+    now = "2026-10-14T11:00"
+    st, out = step(new_state(), [E("party_confirmed")], TABLE_A, now)
+    st, out = step(st, [E("human")], TABLE_A, now)
+    st, out = step(st, [E("human")], TABLE_A, now)
+    args = out["writes"][0]["args"]
+    assert out["writes"][0]["tool"] == "transfer_to_agent"
+    failed = {"kind": "tool_result", "tool": "transfer_to_agent", "result": "failed", "data": {"ok": False}, "args": args}
+    st, out = step(st, [failed], TABLE_A, now)
+    assert [w["tool"] for w in out["writes"]] == ["transfer_to_agent"]      # one retry
+    st, out = step(st, [failed], TABLE_A, now)
+    assert st["global"]["transfer_done"] is None
+    assert [w["tool"] for w in out["writes"]] == ["close_call"]
+    assert out["writes"][0]["args"] == {"outcome": "no_promise", "reason": "service_error"}
+    assert "transfer could not be completed" in out["say_next"]

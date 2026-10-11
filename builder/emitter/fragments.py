@@ -115,6 +115,7 @@ HEAD_PREFIX = "Start your message with exactly these words:"
 CLOSE_SPOKEN = {
     "thanks_goodbye": "Thank you, goodbye.",
     "could_not_record": "I could not record the promise because of a technical problem.",
+    "could_not_transfer": "The transfer could not be completed because of a technical problem.",
     "promise_recorded": "The promise is recorded.",
     "text_message": "You will receive a text message confirming the promise.",
     "rest_overdue": "The rest stays overdue.",
@@ -131,7 +132,7 @@ CLOSE_SPOKEN = {
 # advice: synthetic G-03/H-02/J-05, 2026-10-11); an instruction-shaped wording ("confirm the promise is in place") keeps
 # the generic sentence above
 CLOSE_FROM_TABLE = ("use_app_or_branch", "promise_recorded", "text_message", "rest_overdue", "paid_takes_day", "change_in_app",
-                    "could_not_record", "no_information", "system_unavailable", "request_noted")
+                    "could_not_record", "could_not_transfer", "no_information", "system_unavailable", "request_noted")
 INSTRUCTION_START_RE = re.compile(r"^(say|tell|ask|offer|explain|state|mention|confirm|acknowledge|one (short )?sentence|"
                                   r"the (customer|caller) (is|was) told)\b", re.I)
 
