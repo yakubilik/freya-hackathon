@@ -683,6 +683,15 @@ def run(argv=None, schedule=None):
         "stages": trace.stages, "model_calls": trace.model_calls, "tests": trace.tests,
         "started": started, "finished": None,
     }
+    # a real run needs the Freya keys from the start: a run without them must not go on and look like a build
+    if not a.no_deploy:
+        missing = [k for k in ("FREYA_API_KEY", "FREYA_WORKSPACE_ID") if not os.environ.get(k)]
+        if missing:
+            trace.error("missing environment: %s. Put them in .env (see README, Setup); only --no-deploy runs without them." % ", ".join(missing))
+            trace.info("builder end: status not started (missing keys)")
+            manifest["status"] = "not started: missing " + ", ".join(missing)
+            (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
+            return manifest
     trace.info("builder start: run %s, %s %s, %s %s, commit %s" % (
         run_id, "case folder" if case_dir else "brief", rel(case_dir or brief_path),
         "mock bank" if mock_url else "tools", mock_url or rel(tools_path), manifest["source_commit"]))
