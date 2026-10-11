@@ -72,6 +72,8 @@ class Ctx:
         labels = self.param("products.labels")
         self.product_labels = {str(k): str(v) for k, v in labels.items() if isinstance(v, str) and v.strip()} if isinstance(labels, dict) else {}
         self.stages = ["party"] + (["callback"] if self.has_callback else []) + ["identity", "negotiate", "readback"]
+        # the customer's language: Turkish brief -> Turkish sentences and close lines, English instructions (the final)
+        self.lang = F.detect_language(table)
 
     def param(self, path):
         e = self.params.get(path)
@@ -218,7 +220,7 @@ def emit(table, api, *, variant="final", bank_url=None, model_config=None):
         address = address.replace("{%s}" % v, "{{%s}}" % v)
     wf = {
         "initial_node": "setup",
-        "system_prompt": F.SYSTEM_PROMPT.format(label=("a " + label) if not label.startswith(("a ", "the ")) else label,
+        "system_prompt": F.system_prompt_for(ctx.lang).format(label=("a " + label) if not label.startswith(("a ", "the ")) else label,
                                                 org=org, address=address),
         "nodes": nodes,
         "global_nodes": {},

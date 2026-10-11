@@ -113,6 +113,201 @@ def _norm(text):
 
 
 # ---------------------------------------------------------------------------------------------
+# Turkish, said to an English reader. The customer's Turkish words are rewritten into the English forms the resolvers
+# below already read (2026-10-11, the final's case is Turkish). English text passes through unchanged. Pure rewriting:
+# month and weekday names, number words, day suffixes ("27'sinde", "yirmi yedisinde": the 27th), relative days,
+# vague phrases, self-correction markers, the decimal comma and the thousands dot, lira/kuruş, "buçuk", clock words.
+
+TR_MONTHS = {"ocak": "january", "şubat": "february", "subat": "february", "mart": "march", "nisan": "april", "mayıs": "may",
+             "mayis": "may", "haziran": "june", "temmuz": "july", "ağustos": "august", "agustos": "august", "eylül": "september",
+             "eylul": "september", "ekim": "october", "kasım": "november", "kasim": "november", "aralık": "december", "aralik": "december"}
+TR_WEEKDAYS = {"pazartesi": "monday", "salı": "tuesday", "sali": "tuesday", "çarşamba": "wednesday", "carsamba": "wednesday",
+               "perşembe": "thursday", "persembe": "thursday", "cuma": "friday", "cumartesi": "saturday", "pazar": "sunday"}
+TR_UNITS = {"sıfır": 0, "sifir": 0, "bir": 1, "iki": 2, "üç": 3, "uc": 3, "dört": 4, "dort": 4, "beş": 5, "bes": 5, "altı": 6, "alti": 6,
+            "yedi": 7, "sekiz": 8, "dokuz": 9, "on": 10, "yirmi": 20, "otuz": 30, "kırk": 40, "kirk": 40, "elli": 50, "altmış": 60,
+            "altmis": 60, "yetmiş": 70, "yetmis": 70, "seksen": 80, "doksan": 90}
+TR_SCALES = {"yüz": 100, "yuz": 100, "bin": 1000, "milyon": 1000000}
+_EN_NUM = {0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+           20: "twenty", 30: "thirty", 40: "forty", 50: "fifty", 60: "sixty", 70: "seventy", 80: "eighty", 90: "ninety"}
+# a day-of-month or ordinal suffix on a number ("yedisinde", "27'si", "birinci", "üçünde"), longest first
+_TR_DAY_SUFFIXES = ("sindeki", "sındaki", "sundaki", "sündeki", "sinden", "sından", "sundan", "sünden", "sinde", "sında", "sunda",
+                    "sünde", "inde", "ında", "unda", "ünde", "sine", "sına", "suna", "süne", "inden", "ından", "undan", "ünden",
+                    "ine", "ına", "una", "üne", "inci", "ıncı", "uncu", "üncü", "nci", "ncı", "ncu", "ncü", "si", "sı", "su", "sü",
+                    "i", "ı", "u", "ü", "te", "ta", "de", "da")
+_TR_STEM_FIX = {"dörd": "dört", "üçü": "üç", "altıs": "altı", "yedis": "yedi", "ikis": "iki", "yirmis": "yirmi", "ellis": "elli"}
+_TR_PHRASES = [  # (regex on the lowercased text, English); order matters, longer phrases first
+    (r"\byarından sonraki gün\b|\böbür gün\b|\bbir sonraki gün\b", "day after tomorrow"),
+    (r"\byarın\b", "tomorrow"), (r"\bbugün\b", "today"), (r"\bbu akşam\b|\bbu gece\b", "tonight"), (r"\bşimdi\b|\bhemen\b", "right now"),
+    (r"\b(ayın|ay) sonu(nda|na)?\b|\bay sonunda\b", "end of month"), (r"\b(ayın|ay) başı(nda|na)?\b", "beginning of the month"),
+    (r"\b(ayın|ay) ortası(nda|na)?\b", "middle of the month"),
+    (r"\b(gelecek|önümüzdeki|sonraki) hafta\b|\bhaftaya\b", "next week"), (r"\bbu hafta\b", "this week"),
+    (r"\b(gelecek|önümüzdeki|sonraki) ay\b|\baya\b", "next month"),
+    (r"\biki hafta sonra\b|\bikinci haftaya\b|\bhaftaya değil (öbür|sonraki) hafta\b", "week after next"),
+    (r"\b(on beş|onbeş) gün sonra\b|\biki hafta içinde\b", "in two weeks"), (r"\bbir hafta sonra\b|\bbir hafta içinde\b", "in one week"),
+    (r"\bbirkaç gün (sonra|içinde)\b", "in a few days"), (r"\bbirkaç hafta (sonra|içinde)\b", "in a few weeks"),
+    (r"\bmaaş(ım)?(ı)?(mı)? (alınca|yatınca|gelince|çıkınca|günü|gününde|aldığımda|yattığında)\b|\bmaaş günü\b|\bmaaşta\b|\bmaaşımı alınca\b|\bmaaş\b", "payday"),
+    (r"\byakında\b|\ben kısa zamanda\b|\bilk fırsatta\b", "soon"),
+    (r"\b(\d+) hafta (sonra|içinde)\b", r"in \1 weeks"), (r"\b(\d+) gün (sonra|içinde)\b", r"in \1 days"), (r"\b(\d+) ay (sonra|içinde)\b", r"in \1 months"),
+    (r"\böğleden sonra\b|\bakşam ?üstü\b|\bakşamleyin\b|\bakşam\b|\bgece\b", "pm"), (r"\böğleden önce\b|\bsabahleyin\b|\bsabah\b", "am"),
+    (r"\böğlen\b|\böğle\b", "noon"), (r"\bgece yarısı\b", "midnight"),
+    (r"\bdaha sonra\b|\bsonra\b", "later"),
+    (r"\bemin değilim\b|\bbilmiyorum\b", "not sure"), (r"\bbir ara\b", "sometime"), (r"\bbu sabah\b", "this morning"),
+    (r"\bcivarı(nda)?\b|\bgibi\b|\bsularında\b|\bcivarlarında\b", "around"), (r"\bsaat\b", "at"),
+    (r"\byani\b|\bpardon\b|\baffedersiniz\b|\bdüzeltiyorum\b|\byok yok\b|\bdeğil değil\b|\bhayır hayır\b|\bşey\b|\bdoğrusu\b|\baslında\b|\bdaha doğrusu\b", "sorry"),
+    (r"\byüzde\b", "percent"), (r"\btürk lirası\b|\blirası\b|\blira\b|\btl\b", "lira"), (r"\bkuruş\b|\bkurus\b", "kurus"),
+    (r"\bgünü\b|\bgününe\b|\bgününde\b|\bgün\b|\btarihinde\b|\btarihine\b|\btarihi\b", ""),
+    (r"\b(önümüzdeki|gelecek|sonraki|haftaya)\b", "next"), (r"\bbu\b", "this"), (r"\bve\b", "and"), (r"\bpoint\b", "point"),
+    (r"\bvirgül\b|\bnokta\b", "point"), (r"\bçift\b", "double"),
+]
+_TR_MARK = re.compile(r"[şğıçöüİ]|\d'[a-zıü]|\b(ve|bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|yirmi|otuz|kırk|elli|yüz|lira|tl|kuruş|kurus|ocak|şubat|"
+                      r"mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık|pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar|yarın|"
+                      r"bugün|hafta|haftaya|ay|aya|ayın|gün|saat|buçuk|sonra|önce|maaş|pardon|yani|gibi|civarı|sularında|önümüzdeki|gelecek|bu|"
+                      r"öbür|sabah|akşam|öğlen|öğle|öğleden|gece|yakında|hemen|şimdi|değil|hayır|evet|doğrusu|aslında|yüzde|virgül|nokta|yarım)\b")
+
+
+def _tr_strip_day_suffix(tok):
+    """('yedisinde') -> ('yedi', True); ('yirmi') -> ('yirmi', False); a token that is no number word -> (tok, False)."""
+    if tok in TR_UNITS or tok in TR_SCALES:
+        return tok, False
+    for suf in _TR_DAY_SUFFIXES:
+        if tok.endswith(suf) and len(tok) > len(suf):
+            stem = tok[:-len(suf)]
+            stem = _TR_STEM_FIX.get(stem, stem)
+            if stem in TR_UNITS or stem in TR_SCALES:
+                return stem, True
+            if stem + "ı" in TR_UNITS or stem + "i" in TR_UNITS or stem + "u" in TR_UNITS or stem + "ü" in TR_UNITS:
+                for v in ("ı", "i", "u", "ü"):
+                    if stem + v in TR_UNITS:
+                        return stem + v, True
+    return tok, False
+
+
+def _tr_value(stems):
+    """Turkish number words in order -> int: ['bin', 'dokuz', 'yüz', 'seksen', 'sekiz'] -> 1988; ['yüz', 'elli'] -> 150."""
+    total, cur = 0, 0
+    for t in stems:
+        if t in TR_UNITS:
+            cur += TR_UNITS[t]
+        elif t in ("yüz", "yuz"):
+            cur = (cur or 1) * 100
+        elif t == "bin":
+            total += (cur or 1) * 1000
+            cur = 0
+        elif t == "milyon":
+            total += (cur or 1) * 1000000
+            cur = 0
+    return total + cur
+
+
+def _tr_words(stems):
+    """Turkish number words -> English number words, one for one, so the English grouping rules apply ('altı otuz yedi
+    elli' -> 'six thirty seven fifty'); a scale with no unit before it gets its 'one'."""
+    out = []
+    for i, t in enumerate(stems):
+        if t in TR_UNITS:
+            v = TR_UNITS[t]
+            out.append(_EN_NUM[v])
+        elif t in ("yüz", "yuz"):
+            if i == 0 or stems[i - 1] not in TR_UNITS or TR_UNITS[stems[i - 1]] >= 10:
+                out.append("one")
+            out.append("hundred")
+        elif t == "bin":
+            if i == 0:
+                out.append("one")
+            out.append("thousand")
+        elif t == "milyon":
+            if i == 0:
+                out.append("one")
+            out.append("million")
+    return out
+
+
+def tr_to_en(text, mode="date"):
+    """Turkish customer text -> the English form the resolvers read. mode: 'date' (days, months, years as values),
+    'amount' (number words one for one, lira/kuruş, buçuk = .50), 'time' (clock words, buçuk = :30), 'digits' (digit by
+    digit). Text without Turkish in it comes back unchanged."""
+    if text is None:
+        return text
+    raw = str(text)
+    low = raw.replace("İ", "i").replace("I", "ı").lower() if re.search(r"[İışğçöü]", raw) else raw.lower()
+    if not _TR_MARK.search(low):
+        return raw
+    s = low.replace("’", "'").replace("’", "'")
+    s = re.sub(r"\byüzde\b", "percent", s)                            # before "yüz" is read as a number
+    # 1.250,50 -> 1250.50 ; 1.250 (thousands dot) -> 1250 ; 637,50 -> 637.50
+    s = re.sub(r"\b(\d{1,3})(?:\.(\d{3}))+,(\d{1,2})\b", lambda m: m.group(0).replace(".", "").replace(",", "."), s)
+    s = re.sub(r"\b(\d{1,3})\.(\d{3})\b(?![.,]\d)", r"\1\2", s)
+    s = re.sub(r"\b(\d+),(\d{1,2})\b", r"\1.\2", s)
+    # digits with a day suffix: 27'sinde, 27 sinde, 15'i, 3'ünde, 1'inde -> the 27th
+    if mode == "date":
+        s = re.sub(r"\b(\d{1,2})\s*'?\s*(s?[iıuü]n?d[ae]n?k?i?|s?[iıuü]n[ae]|[iıuü]nc[iıuü]|nc[iıuü]|s?[iıuü])\b", r"the \1th", s)
+        s = re.sub(r"\b(\d{1,2})\s*'?\s*(d[ae])\b", r"the \1th", s)      # 27'de: on the 27th
+    if mode == "time":
+        s = re.sub(r"\b(\d{1,2})\s*'?\s*(d[ae]|t[ae])\b", r"\1", s)        # 11'de: at 11
+        s = re.sub(r"\b(\d{1,2})\s*'?\s*(d[ae]n|t[ae]n) sonra\b", r"after \1", s)
+    # month and weekday names with their suffixes: ekim'in, ekimde, cumaya, cuma günü
+    def _name(m):
+        w = m.group(0).replace("'", "")
+        for stem, en in list(TR_MONTHS.items()) + list(TR_WEEKDAYS.items()):
+            if w == stem or (w.startswith(stem) and re.fullmatch(r"(nin|nın|nun|nün|in|ın|un|ün|de|da|te|ta|den|dan|ye|ya|e|a|i|ı|u|ü|ki)+", w[len(stem):] or "x")):
+                return en
+        return m.group(0)
+    s = re.sub(r"\b(ocak|şubat|subat|mart|nisan|mayıs|mayis|haziran|temmuz|ağustos|agustos|eylül|eylul|ekim|kasım|kasim|aralık|aralik|"
+               r"pazartesi|salı|sali|çarşamba|carsamba|perşembe|persembe|cumartesi|cuma|pazar)'?[a-zçğıöşü]*\b", _name, s)
+    s = re.sub(r"\b(ay|ayın|ayin)\s+(?=\d|the \d)", "", s)            # "ayın 27'si" -> "the 27th"
+    # number words
+    toks = s.split()
+    out, i = [], 0
+    while i < len(toks):
+        t = toks[i].strip(",.;:!?'\"")
+        stem, suffixed = _tr_strip_day_suffix(t.replace("'", ""))
+        if stem in TR_UNITS or stem in TR_SCALES:
+            stems, sfx, j = [], False, i
+            while j < len(toks):
+                tj = toks[j].strip(",.;:!?'\"").replace("'", "")
+                st, sx = _tr_strip_day_suffix(tj)
+                if st in TR_UNITS or st in TR_SCALES:
+                    stems.append(st)
+                    sfx = sfx or sx
+                    j += 1
+                    if sx:
+                        break
+                else:
+                    break
+            if mode == "date":
+                v = _tr_value(stems)
+                out.append(("the %dth" % v) if sfx else str(v))
+            elif mode == "amount" and re.search(r"kuru[sş]|buçuk|yarım", s):
+                out.append(str(_tr_value(stems)))
+            elif mode in ("amount", "digits"):
+                out.extend(_tr_words(stems))
+            else:  # time
+                out.append(str(_tr_value(stems)))
+            i = j
+            continue
+        out.append(toks[i])
+        i += 1
+    s = " ".join(out)
+    for pat, en in _TR_PHRASES:
+        s = re.sub(pat, en, s)
+    if mode == "amount":
+        s = re.sub(r"\b(\d+)(?:\.(\d{1,2}))? lira (\d{1,2}) kurus\b", lambda m: "%s.%02d" % (m.group(1), int(m.group(3))), s)
+        s = re.sub(r"\b(\d{1,2}) kurus\b", lambda m: "0.%02d" % int(m.group(1)), s)
+        s = re.sub(r"\b(\d+) buçuk\b", r"\1.50", s)
+        s = re.sub(r"\byarım\b", "0.50", s)
+        s = re.sub(r"\b(\d+(?:\.\d+)?) lira\b", r"\1", s)
+    elif mode == "time":
+        s = re.sub(r"\b(\d{1,2}) buçuk(ta|da)?\b", r"\1:30", s)
+        s = re.sub(r"\b(\d{1,2}) ?(?:'|)(de|da|te|ta)\b", r"\1", s)
+        s = re.sub(r"\bçeyrek geçe\b", "fifteen", s)
+        s = re.sub(r"\b(\d{1,2}):30(ta|da)\b", r"\1:30", s)
+    elif mode == "date":
+        s = re.sub(r"\b(\d{1,2}) buçuk\b", r"\1", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+# ---------------------------------------------------------------------------------------------
 # number words
 
 
@@ -183,7 +378,7 @@ def resolve_amount_cents(text):
         return None
     if isinstance(text, (int, float)):
         return int(round(float(text) * 100))
-    raw = str(text).lower()
+    raw = tr_to_en(str(text), "amount").lower()
     segs = _segments(raw)
     if segs and len(segs) > 1:
         # the last piece that carries a value wins; a piece that names a day ("sorry, the 21st") corrects the day,
@@ -343,7 +538,7 @@ def resolve_time(text):
     '11:00', '11', 'at 3 pm', 'around eleven', 'half past two', 'quarter to five', 'noon', '3 in the afternoon'."""
     if text is None:
         return None
-    s = _norm(str(text))
+    s = _norm(tr_to_en(str(text), "time"))
     if not s:
         return None
     if re.search(r"\b(noon|midday|mid day)\b", s):
@@ -510,7 +705,7 @@ def resolve_date(text, now, rules=None):
     if text is None:
         return out
     today = parse_now(now).date()
-    raw = str(text)
+    raw = tr_to_en(str(text), "date")
     s = _norm(raw)
     if not s:
         return out
@@ -752,7 +947,7 @@ def parse_identity_date(text, parse_rule="day_month_year"):
     res = {"status": "none", "value": None, "parts": dict()}
     if text is None:
         return res
-    raw = str(text)
+    raw = tr_to_en(str(text), "date")
     segs = _segments(raw)
     if segs and len(segs) > 1:
         parts = {}
@@ -898,6 +1093,7 @@ def parse_digits(text, n):
     res = {"status": "none", "value": None}
     if text is None:
         return res
+    text = tr_to_en(str(text), "digits")
     segs = _segments(str(text))
     if segs and len(segs) > 1:
         for piece in reversed(segs):
@@ -985,7 +1181,7 @@ def parse_code(text):
     res = {"status": "none", "value": None}
     if text is None:
         return res
-    raw = str(text)
+    raw = tr_to_en(str(text), "digits")
     segs = _segments(raw)
     if segs and len(segs) > 1:
         return parse_code(segs[-1])
@@ -1038,7 +1234,7 @@ def parse_year(text):
     """A year: '1968', 'nineteen sixty-eight', 'nineteen hundred and sixty-eight', 'one nine six eight' (digit by
     digit). A century alone ('nineteen', 'twenty') is the first piece of a year said in parts (partial; the engine asks
     for the rest and joins). A year without its century ('sixty-eight') is 'none': the brief wants the full year."""
-    s = _norm(str(text or ""))
+    s = _norm(tr_to_en(str(text or ""), "date"))
     m = re.search(r"\b((?:18|19|20)\d{2})\b", s)
     if m:
         return {"status": "complete", "value": m.group(1)}

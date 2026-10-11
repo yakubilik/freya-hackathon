@@ -128,6 +128,24 @@ CLOSE_SPOKEN = {
     "system_unavailable": "I am sorry, the system is unavailable right now.",
     "request_noted": "Your request has been noted.",
 }
+# The same sentences for a Turkish brief (the final: Turkish brief, Turkish customers; detect_language picks them).
+# Polite bank register, "siz" form. "sympathy" answers illness, a death in the family or job loss alike, so it is the
+# general "sorry to hear that", not the funeral-only "Başınız sağ olsun".
+CLOSE_SPOKEN_TR = {
+    "thanks_goodbye": "Teşekkür ederim, iyi günler.",
+    "could_not_record": "Teknik bir sorun nedeniyle ödeme taahhüdünüzü kaydedemedim.",
+    "could_not_transfer": "Teknik bir sorun nedeniyle aktarım tamamlanamadı.",
+    "promise_recorded": "Ödeme taahhüdünüz kaydedildi.",
+    "text_message": "Taahhüdünüzü onaylayan bir kısa mesaj alacaksınız.",
+    "rest_overdue": "Kalan tutar gecikmiş olarak kalmaya devam edecek.",
+    "paid_takes_day": "Ödemelerin sisteme yansıması bir iş günü sürebilir.",
+    "change_in_app": "Kaydedilen bir taahhüt bu görüşmede değiştirilemez; mobil uygulamadan değiştirebilirsiniz.",
+    "sympathy": "Bunu duyduğuma üzüldüm.",
+    "no_information": "Bu konuda bilgim bulunmuyor.",
+    "use_app_or_branch": "Kimliğinizi doğrulayamadığım için bu görüşmede daha ileri gidemiyorum.",
+    "system_unavailable": "Üzgünüm, sistem şu anda kullanılamıyor.",
+    "request_noted": "Talebiniz not alındı.",
+}
 # content phrases whose table wording is spoken at the close when it is a sentence (the table's own words for where an
 # unverified customer should turn, "Please call the number on your statement.", not another brief's app-or-branch
 # advice: synthetic G-03/H-02/J-05, 2026-10-11); an instruction-shaped wording ("confirm the promise is in place") keeps
@@ -155,9 +173,10 @@ def _as_sentence(text):
     return t
 
 
-def close_spoken_for(table):
-    """CLOSE_SPOKEN with the table's own sentence wherever it has one for a phrase the close may speak."""
-    out = dict(CLOSE_SPOKEN)
+def close_spoken_for(table, lang="en"):
+    """CLOSE_SPOKEN (CLOSE_SPOKEN_TR for a Turkish table) with the table's own sentence wherever it has one for a
+    phrase the close may speak."""
+    out = dict(CLOSE_SPOKEN_TR if lang == "tr" else CLOSE_SPOKEN)
     for ph in (table or {}).get("phrases") or []:
         if not isinstance(ph, dict) or ph.get("kind") != "mandatory" or ph.get("exact"):
             continue
@@ -172,6 +191,11 @@ def close_spoken_for(table):
 
 TAIL_PREFIX = "Finish your message with exactly these words:"
 GOODBYE = "Thank you, goodbye."
+GOODBYE_TR = "Teşekkür ederim, iyi günler."
+# the close node's test for a goodbye already among the spoken lines, as written in EPILOGUE, and its Turkish form
+# ("İyi günler".lower() carries a combining dot, so the marker starts after the capital)
+GOODBYE_TEST = "if 'goodbye' not in text.lower():"
+GOODBYE_TEST_TR = "if not any(m in text.lower() for m in ('goodbye', 'yi günler', 'hoşça kal', 'görüşmek üzere')):"
 REPEAT = "Ask the customer to repeat what they said."
 
 STAGE_TASK = {
@@ -215,6 +239,80 @@ SYSTEM_PROMPT = (
     "- If asked something your step does not answer, say you do not have that information.\n"
     "- Say amounts exactly as the step gives them; never add a currency the step does not name.\n"
     "- No tool call is allowed. Never end a turn with nothing.")
+
+# A Turkish brief (the final): the customer hears Turkish, the model's instructions stay English. One line in the
+# system prompt and in the entry prompt; everything else (stage tasks, kind help, field descriptions) is unchanged.
+TURKISH_LINE = ("Every sentence you say to the customer must be in Turkish: natural, polite, in the formal 'siz' form. "
+                "The instructions you receive are written in English; they are for you alone and are never spoken or "
+                "translated aloud. The customer's own words are Turkish: quote them unchanged, and keep amounts in digits.")
+SYSTEM_PROMPT_TR = SYSTEM_PROMPT.replace("Speak English. ", "Speak Turkish. ", 1).replace(
+    "Rules for every step:\n", TURKISH_LINE + "\nRules for every step:\n", 1)
+ENTRY_PROMPT_TR = ENTRY_PROMPT.replace(
+    "Convey all of this content to the customer now: {{say_content}}\n",
+    "Convey all of this content to the customer now, in Turkish (polite 'siz' form; the English wording of these "
+    "instructions is never spoken): {{say_content}}\n", 1)
+assert SYSTEM_PROMPT_TR != SYSTEM_PROMPT and ENTRY_PROMPT_TR != ENTRY_PROMPT
+
+# Turkish-only letters and frequent Turkish words against frequent English words; a Turkish brief scores far above an
+# English one on either side, an English brief that only mentions a Turkish name does not
+_TR_CHARS = set("şğıİçöüŞĞÇÖÜ")
+_TR_WORDS = {"ve", "için", "ile", "bir", "bu", "değil", "olarak", "veya", "eğer", "sonra", "önce", "her", "gibi",
+             "kadar", "müşteri", "müşterinin", "müşteriye", "ödeme", "ödemeyi", "tarih", "tarihi", "taahhüt",
+             "taahhüdü", "lütfen", "banka", "görüşme", "arama", "tutar", "tutarı", "gün", "hesap", "kimlik",
+             "doğrulama", "borç", "borcu", "gecikmiş", "evet", "hayır", "teşekkür", "sayın", "söyle", "sor",
+             "kapat", "aktar", "iş", "günü", "mobil", "uygulama", "şube"}
+_EN_WORDS = {"the", "and", "is", "to", "of", "in", "for", "with", "that", "you", "not", "on", "customer", "call", "if",
+             "be", "as", "are", "or", "this", "by", "it", "from", "say", "ask", "when", "am", "i", "me", "my", "your",
+             "can", "will", "please", "we", "our", "hello", "speaking", "calling", "do", "have", "what", "about",
+             "now", "today", "yes", "no", "thank", "goodbye", "one", "an", "at", "day", "payment", "promise"}
+
+
+def _lang_strings(x, out):
+    if isinstance(x, str):
+        out.append(x)
+    elif isinstance(x, dict):
+        for v in x.values():
+            _lang_strings(v, out)
+    elif isinstance(x, (list, tuple)):
+        for v in x:
+            _lang_strings(v, out)
+
+
+def _lang_score(texts):
+    tr = en = 0
+    for t in texts:
+        tr += sum(1 for ch in t if ch in _TR_CHARS)
+        low = t.lower().replace("\u0307", "")
+        for w in re.findall(r"\w+", low):
+            if w in _TR_WORDS:
+                tr += 2
+            elif w in _EN_WORDS:
+                en += 1
+    return tr, en
+
+
+def detect_language(table):
+    """'tr' when the table's customer-facing phrases, or else the brief's own text (units, obligations, examples,
+    parameter values), are dominantly Turkish; 'en' otherwise. Either side suffices: a Turkish brief whose phrases
+    were paraphrased in English is still Turkish, an English brief with a Turkish customer name is still English."""
+    table = table if isinstance(table, dict) else {}
+    phrases, body = [], []
+    _lang_strings(table.get("phrases"), phrases)
+    for key in ("units", "obligations", "examples", "parameters"):
+        _lang_strings(table.get(key), body)
+    for group in (phrases, body):
+        tr, en = _lang_score(group)
+        if tr >= 3 and tr > en:
+            return "tr"
+    return "en"
+
+
+def system_prompt_for(lang):
+    return SYSTEM_PROMPT_TR if lang == "tr" else SYSTEM_PROMPT
+
+
+def entry_prompt_for(lang):
+    return ENTRY_PROMPT_TR if lang == "tr" else ENTRY_PROMPT
 
 
 class EmitError(ValueError):
@@ -726,7 +824,7 @@ def speaking_stage(ctx, stage):
                                  [when_all(node, "There is content for the model to convey", filled("say_content")),
                                   always(node + "_wait")],
                                  on_enter={"type": "tts", "text": "{{say_tts}}"}),
-        node: conv(node, {"type": "llm", "prompt": ENTRY_PROMPT}),
+        node: conv(node, {"type": "llm", "prompt": entry_prompt_for(getattr(ctx, "lang", "en"))}),
         node + "_wait": conv(node + "_wait", {"type": "silent"}),
     }
     frag = observe(ctx, stage)
@@ -1047,8 +1145,9 @@ except Exception:
 
 def engine_node(ctx, snippet, routes):
     """The single engine code node: snapshot of vars, the engine snippet, the emitter epilogue; routes on engine_next."""
-    cfg = {"stages": [s for s in ctx.stages], "first_stage": "party", "goodbye": GOODBYE, "repeat": REPEAT,
-           "head_prefix": HEAD_PREFIX, "tail_prefix": TAIL_PREFIX, "close_spoken": close_spoken_for(ctx.table), "close_tool": CLOSE_TOOL, "write_stage": {t: WRITE_STAGE[t] for t in ctx.write_tools},
+    lang = getattr(ctx, "lang", "en")
+    cfg = {"stages": [s for s in ctx.stages], "first_stage": "party", "goodbye": GOODBYE_TR if lang == "tr" else GOODBYE, "repeat": REPEAT,
+           "head_prefix": HEAD_PREFIX, "tail_prefix": TAIL_PREFIX, "close_spoken": close_spoken_for(ctx.table, lang), "close_tool": CLOSE_TOOL, "write_stage": {t: WRITE_STAGE[t] for t in ctx.write_tools},
            "write_vars": {t: {k: write_var(t, ctx.field_map.get(t, {}).get(k, k)) for k in ENGINE_ARGS[t] if ctx.field_map.get(t, {}).get(k, k)} for t in ctx.write_tools}}
     cfg["write_types"] = {t: {k: (ctx.api["tools"][t].get("request_fields", {}).get(
         ctx.field_map.get(t, {}).get(k, k), {}) or {}).get("type") for k in ENGINE_ARGS[t]}
@@ -1060,7 +1159,11 @@ def engine_node(ctx, snippet, routes):
     prologue = "_EMIT_PRE = dict(vars)\n"
     if "import base64\n" in snippet:
         snippet = snippet.replace("import base64\n", BASE64_SHIM, 1)
-    code = prologue + snippet + EPILOGUE.replace("__CFG__", py(cfg))
+    epilogue = EPILOGUE
+    if lang == "tr":
+        assert GOODBYE_TEST in epilogue
+        epilogue = epilogue.replace(GOODBYE_TEST, GOODBYE_TEST_TR, 1)
+    code = prologue + snippet + epilogue.replace("__CFG__", py(cfg))
     if ENGINE_MARKER not in code:
         raise EmitError("the engine snippet lacks its marker line")
     return Fragment({"engine": code_node("engine", code, list(routes))})

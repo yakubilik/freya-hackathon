@@ -477,6 +477,7 @@ def join_brief_dir(d):
 
 NOT_TEXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".heic", ".ico", ".svg", ".pdf", ".zip",
             ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".key", ".pages", ".numbers"}
+DATA_SUFFIXES = {".json", ".yaml", ".yml", ".csv", ".tsv", ".sqlite", ".db"}
 CONTRACT_SUFFIXES = (".json", ".yaml", ".yml")
 
 
@@ -566,8 +567,8 @@ def find_contract(files):
 
 def join_case_dir(d, exclude=(), out=None):
     """The case folder's text documents joined into one markdown file the reader takes like any brief: BRIEF.md first,
-    README.md second, then every other text document (.md, .txt, .json, .csv, ...) by relative path, subfolders
-    included; the service contract (`exclude`) left out. Images and binaries are skipped. Returns (joined path,
+    README.md second, then every other text document (.md, .txt, ...) by relative path, subfolders
+    included; the service contract (`exclude`), data files (.json, .csv, .yaml: customers, tables) and images and binaries are skipped. Returns (joined path,
     included relative paths, skipped relative paths)."""
     d = pathlib.Path(d)
     exclude = {pathlib.Path(x).resolve() for x in exclude if x}
@@ -583,6 +584,11 @@ def join_case_dir(d, exclude=(), out=None):
         if p.resolve() in exclude:
             continue
         if p.suffix.lower() in NOT_TEXT:
+            skipped.append(r)
+            continue
+        # a data file (the test customers, a second contract, a table) is for the mock and the tests, not brief text:
+        # the reader's budget is for the documents (2026-10-11, the final's zip carries test customers next to the brief)
+        if p.suffix.lower() in DATA_SUFFIXES:
             skipped.append(r)
             continue
         try:
@@ -635,7 +641,7 @@ def prepare_case(trace, manifest, case_dir, tools_path, mock_url, joined):
     brief_path, used, skipped = join_case_dir(case_dir, exclude=[contract], out=joined)
     trace.info("brief material, in reading order: %s" % ", ".join(used))
     if skipped:
-        trace.info("not read (image or binary): %s" % ", ".join(skipped))
+        trace.info("not read (image, binary or data file): %s" % ", ".join(skipped))
     manifest["brief_documents"], manifest["skipped_documents"] = used, skipped
     manifest["brief_path"], manifest["tools_path"] = rel(brief_path), rel(tools_path)
     return brief_path, tools_path

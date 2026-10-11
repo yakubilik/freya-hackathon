@@ -309,8 +309,9 @@ def test_case_folder_reading_order(tmp_path):
     d = _case(tmp_path)
     contract = d / "contract" / "service.json"
     out, used, skipped = build.join_case_dir(d, exclude=[contract])
-    assert used == ["BRIEF.md", "README.md", "analysis.md", "customers.json", "qa.csv", "sub/announcement.txt"]
-    assert skipped == ["flow.png"]
+    # data files (customers, tables) feed the mock and the tests, not the reader
+    assert used == ["BRIEF.md", "README.md", "analysis.md", "sub/announcement.txt"]
+    assert skipped == ["customers.json", "flow.png", "qa.csv"]
     text = out.read_text()
     assert text.index("read me first") < text.index("what each document is") < text.index("an announcement")
     assert "freya-bank-mock" not in text and "\n\n---\n\n" in text
@@ -344,12 +345,12 @@ def test_mock_url_selects_the_mock_base(offline):
     assert m["status"] == "built offline (no deploy)" and not floors
     assert m["bank_url"] == MOCK + "/v1"                                # the contract's server path on the mock origin
     assert m["mock_url"] == MOCK and m["contract_path"].endswith("case/contract/service.json")
-    assert m["brief_documents"][:2] == ["BRIEF.md", "README.md"] and m["skipped_documents"] == ["flow.png"]
+    assert m["brief_documents"][:2] == ["BRIEF.md", "README.md"] and m["skipped_documents"] == ["customers.json", "flow.png", "qa.csv"]
     copy = json.loads((tmp / "case.contract.json").read_text())
     assert copy["servers"] == [{"url": MOCK + "/v1"}]
     log = (tmp / "run" / "trace.log").read_text()
     saved = (tmp / "run" / "manifest.json").read_text()
-    assert "tools go to the mock %s/v1" % MOCK in log and "not read (image or binary): flow.png" in log
+    assert "tools go to the mock %s/v1" % MOCK in log and "not read (image, binary or data file): customers.json, flow.png, qa.csv" in log
     for text in (log, saved):
         assert str(ROOT) not in text and str(pathlib.Path.home()) not in text
 
