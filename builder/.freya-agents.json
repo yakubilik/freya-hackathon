@@ -2,12 +2,12 @@
  "20261010-192020-brief-a-final": {
   "workflow_id": "3e0cdffc-a8ff-408f-862f-f585f7696a5b",
   "agent_id": "320bf1fa-ac9c-4776-86ca-65c267b917d9",
-  "version": 24
+  "version": 25
  },
  "brief-b-final": {
   "workflow_id": "f67e39e0-5d7e-4a1b-815f-215b3cd4b7b9",
   "agent_id": "5ff61b01-bfc9-4def-80df-fb75c6302f59",
-  "version": 9
+  "version": 10
  },
  "synthetic-C": {
   "workflow_id": "8b681300-b25f-4309-a7c3-54698d36ea5c",
