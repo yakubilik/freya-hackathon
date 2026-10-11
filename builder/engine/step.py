@@ -23,7 +23,7 @@ import re
 from .calendar import (parse_now, parse_date, iso, calendar_from_table, is_business_day,
                        eval_expr, ExprError, EvalError, CalendarError)
 from .dates import (resolve_date, resolve_time, resolve_amount_cents, to_cents, cents_to_number, money_text,
-                    parse_identity_date, parse_digits, parse_year, format_date_words, _weekday_mode)
+                    parse_identity_date, parse_digits, parse_year, parse_code, format_date_words, _weekday_mode)
 
 SPEAKING_STAGES = ("party", "callback", "identity", "negotiate", "readback")
 DEBUG_RAISE = False   # tests may set this to see the traceback instead of the never-raise fallback
@@ -35,7 +35,7 @@ EVENT_KINDS = set([
     "party_confirmed", "party_other", "party_wrong_number", "party_deceased", "id_answer", "id_decline",
     "question_back", "callback_offer", "pay_today_yes", "pay_today_no", "date_proposal", "amount_proposal",
     "too_much", "refuse", "accept_offer", "vague_period", "confirm", "deny", "change", "paid", "dispute",
-    "plan_request", "human", "hardship", "scam_question", "robot_question", "dont_want_to_talk", "other",
+    "plan_request", "human", "hardship", "complaint", "scam_question", "robot_question", "dont_want_to_talk", "other",
     "tool_result"])
 
 # Wording used only when the table carries no phrase for an obligation it does state.
@@ -53,7 +53,8 @@ FALLBACK_TEXT = {
     "below_floor": "Say that an amount below the minimum cannot be recorded.",
     "latest_is_deadline": "Say that the latest date you can record is {deadline}.",
     "do_you_confirm": "Ask: do you confirm?",
-    "text_message": "Say the customer will receive a text message confirming the promise.",
+    # no "text_message" fallback: a confirmation sentence exists only when the table has one (a brief that withdraws it
+    # without replacement must hear none, synthetic J-01 2026-10-11)
     "promise_recorded": "Say the promise is recorded.",
     "could_not_record": "Say you could not record the promise because of a technical problem.",
     "change_in_app": "Say a recorded promise cannot be changed in this call; it can be changed in the mobile app.",
@@ -199,6 +200,7 @@ def _context(table, now):
         rules["bare_weekday_unspecified"] = True
     C["rules"] = rules
     C["notes_mode"] = bool(_has_param(C, "notes.reasons"))
+    C["currency"] = _currency_word(_param(C, "amounts.currency") if _has_param(C, "amounts.currency") else None)
     sits = _param(C, "situations") if _has_param(C, "situations") else None
     C["situations"] = sits if isinstance(sits, dict) else {}
     return C
@@ -385,8 +387,35 @@ def _check_date(C, st, item, d):
     return "ok", iso(d)
 
 
-def _money(cents):
-    return money_text(cents) if cents is not None else "?"
+CURRENCY_BASES = ("pound", "euro", "dollar", "franc", "krona", "krone", "zloty", "forint", "koruna", "lira", "rupee", "peso",
+                  "real", "dirham", "riyal", "shekel", "ringgit", "rupiah", "naira", "shilling", "cedi")
+CURRENCY_PLAIN = ("yen", "yuan", "won", "rand", "baht", "lei", "kronor", "kroner", "reais")
+
+
+def _currency_word(value):
+    """The word for the brief's currency from its amounts.currency note ("<currency> sterling, spoken in words" -> the
+    currency word)."""
+    if not isinstance(value, str) or not value.strip():
+        return ""
+    low = value.lower()
+    for base in CURRENCY_BASES:
+        if re.search(r"\b" + base + r"s?\b", low):
+            return base + "s"
+    for w in CURRENCY_PLAIN:
+        if re.search(r"\b" + w + r"\b", low):
+            return w
+    m = re.match(r"\s*([A-Za-z]+)", value)
+    return m.group(1).lower() if m else ""
+
+
+def _money(cents, C=None):
+    """An amount for the model's lines, with the brief's currency word when the table names one (the model said
+    a currency of its own when none was given, synthetic G-01 2026-10-11)."""
+    if cents is None:
+        return "?"
+    text = money_text(cents)
+    cur = (C or {}).get("currency") if isinstance(C, dict) else ""
+    return text + " " + cur if cur else text
 
 
 def _date_words(d):
@@ -456,9 +485,70 @@ def _agree(C, st, item, amount, d, own_deadline=False):
     C["understood"] = True
 
 
-def _note_item(C, st, item, reason):
+# the closing-row trigger that goes with each canonical note reason (the row's reason is often the note code too)
+NOTE_TRIGGER = {"refused": "attempts_exhausted", "hardship": "hardship_support_declined", "dispute": "dispute",
+                "paid": "paid_claim", "service_error": "record_failed_twice", "do_not_call": "dont_want_twice_verified"}
+# a dispute said in the customer's words -> the token a brief's finer note reason tends to carry
+DISPUTE_WORDS = (
+    (re.compile(r"\b(closed|settled|cleared|paid (it |that |this |them )?off|finished paying)\b"), ("closed", "settled")),
+    (re.compile(r"\b(not (my|mine|our|his|hers)|isn'?t mine|is not mine|never (had|took|opened|signed|applied)|don'?t have|"
+                r"do not have|not me|fraud|identity theft)\b"), ("mine", "theirs", "fraud", "unknown", "owner")),
+    (re.compile(r"\b(wrong|incorrect|too (much|high)|mistake|error|overcharg\w*|charges?|figure|balance|amount)\b"),
+     ("wrong", "amount", "incorrect", "balance", "figure")),
+)
+
+
+def _wire_reason(C, st, canonical, text=None):
+    """The table's value for a note reason the engine knows by its canonical name ("hardship" -> the code list's own
+    abbreviation; synthetic G-06/H-05, 2026-10-11): the value itself when listed; a finer reason chosen by the
+    customer's words (a dispute as not theirs, closed long ago or a wrong amount); the situation's note; the closing
+    row of the same trigger; a listed name that abbreviates the canonical one. The canonical name when the table lists
+    no reasons or nothing fits (then marked unsupported)."""
+    reasons = _param(C, "notes.reasons") if _has_param(C, "notes.reasons") else None
+    if not isinstance(reasons, list) or not reasons:
+        return canonical
+    reasons = [str(r) for r in reasons if isinstance(r, str) and r]
+    if canonical == "dispute" and text:
+        low = str(text).lower().replace("\u2019", "'")
+        for rx, toks in DISPUTE_WORDS:
+            if rx.search(low):
+                hits = [r for r in reasons if any(tok in r.lower() for tok in toks)]
+                if hits:
+                    return hits[0]
+    if canonical in reasons:
+        return canonical
+    s = _sit(C, canonical) or {}
+    multi = s.get("multi") if isinstance(s.get("multi"), dict) else {}
+    for v in (s.get("note"), multi.get("note")):
+        if isinstance(v, str) and v in reasons:
+            return v
+    dc = s.get("decline_close")
+    if isinstance(dc, list) and len(dc) > 1 and isinstance(dc[1], str) and dc[1] in reasons:
+        return dc[1]
+    trig = NOTE_TRIGGER.get(canonical)
+    rows = _param(C, "closing.rows") if _has_param(C, "closing.rows") else None
+    for row in rows if isinstance(rows, list) else []:
+        if trig and isinstance(row, dict) and trig in (row.get("triggers") or []) and isinstance(row.get("reason"), str) \
+                and row["reason"] in reasons:
+            return row["reason"]
+    toks = [t for t in canonical.lower().split("_") if t]
+    initials = "".join(t[0] for t in toks)
+    cands = []
+    for r in reasons:
+        rl = r.lower()
+        if rl == initials or canonical.lower().startswith(rl) or rl.startswith(canonical.lower()) \
+                or any((t.startswith(rl) or rl.startswith(t)) for t in toks if len(t) > 2 and len(rl) > 2):
+            cands.append(r)
+    if len(cands) == 1:
+        return cands[0]
+    _unsupported(C, st, "notes.reasons:no value for " + canonical)
+    return canonical
+
+
+def _note_item(C, st, item, reason, text=None):
     item["status"] = "noted"
-    item["noted"] = {"reason": reason, "text": None}
+    wire = _wire_reason(C, st, reason, text) if C["notes_mode"] else reason
+    item["noted"] = {"reason": wire, "canonical": reason, "text": None}
     item["offer"] = None
     item["agreed"] = None
     st["pending"] = None
@@ -466,12 +556,14 @@ def _note_item(C, st, item, reason):
 
 
 def _exhaust(C, st, item):
-    """Attempts used up (or none allowed): the item is refused."""
+    """Attempts used up (or none allowed): the item is refused; after a hardship, where no attempt may be made, a product
+    without a promise is a hardship note, not a refusal."""
     item["exhausted"] = True
     item["offer"] = None
-    _note_item(C, st, item, "refused")
+    hardship = bool(st["global"]["hardship"]) and _sit(C, "hardship") is not None
+    _note_item(C, st, item, "hardship" if hardship else "refused")
     if not C["notes_mode"]:
-        _trigger(C, st, "attempts_exhausted")
+        _trigger(C, st, "hardship_support_declined" if hardship else "attempts_exhausted")
 
 
 def _attempt(C, st, item):
@@ -624,7 +716,7 @@ def _floor_offer(C, st, item, d, after_too_much, below_cents=None):
         if below_cents is not None:
             # the customer's own figure is named: "it cannot be recorded" left the model guessing what "it" was
             # (platform EXT-068/102/153, 2026-10-11)
-            _line(C, "Say that %s cannot be recorded because it is below the minimum." % _money(below_cents))
+            _line(C, "Say that %s cannot be recorded because it is below the minimum." % _money(below_cents, C))
         ph = _phrase(C, "below_floor")
         if below_cents is None or (ph is not None and ph.get("exact")):
             _say(C, st, "below_floor")
@@ -642,13 +734,21 @@ def _handle_amount(C, st, item, ev, cents, resolved_date):
         d = None
         if date_in_play is not None:
             v, dd = _check_date(C, st, item, date_in_play)
-            if v == "ok":
+            if v in ("ok", "non_business"):
                 d = dd
+            elif v == "after_deadline":
+                # the customer's own day is after the deadline too: the minimum goes on the deadline, which is named
+                # (synthetic G-06, 2026-10-11: a low figure for next Tuesday -> the minimum on the Friday deadline, not today)
+                rule = _param(C, "dates.after_deadline_rule") if _has_param(C, "dates.after_deadline_rule") else None
+                dl = _eval(C, st, rule, item) if rule else None
+                d = iso(dl) if dl is not None else dd
+                C["fmt"]["deadline"] = _date_words(d)
+                _say(C, st, "latest_is_deadline")
         _floor_offer(C, st, item, d or _date_in_play(C, st, item), after_too_much=False, below_cents=cents)
         return
     if verdict == "above":
         _unsupported(C, st, "amounts.range_rule:above_full")
-        _line(C, "The past-due amount is " + _money(item["past_due"]) + "; only the full past-due amount can be recorded at most.")
+        _line(C, "The past-due amount is " + _money(item["past_due"], C) + "; only the full past-due amount can be recorded at most.")
         _offer(C, st, item, item["past_due"], date_in_play or _date_in_play(C, st, item), "full")
         return
     if verdict == "unknown":
@@ -718,7 +818,9 @@ def _handle_hardship(C, st, ev, bundle):
     if not st["global"]["hardship"]:
         _say(C, st, "sympathy")
     st["global"]["hardship"] = True
-    if s.get("offer") == "none" and s.get("transfer_queue"):
+    # "offer": "none" or an explicit null means the transfer follows at once, without asking (synthetic H-06, 2026-10-11)
+    no_offer = s.get("offer") == "none" or ("offer" in s and s.get("offer") in (None, "", False))
+    if no_offer and s.get("transfer_queue"):
         obligation = next((o for o in C["table"].get("obligations", [])
                            if o.get("id") == s.get("obligation") and o.get("status") == "effective"), {})
         when = obligation.get("when") or {}
@@ -806,7 +908,7 @@ def _handle_plan_request(C, st, ev):
     _request_transfer(C, st, s.get("transfer_queue"), "plan_request")
 
 
-def _handle_paid_or_dispute(C, st, key, ev):
+def _handle_paid_or_dispute(C, st, key, ev, exclude=()):
     s = _sit(C, key)
     if s is None:
         _unsupported(C, st, "situations." + key)
@@ -819,19 +921,45 @@ def _handle_paid_or_dispute(C, st, key, ev):
     if not targets and ev.get("item"):
         _, it = _item_by_id(st, ev.get("item"))
         targets = [it] if it is not None else []
+    if not ev.get("item") and exclude:
+        # no product named, but the same reply proposes a payment for other products: those are not the ones disputed
+        # or paid ("I closed that card years ago; I can pay the loan on the 28th", synthetic H-05 2026-10-11)
+        rest = [it for it in targets if it["item_id"] not in exclude]
+        if rest:
+            targets = rest
     if multi and multi.get("continue"):
-        reason = multi.get("note") or key
         for it in targets:
             if it["status"] in ("open", "agreed"):
-                _note_item(C, st, it, reason)
+                _note_item(C, st, it, key, text=ev.get("text"))
         return
-    # call-level situation: every item without a recorded promise is noted and the call closes
-    reason = key
-    for it in st["items"]:
-        if not it["recorded"] and it["status"] != "noted":
-            _note_item(C, st, it, reason)
+    if key == "dispute":
+        # a dispute that ends the call: the disputed product gets the note; the others are not negotiated and get none
+        for it in targets:
+            if not it["recorded"] and it["status"] != "noted":
+                _note_item(C, st, it, key, text=ev.get("text"))
+        for it in st["items"]:
+            if it["status"] in ("open", "agreed") and not it["recorded"]:
+                it["agreed"] = None
+                it["status"] = "skipped"
+    else:
+        # call-level claim: every item without a recorded promise is noted and the call closes
+        for it in st["items"]:
+            if not it["recorded"] and it["status"] != "noted":
+                _note_item(C, st, it, key)
     st["global"]["paid_claim" if key == "paid" else "dispute"] = True
     _trigger(C, st, "paid_claim" if key == "paid" else "dispute")
+
+
+def _handle_complaint(C, st):
+    """A complaint, said or asked about: the table's situation entry names the queue; collection stops and the transfer
+    follows, before or after verification. Without an entry the engine has no rule and the reply counts as an aside."""
+    s = _sit(C, "complaint")
+    if s is None:
+        _unsupported(C, st, "situations.complaint")
+        return False
+    C["understood"] = True
+    _request_transfer(C, st, s.get("transfer_queue"), "complaint")
+    return bool(st["global"]["pending_transfer"])
 
 
 # a farewell: only in a reply that does nothing else (a goodbye next to an answer is politeness, not the end)
@@ -1056,8 +1184,21 @@ def _parse_answer(q, text):
     if typ == "year":
         r = parse_year(text)
         return r["status"], r["value"]
+    if _code_question(q):
+        r = parse_code(text)
+        return r["status"], r["value"]
     s = _normalise_text_answer(text, str(q.get("parse_rule") or ""))
     return ("complete", s) if s else ("none", None)
+
+
+CODE_QUESTION_RE = re.compile(r"post ?code|\bzip\b|\bcode\b|reference|\bnumber\b|digits|upper ?case|without spaces|no spaces", re.I)
+
+
+def _code_question(q):
+    """A free-text security question whose answer is an alphanumeric code (a postcode, a reference number): spoken
+    digits and letters are joined, spaces and punctuation dropped, upper case (synthetic H-02/H-04/J-05, 2026-10-11)."""
+    blob = " ".join(str(q.get(k) or "") for k in ("id", "text", "parse_rule", "type", "wire_field"))
+    return bool(CODE_QUESTION_RE.search(blob))
 
 
 _DIGIT_WORDS = {"zero": "0", "oh": "0", "o": "0", "nought": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
@@ -1362,6 +1503,10 @@ def _share_bundle_date(C, st, group, common_date, key, accepted=False):
                 own = _date_of(C, st, e)
                 if own is None or own.get("kind") == "none":
                     e["date_text"] = use
+            elif e["kind"] == "accept_offer" and date_src is not None and not e.get("date_text") and e.get("amount") is None:
+                # "yes to the smaller amount, on the 11th": the acceptance takes the day said with it, else the offer's
+                # day would be agreed and the day said would find nothing open (synthetic J-02, 2026-10-11)
+                e["date_text"] = date_src
     return date_src
 
 
@@ -1457,6 +1602,9 @@ def _negotiate_bundle(C, st, evs):
         group = by_item[key]
         # a date or an amount is never a refusal: a refusal in the same bundle for that item is dropped
         has_proposal = key in proposal_items or None in proposal_items or (key is None and bool(proposal_items))
+        # "No, the full amount is too much": the no belongs to the too-much, which gets the minimum offered once; it is
+        # not a flat refusal that uses a persuasion attempt (synthetic J-02, 2026-10-11)
+        has_too_much = any(e["kind"] == "too_much" for e in group)
         for e in group:
             k = e["kind"]
             if k in ("refuse", "deny") and st.get("pending") == "exact_day" and not e.get("date_text") and e.get("amount") is None:
@@ -1513,7 +1661,7 @@ def _negotiate_bundle(C, st, evs):
                             d = r["date"]
                     _floor_offer(C, st, it, d or _date_in_play(C, st, it), after_too_much=True)
             elif k in ("refuse", "pay_today_no", "deny"):
-                if has_proposal:
+                if has_proposal or has_too_much:
                     C["understood"] = True
                     continue
                 if st.get("pending") == "readback" and k == "deny":
@@ -1597,14 +1745,20 @@ def _advance(C, st):
     if pending in ("support_offer", "can_i_help"):
         return
     if g.get("hardship_declined"):
-        # no persuasion after a declined support offer: whatever is still open (a vague day, an unanswered offer) is
-        # noted as hardship; a day agreed in the same reply is still read back and recorded
+        # no persuasion after a declined support offer: whatever is still open (a vague day, an unanswered attempt) is
+        # noted as hardship; a day agreed in the same reply is still read back and recorded, and the minimum or the
+        # deadline offered in answer to the customer's own figure or day stays on the table (it is a reply to what they
+        # named, not persuasion; synthetic G-06, 2026-10-11)
         for it in _open_items(st):
+            if it.get("offer") and it["offer"].get("kind") != "attempt":
+                continue
             _note_item(C, st, it, "hardship")
             if not C["notes_mode"]:
                 _trigger(C, st, "hardship_support_declined")
         cur = _current(st)
         pending = st.get("pending")
+        if cur is not None and cur.get("offer") and pending not in ("readback", "readback_deny", "record"):
+            st["pending"] = pending = "offer"
     if pending == "readback_deny" and _agreed_items(st):
         return
     if pending in ("past_date", "which_date", "which_amount", "exact_day") and cur is not None:
@@ -1727,7 +1881,7 @@ def _apply_tool_result(C, st, ev):
         se = _sit(C, "service_error")
         if se and se.get("note") and C["notes_mode"]:
             it["confirmed"] = False
-            _note_item(C, st, it, se["note"])
+            _note_item(C, st, it, "service_error")
             _say(C, st, "could_not_record")
         else:
             it["confirmed"] = False
@@ -1810,12 +1964,12 @@ def _close_row(C, st):
     if any(it["recorded"] for it in st["items"]):
         active.append("promise_recorded")
     if C["notes_mode"] and not any(it["recorded"] for it in st["items"]):
-        notes = [it["noted"]["reason"] for it in st["items"] if it["noted"]]
-        if notes and all(r == "paid" for r in notes):
+        notes = [(it["noted"]["reason"], it["noted"].get("canonical") or it["noted"]["reason"]) for it in st["items"] if it["noted"]]
+        if notes and all(c == "paid" for _, c in notes):
             active.append("all_items_noted_paid")
         else:
-            for r in notes:
-                if r != "paid":
+            for r, c in notes:
+                if c != "paid":
                     active.append("first_non_paid_note:" + str(r))
                     break
     active.extend(g["triggers"])
@@ -1842,7 +1996,7 @@ def _readback_text(C, st):
     for it in st["items"]:
         if it["status"] != "agreed" or not it.get("agreed"):
             continue
-        parts.append("%s: %s on %s." % (it["label"], _money(it.get("agreed_cents")), _date_words(it["agreed"]["date"])))
+        parts.append("%s: %s on %s." % (it["label"], _money(it.get("agreed_cents"), C), _date_words(it["agreed"]["date"])))
         if it.get("own_deadline"):
             ph = _phrase(C, "own_deadline_note")
             text = ph.get("text") if ph else FALLBACK_TEXT["own_deadline_note"]
@@ -1855,7 +2009,7 @@ def _offer_text(C, st, it):
     d = off.get("date")
     dtext = _date_words(d) if d and d != "today" else ("today" if d == "today" else "a day you name")
     return "Propose %s of %s on %s for the %s." % (
-        "the minimum amount" if off.get("kind") == "floor" else "a payment", _money(off.get("amount")), dtext, it["label"])
+        "the minimum amount" if off.get("kind") == "floor" else "a payment", _money(off.get("amount"), C), dtext, it["label"])
 
 
 def _render(C, st, out):
@@ -1890,6 +2044,10 @@ def _render(C, st, out):
                       "requirements without repeating that opening: " + content)
             st["opened"] = True
         _say(C, st, "party_question")
+        if st["party_asks"] > 1:
+            # the model asked for an account number on the second ask (synthetic H-01, 2026-10-11)
+            _line(C, _fill("Ask once more, in one short sentence, whether you are speaking with {title} {last_name}; ask for "
+                           "nothing else and name no account or security detail.", fmt))
         out["engine_next"] = "party"
         out["what_to_do_next"] = "Ask whether you are speaking with the customer; only yes, that's me, speaking or their own name confirms."
     elif stage == "callback" and pending in ("callback", "callback_retry", "callback_time", "callback_date"):
@@ -1955,7 +2113,7 @@ def _render(C, st, out):
         if C.get("disclose"):
             _say(C, st, "disclosure")
             for it in st["items"]:
-                _line(C, "%s: %s past due, %s days late." % (it["label"], _money(it["past_due"]), it.get("days_late")))
+                _line(C, "%s: %s past due, %s days late." % (it["label"], _money(it["past_due"], C), it.get("days_late")))
             if len(st["items"]) > 1:
                 # the model folded three products into one sentence with an invented total (platform B EXT-035, 2026-10-11)
                 _line(C, "One sentence per product, each with its own amount and its own days late; do not add the amounts up.")
@@ -1975,14 +2133,14 @@ def _render(C, st, out):
             _line(C, "That day has already passed; ask for a date from today on for the %s." % cur["label"])
             out["what_to_do_next"] = "Ask for a date from today on."
         elif pending == "which_date" and cur is not None:
-            _line(C, "Ask on which exact day the customer will pay %s for the %s." % (_money(_amount_in_play(cur)), cur["label"]))
+            _line(C, "Ask on which exact day the customer will pay %s for the %s." % (_money(_amount_in_play(cur), C), cur["label"]))
             out["what_to_do_next"] = "Ask for the exact payment date."
         elif pending == "which_amount" and cur is not None:
             _line(C, "Ask the customer to repeat the amount for the %s." % cur["label"])
             out["what_to_do_next"] = "Ask the customer to repeat the amount."
             out["ask_clarify"] = True
         elif cur is not None:
-            _line(C, "Ask about the %s: %s past due; the customer should name a payment date." % (cur["label"], _money(cur["past_due"])))
+            _line(C, "Ask about the %s: %s past due; the customer should name a payment date." % (cur["label"], _money(cur["past_due"], C)))
             out["what_to_do_next"] = "Continue with the %s." % cur["label"]
         else:
             _line(C, "Ask the customer to repeat what they said.")
@@ -2115,6 +2273,11 @@ ROBOT_RE = re.compile(r"\b(are you|is this|is that|am i (?:talking|speaking) (?:
 DISPUTE_RE = re.compile(r"\b(not (my|mine|our)|isn'?t mine|is not mine|never (had|took|opened|signed)|don'?t have|do not have|"
                         r"closed|paid (it |that |this )?off|settled|owe nothing|don'?t owe|do not owe|wrong|incorrect|mistake|error|fraud|dispute)\b")
 REFUSAL_RE = re.compile(r"\b(not|won'?t|will not|never|refuse|refusing|no way)\b[^.?!]{0,30}?\b(pay|paying)\b|\brefuse\b")
+COMPLAINT_RE = re.compile(r"\bcomplain(?:t|ts|ing|ed|s)?\b")
+NOT_COMPLAINT_RE = re.compile(r"\b(not|no|never|n'?t|without|nothing to)\b[^.?!]{0,12}\bcomplain")
+RETAG_TO_COMPLAINT = ("dispute", "refuse", "other", "question_back", "id_decline", "human", "plan_request", "dont_want_to_talk",
+                      "too_much", "deny", "pay_today_no", "hardship", "scam_question")
+LENDERS = ("hardship", "dispute")
 
 
 def _retag(evs):
@@ -2127,8 +2290,46 @@ def _retag(evs):
             continue
         if e["kind"] == "human" and ROBOT_RE.search(low):
             e["kind"] = "robot_question"
+        elif e["kind"] in RETAG_TO_COMPLAINT and COMPLAINT_RE.search(low) and not NOT_COMPLAINT_RE.search(low):
+            e["kind"] = "complaint"        # "I want to make a formal complaint" filed as a dispute (synthetic G-05/J-03)
         elif e["kind"] == "dispute" and not DISPUTE_RE.search(low) and REFUSAL_RE.search(low):
             e["kind"] = "refuse"
+
+
+def _lend_values(evs):
+    """The amount, day and product of a proposal said in the same breath as a hardship, a dispute or a payment claim are
+    sometimes filed under that reply ("my wife passed away ... I can only do 200 for the loan next Tuesday": hardship
+    with amount 200, date next Tuesday, item p1; the proposal slots empty; synthetic G-06/H-05, 2026-10-11).
+    A proposal event without values takes them; after a hardship, which never carries a figure of its own, a proposal
+    event is added when the extractor made none. A dispute lends only a day (an amount on a dispute is the disputed
+    figure) and only to a proposal event the extractor did make; a payment claim lends nothing (its day is when they
+    paid). Returns the products the reply proposes for."""
+    for d in evs:
+        if d["kind"] not in LENDERS or (d.get("amount") is None and not d.get("date_text")):
+            continue
+        if d["kind"] == "dispute" and not d.get("date_text"):
+            continue
+        carrier = None
+        for e in evs:
+            if e["kind"] in CARRIER_KINDS and e.get("amount") is None and not e.get("date_text") \
+                    and (not e.get("item") or not d.get("item") or e["item"] == d["item"]):
+                carrier = e
+                break
+        if carrier is None:
+            if d["kind"] != "hardship":
+                continue
+            carrier = {"kind": "amount_proposal" if d.get("amount") is not None else "date_proposal", "item": None,
+                       "amount": None, "date_text": None, "time_text": None, "text": None, "span": None, "qid": None}
+            evs.append(carrier)
+        carrier["amount"] = d.get("amount")
+        carrier["date_text"] = d.get("date_text")
+        carrier["item"] = carrier.get("item") or d.get("item")
+        if not carrier.get("text"):
+            carrier["text"] = d.get("text")
+        d["amount"], d["date_text"] = None, None
+        if d["kind"] != "hardship":
+            d["item"] = None      # the product named went with the proposal; the claim's own product is unknown
+    return set(e["item"] for e in evs if e["kind"] in CARRIER_KINDS and e.get("item"))
 
 
 def _step(state, events, table, now):
@@ -2143,6 +2344,7 @@ def _step(state, events, table, now):
     unknown = [e for e in cust if e["kind"] not in EVENT_KINDS]
     cust = [e for e in cust if e["kind"] in EVENT_KINDS]
     _retag(cust)
+    proposed_for = _lend_values(cust)
     for e in tool_evs:
         _apply_tool_result(C, st, e)
     if cust:
@@ -2197,6 +2399,15 @@ def _step(state, events, table, now):
                 _end_conversation(C, st)
                 cust = [e for e in cust if e["kind"] not in ("other", "dont_want_to_talk")]
                 kinds = set(e["kind"] for e in cust)
+            if "complaint" in kinds:
+                if _handle_complaint(C, st):
+                    # a complaint stops collection: nothing else in the reply is acted on (G mail, J amendment 5/8)
+                    cust = [e for e in cust if e["kind"] in ("question_back", "robot_question", "scam_question")]
+                else:
+                    for e in cust:
+                        if e["kind"] == "complaint":
+                            e["kind"] = "other"
+                kinds = set(e["kind"] for e in cust)
             if "hardship" in kinds:
                 _handle_hardship(C, st, None, cust)
                 # "I lost my job and cannot pay anything" is the hardship, not a refusal to negotiate: the same turn's
@@ -2219,11 +2430,11 @@ def _step(state, events, table, now):
                 if verified and st["stage"] in ("negotiate", "readback"):
                     for e in cust:
                         if e["kind"] == "paid":
-                            _handle_paid_or_dispute(C, st, "paid", e)
+                            _handle_paid_or_dispute(C, st, "paid", e, exclude=proposed_for)
                         elif e["kind"] == "dispute":
-                            _handle_paid_or_dispute(C, st, "dispute", e)
+                            _handle_paid_or_dispute(C, st, "dispute", e, exclude=proposed_for)
                     if not g["paid_claim"] and not g["dispute"]:
-                        _negotiate_events(C, st, [e for e in cust if e["kind"] not in ("paid", "dispute", "hardship", "human", "plan_request", "dont_want_to_talk", "robot_question", "scam_question", "question_back", "other")])
+                        _negotiate_events(C, st, [e for e in cust if e["kind"] not in ("paid", "dispute", "hardship", "complaint", "human", "plan_request", "dont_want_to_talk", "robot_question", "scam_question", "question_back", "other")])
                 elif st["stage"] == "party":
                     _party_events(C, st, [e for e in cust if e["kind"] not in ("human", "hardship", "dont_want_to_talk")])
                 elif st["stage"] == "callback":

@@ -505,10 +505,15 @@ def _call(ctx, name, args):
     cal = ctx.get("cal")
     rules = ctx.get("rules") or {}
     n = len(args)
-    if name == "min":
-        return min(_num(a) for a in args)
-    if name == "max":
-        return max(_num(a) for a in args)
+    if name in ("min", "max"):
+        # dates compare as dates ("min(business_days_after(today, 3), deadline)": a persuasion date is never after the
+        # deadline, synthetic I/J 2026-10-11), numbers as numbers
+        vals = list(args)
+        if any(isinstance(a, date) or (isinstance(a, str) and re.match(r"^\d{4}-\d{2}-\d{2}$", a.strip())) for a in vals):
+            vals = [_as_date(a) for a in vals]
+        else:
+            vals = [_num(a) for a in vals]
+        return min(vals) if name == "min" else max(vals)
     if name == "round":
         if n < 2:
             raise EvalError("round needs (x, step[, mode])")
