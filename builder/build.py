@@ -35,6 +35,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -105,6 +106,29 @@ def load_env(path=ROOT / ".env"):
     for k in set_:
         os.environ[k] = vals[k]
     return set_
+
+
+
+def claude_ready():
+    """None when the reader can call Claude (ANTHROPIC_API_KEY set, or the claude CLI the SDK bundles is logged in),
+    else the reason. The reader runs through claude_agent_sdk, so a run without credentials would fail minutes in."""
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return None
+    cli = None
+    try:
+        import claude_agent_sdk  # noqa: F401
+        cand = pathlib.Path(claude_agent_sdk.__file__).resolve().parent / "_bundled" / "claude"
+        cli = str(cand) if cand.exists() else shutil.which("claude")
+    except Exception:  # noqa: BLE001
+        cli = shutil.which("claude")
+    if not cli:
+        return "claude_agent_sdk (or a claude CLI) is not installed"
+    try:
+        out = subprocess.run([cli, "auth", "status"], capture_output=True, text=True, timeout=30)
+        info = json.loads(out.stdout[out.stdout.find("{"):]) if "{" in out.stdout else {}
+    except Exception as e:  # noqa: BLE001
+        return "claude auth status could not be read (%s)" % str(e)[:80]
+    return None if info.get("loggedIn") else "the claude CLI is not logged in"
 
 
 # --------------------------------------------------------------------------------------------------------------
@@ -690,6 +714,15 @@ def run(argv=None, schedule=None):
             trace.error("missing environment: %s. Put them in .env (see README, Setup); only --no-deploy runs without them." % ", ".join(missing))
             trace.info("builder end: status not started (missing keys)")
             manifest["status"] = "not started: missing " + ", ".join(missing)
+            (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
+            return manifest
+    if not a.reuse_table:
+        why = claude_ready()
+        if why:
+            trace.error("Claude credentials needed for the reader: %s. Run `claude login` (a Claude subscription) or put ANTHROPIC_API_KEY in .env. "
+                        "OPENAI_API_KEY or a logged-in codex CLI is optional (the blind audit degrades without it)." % why)
+            trace.info("builder end: status not started (no Claude credentials)")
+            manifest["status"] = "not started: no Claude credentials"
             (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
             return manifest
     trace.info("builder start: run %s, %s %s, %s %s, commit %s" % (
