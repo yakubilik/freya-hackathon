@@ -6,10 +6,16 @@
       "email": "yakupkeskin777@gmail.com"
     }
   ],
-  "repo": "https://github.com/yakubilik/freya-hackathon.git",
-  "commit": "<filled by tools/final.sh>",
+  "repo": "https://github.com/yakubilik/freya-hackathon",
+  "commit": "319f53a29919a189a3eb8359d7e32231cab4a03f",
   "run_command": "python3 builder/build.py {case_folder} {mock_url}",
   "workflow": "submission/final.workflow.json",
   "trace": "traces/final.log",
-  "mock_url": "<from mock/.url>"
+  "mock_url": "https://freya-statement-mock.yakuupkeskin.workers.dev",
+  "built_from_commit": "7026c4274fc7fba4595b473ad9d169bf6fbb8ad7",
+  "case_folder": "final/final-case",
+  "builder_session_logs": [
+    "runs/20261011-183322-final-case-joined/floor-session.jsonl",
+    "runs/20261011-183322-final-case-joined/floor-fix-session.jsonl"
+  ]
 }
