@@ -66,7 +66,7 @@ Wire strings are exact. `not_specified` is explicit; no silent defaults.
 **Well-known parameter paths** (absent when the brief is silent):
 `party.confirmation_words`, `party.max_asks`, `third_party.callback.window{days_expr,start,end,inclusive}`, `identity.questions[]{id, wire_field, type: date|digits:N|year|text, parse_rule, order}`,
 `identity.max_wrong`, `identity.max_wrong_per_question` (2026-10-11, engine-gaps: per-question limit; a question entry may carry `max_wrong`), `identity.hint_rule`, `identity.decline_rule`, `calendar.holidays[]`, `calendar.business_days`, `bands[]{id, condition, deadline_expr, attempts}`,
-`dates.vague_rule`, `dates.this_next_rule`, `dates.bare_weekday_rule`, `amounts.floor_expr`, `amounts.range_rule`, `attempts[]{n, amount_rule, date_expr, band}`,
+`dates.vague_rule`, `dates.this_next_rule`, `dates.bare_weekday_rule`, `dates.numeric_order` (2026-10-11, engine-gaps: month_day_year | day_month_year for customer dates in numbers), `amounts.floor_expr`, `amounts.range_rule`, `attempts[]{n, amount_rule, date_expr, band}`,
 `situations{hardship, paid, dispute, plan_request, human, scam, robot, deceased, wrong_number, dont_want_to_talk, do_not_call}` (do_not_call: 2026-10-11, engine-gaps), `recording.retries`, `multi.max_items`, `multi.order`,
 `closing.rows[]{outcome, reason, triggers[], precedence}`, `call_variables[]`.
 

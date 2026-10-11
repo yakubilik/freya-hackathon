@@ -33,6 +33,8 @@ no such rule, give the path with `"confidence": "not_specified"` and no `value`,
 - `dates.this_next_rule`: `{"this": "this_weekday(w)" | <other>, "next": "next_weekday(w)" | <other>}`; the engine's
   `this_weekday` is the day in the current calendar week, `next_weekday` the day in the following calendar week.
 - `dates.bare_weekday_rule`: `{"rule": "next_occurrence" | "current_week"}` or not_specified.
+- `dates.numeric_order`: `"month_day_year"` only when the brief says a payment date given as bare numbers ("4/28") is
+  month then day; `"day_month_year"` or not_specified otherwise (day first is the default).
 - `amounts.floor_expr`: ONE expression, conditional with `a if cond else b` (never `?:`), e.g.
   `product.<field_a> if product.type == '<type>' else product.<field_b>`.
 - `amounts.range_rule`: `{"min": "floor", "max": "product.<field>", "inclusive": true|false, "below_floor": <text>}`.

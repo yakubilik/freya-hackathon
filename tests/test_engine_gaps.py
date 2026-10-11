@@ -248,3 +248,44 @@ def test_do_not_call_kind_is_extracted_only_when_the_table_has_the_situation():
         assert 'do_not_call' in ks and ks.index('do_not_call') == ks.index('other') - 1
     code = wf['nodes']['negotiate_observe']['pre_actions'][0]['function']['parameters']['properties']['code']['default']
     assert 'do_not_call' in bytes.fromhex(code.split("bytes.fromhex('")[1].split("'")[0]).decode()
+
+
+# 3. customer dates in numbers, month first
+
+
+from builder.engine.dates import resolve_date  # noqa: E402
+
+
+@pytest.mark.parametrize('text,month_first,want', [
+    ('4/28', True, '2026-04-28'),            # the current year, as for a day-first bare day and month
+    ('10/20', True, '2026-10-20'),
+    ('10/20/2026', True, '2026-10-20'),
+    ('20/10', False, '2026-10-20'),
+    ('20.10.2026', False, '2026-10-20'),
+    ('20/10', True, None),             # no month 20: not a date, the engine asks for the day
+    ('the 20th of October', True, '2026-10-20'),    # a month name is read the same either way
+])
+def test_numeric_customer_dates_follow_the_table_order(text, month_first, want):
+    rules = {'month_first': True} if month_first else {}
+    r = resolve_date(text, NOW, rules)
+    assert r['date'] == want and (r['kind'] == 'exact') == (want is not None)
+
+
+def numeric_order_table(value):
+    table = copy.deepcopy(TABLE_B)
+    table['parameters']['dates.numeric_order'] = {'value': value, 'type': 'string', 'confidence': 'quoted'}
+    return table
+
+
+@pytest.mark.parametrize('value,want', [('month_day_year', '2026-10-16'), ('day_month_year', '2026-10-16')])
+def test_engine_reads_a_proposal_date_in_the_table_order(value, want):
+    table = numeric_order_table(value)
+    text = '10/16' if value == 'month_day_year' else '16/10'
+    st, out = step(ready(table, 1), [event('amount_proposal', item='p1', amount=360, date_text=text)], table, NOW)
+    assert st['items'][0]['agreed'] == {'amount': 360, 'date': want}
+
+
+def test_without_the_order_parameter_numbers_are_day_first_as_before():
+    st, out = step(ready(TABLE_B, 1), [event('amount_proposal', item='p1', amount=360, date_text='16/10')], TABLE_B, NOW)
+    assert st['items'][0]['agreed'] == {'amount': 360, 'date': '2026-10-16'}
+    assert 'dates.numeric_order' not in out['unsupported']

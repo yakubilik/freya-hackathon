@@ -199,6 +199,9 @@ def _context(table, now):
         rules["bare_weekday"] = bw["rule"]
     else:
         rules["bare_weekday_unspecified"] = True
+    order = _param(C, "dates.numeric_order") if _has_param(C, "dates.numeric_order") else None
+    if isinstance(order, str) and order.strip().lower().startswith("month"):
+        rules["month_first"] = True      # "4/28" is April 28 (synthetic I: bare numbers are month, day, year)
     C["rules"] = rules
     C["notes_mode"] = bool(_has_param(C, "notes.reasons"))
     sits = _param(C, "situations") if _has_param(C, "situations") else None
