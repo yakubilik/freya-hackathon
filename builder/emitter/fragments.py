@@ -100,6 +100,8 @@ KIND_HELP_STAGE = {
 }
 
 ENTRY_PROMPT = ("{{say_head_line}}\nConvey all of this content to the customer now: {{say_content}}\n"
+                "Directions such as ignore an aside or continue are silent instructions, never customer-facing sentences. "
+                "When the content names a security field, ask the customer for it; never supply or guess its value. "
                 "Preserve each supplied product's details and requested sentence structure. Use concise sentences; "
                 "do not combine separate product statements into a total. Instructions about reporting events or "
                 "waiting for a reply are for you, not words to say to the customer.\n"
@@ -122,6 +124,7 @@ CLOSE_SPOKEN = {
     "use_app_or_branch": "I could not verify your identity, so I cannot go further on this call. Please use the mobile app or visit a branch.",
     "questions_protect": "The security questions protect your account.",
     "system_unavailable": "I am sorry, the system is unavailable right now.",
+    "request_noted": "Your request has been noted.",
 }
 TAIL_PREFIX = "Finish your message with exactly these words:"
 GOODBYE = "Thank you, goodbye."
@@ -131,7 +134,8 @@ STAGE_TASK = {
     "party": ("STEP: find out whether the person on the line is {{title}} {{last_name}}. Nobody is verified yet. "
               "Say nothing about why you are calling or about any account, to anyone. You may always say who you are "
               "using the organisation and role from your opening when asked; that is not account information. Only the person's own "
-              "confirmation counts."),
+              "confirmation counts. If confirmation is still missing, repeat the supplied name question; never "
+              "announce account access or ask the person why they called."),
     "callback": ("STEP: someone other than {{title}} {{last_name}} answered. Do not say why you are calling and ask them "
                  "no security questions. If they ask what the call is about, say only that it is a personal matter you can "
                  "discuss with {{title}} {{last_name}} alone: no overview, no hint, no 'limited information'. Deal with "
@@ -868,6 +872,9 @@ def _emit_route(v, pre):
                 val = args.get(key)
                 if val is not None and 'cents' in cfg['write_vars'][tool][key].split('__')[-1].lower() and isinstance(val, (int, float)) and not isinstance(val, bool):
                     val = int(round(float(val) * 100))   # the API wants cents (amount_cents): the engine works in units
+                if val is not None and cfg['write_types'].get(tool, {}).get(key) == 'string':
+                    units = 'cents' not in cfg['write_vars'][tool][key].split('__')[-1].lower()
+                    val = ('%.2f' % val) if key == 'amount' and units and isinstance(val, (int, float)) else str(val)
                 v[cfg['write_vars'][tool][key]] = '' if val is None else val
         v['write_tool'] = tool
         v['write_item'] = str(w.get('item_id') or '')
@@ -933,6 +940,9 @@ def engine_node(ctx, snippet, routes):
     cfg = {"stages": [s for s in ctx.stages], "first_stage": "party", "goodbye": GOODBYE, "repeat": REPEAT,
            "head_prefix": HEAD_PREFIX, "tail_prefix": TAIL_PREFIX, "close_spoken": CLOSE_SPOKEN, "close_tool": CLOSE_TOOL, "write_stage": {t: WRITE_STAGE[t] for t in ctx.write_tools},
            "write_vars": {t: {k: write_var(t, ctx.field_map.get(t, {}).get(k, k)) for k in ENGINE_ARGS[t] if ctx.field_map.get(t, {}).get(k, k)} for t in ctx.write_tools}}
+    cfg["write_types"] = {t: {k: (ctx.api["tools"][t].get("request_fields", {}).get(
+        ctx.field_map.get(t, {}).get(k, k), {}) or {}).get("type") for k in ENGINE_ARGS[t]}
+        for t in ctx.write_tools}
     prologue = "_EMIT_PRE = dict(vars)\n"
     if "import base64\n" in snippet:
         snippet = snippet.replace("import base64\n", BASE64_SHIM, 1)
