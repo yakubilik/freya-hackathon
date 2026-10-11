@@ -432,7 +432,7 @@ def test_dispatcher_falls_back_to_the_whole_message_when_words_are_missing(workf
 SYNTH = ROOT / "synthetic"
 
 
-@pytest.mark.parametrize("letter", ["C", "D", "E", "F", "G"])
+@pytest.mark.parametrize("letter", ["C", "D", "E", "F", "G", "J"])
 def test_emit_handles_an_api_with_other_field_names(letter):
     """The organisers keep the seven tool names; fields and allowed values change (README, "The final"). Synthetic briefs
     C and D (frozen tables from the night's reads) have question/pay_date/callback_date/client_ref and other response
@@ -447,7 +447,7 @@ def test_emit_handles_an_api_with_other_field_names(letter):
     wf = emit(table, api)
     assert walk(wf, table, api_raw) == []
     verify = wf["nodes"]["w_verify_identity"]["pre_actions"][0]["function"]["parameters"]["properties"]["body"]["properties"]
-    cid = {"C": "client_ref", "F": "client_ref", "G": "customer_ref"}.get(letter, "customer_id")
+    cid = {"C": "client_ref", "F": "client_ref", "G": "customer_ref", "J": "account_no"}.get(letter, "customer_id")
     assert verify[cid]["default"] in ("{{customer_id}}", "{{%s}}" % cid)
     if letter in ("C", "D"):
         assert verify["question"]["default"].startswith("{{wa_verify_identity__question")

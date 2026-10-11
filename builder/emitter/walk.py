@@ -340,6 +340,16 @@ def walk(wf, table=None, api=None):
 
     # ---- one close node per closing row, reason absent when the row has none
     if table is not None:
+        # the API may call the close fields otherwise (result / detail): read the wire names like the emitter does
+        out_f, rea_f = "outcome", "reason"
+        if api:
+            try:
+                from builder.emitter.wire import request_field_map
+                parsed = api if "tools" in api else parse_api(api)
+                m = request_field_map(parsed).get(CLOSE_TOOL, {})
+                out_f, rea_f = m.get("outcome") or "outcome", m.get("reason") or "reason"
+            except Exception:  # noqa: BLE001 - the canonical names are the fallback
+                pass
         closes = []
         for nm, n in allnodes.items():
             for fn in _functions(n):
@@ -347,7 +357,7 @@ def walk(wf, table=None, api=None):
                 url = str((((f.get("parameters") or {}).get("properties") or {}).get("url") or {}).get("default") or "")
                 if f.get("name") == CLOSE_TOOL or url.rstrip("/").endswith("/" + CLOSE_TOOL):
                     body = (((f.get("parameters") or {}).get("properties") or {}).get("body") or {}).get("properties") or {}
-                    closes.append((nm, (body.get("outcome") or {}).get("default"), body.get("reason")))
+                    closes.append((nm, (body.get(out_f) or {}).get("default"), body.get(rea_f)))
         for row in _param(table, "closing.rows") or []:
             o, r = row.get("outcome"), row.get("reason")
             hit = [c for c in closes if c[1] == o and ((r is None and c[2] is None) or (r is not None and isinstance(c[2], dict) and c[2].get("default") == r))]
