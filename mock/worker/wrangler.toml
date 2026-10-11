@@ -1,0 +1,20 @@
+# freya-mock: our copy of the bank's tool services. Free plan only: Workers + a SQLite-backed Durable Object.
+name = "freya-mock"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[[durable_objects.bindings]]
+name = "BANK"
+class_name = "BankCustomer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BankCustomer"]
+
+[observability]
+enabled = true
+
+# Optional secrets (npx -y wrangler@4 secret put <NAME>):
+#   TOOL_KEY   when set, tool calls need `Authorization: Bearer <key>` or `x-api-key: <key>`
+#   ADMIN_KEY  when set, /practice/sessions and /practice/reset need `x-admin-key: <key>`

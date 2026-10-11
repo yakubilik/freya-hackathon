@@ -31,3 +31,6 @@ bank/.tunnel.*
 /kit/build-the-builder/traces/
 /kit/build-the-builder/.freya-agents.json
 /kit/build-the-builder/.personas.json
+
+# Wrangler local state
+mock/worker/.wrangler/
