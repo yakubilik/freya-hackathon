@@ -49,3 +49,4 @@ Run the suite as `.venv/bin/python -m pytest -q` (bare collection works again no
 - No fix branches remain. `ustabasi/195-...` untouched.
 - Untracked, left alone: kit/build-the-builder/{.freya-agents.json,.personas.json,out,results,traces}, submission/{brief,d-brief..j-joined}.workflow.json (synthetic exports).
 - Appeared mid-session from another process (the assessment agent, 11:45 local): `M tools/run_extended.py` (--cases/--reps flags), `?? tools/gate.py`, `?? tools/offline_gate.py`. Not mine, not touched, not committed.
+- Also from the other process, after the data commit: `M synthetic/MANIFEST.md` (11:47 local; describes a test clean-up keeping only D and I in the platform loop with 30 cases each, and tools/offline_gate.py). Not mine, not committed; whoever owns that work commits it with the new cases.
