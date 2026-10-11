@@ -554,7 +554,7 @@ def _ob_item(words):
         last4 = str(p.get('card_last4') or '')
         if last4 and last4 in low:
             score += 10
-        for tok in str(p.get('type') or '').lower().split('_'):
+        for tok in __TYPE_TOKENS__:
             if tok and tok in low:
                 score += 1
         if score > best_score:
@@ -569,7 +569,7 @@ def _ob_item(words):
 
 
 _FIELDS = ('words', 'amount', 'date', 'time', 'item')
-_RAW = __RAW__
+_RAW = __RAW____LABELS__
 
 try:
     vals = [dict((f, _ob_val(s.get(f))) for f in _FIELDS) for s in _SLOTS]
@@ -652,6 +652,19 @@ except Exception:
 '''
 
 
+LABEL_TOKENS = """
+_LABELS = __MAP__
+
+
+def _ob_tokens(t):
+    \"\"\"Match tokens for a coded product type: the code and the words of its spoken name ('CC' -> cc, credit, card);
+    tokens under three letters are left out (a bare 'cc' is inside 'account').\"\"\"
+    t = str(t or '')
+    label = _LABELS.get(t) or _LABELS.get(t.upper()) or _LABELS.get(t.lower()) or ''
+    return [x for x in t.lower().split('_') + str(label).lower().replace('_', ' ').split(' ') if len(x) >= 3]
+"""
+
+
 def observe(ctx, stage):
     """The one observation dispatcher of a stage: snapshot every slot, build engine_events, clear every slot."""
     node = STAGE_NODE[stage]
@@ -661,6 +674,11 @@ def observe(ctx, stage):
     names = slot_vars(ctx, stage)
     code = (DISPATCH.replace("__KINDS__", py(stage_kinds(ctx, stage))).replace("__SLOTS__", py(slots))
             .replace("__RAW__", py(node + "_raw")))
+    # coded product types (products.labels, "CC" -> "credit card", synthetic G): the customer's words are matched against
+    # the code and its spoken name; without a map the matching is the type's own words, as before
+    labels = getattr(ctx, "product_labels", None) or {}
+    code = code.replace("__TYPE_TOKENS__", "_ob_tokens(p.get('type'))" if labels else "str(p.get('type') or '').lower().split('_')")
+    code = code.replace("__LABELS__", LABEL_TOKENS.replace("__MAP__", py(labels)) if labels else "")
     code = code + "".join("vars[%r] = ''\n" % n for n in names)
     name = node + "_observe"
     return Fragment({name: code_node(name, code, [always("engine")])})

@@ -63,6 +63,9 @@ no such rule, give the path with `"confidence": "not_specified"` and no `value`,
 - `multi.max_items`: integer. `multi.order`: string. `multi.pay_today_once`: true when the pay-today question is asked once
   for all products. `multi.common_date_rule`: string, set only when one date named for all products is recorded on each
   product's own deadline where it is too late. `multi.readback`: string.
+- `products.labels`: `{"<type value the account tool returns>": "<its spoken name>"}`, only when the brief or its code
+  list gives product types as codes (`CC`: credit card, `PL`: personal loan); the engine speaks the name and matches the
+  customer's words against both. Not set when the type values are already words.
 - `notes.reasons`: list of exact note reasons, set only when the brief requires per-product notes.
   `notes.on_transfer`: string. `transfer.unrecorded_rule`: string, what happens to agreed-but-unrecorded promises on a transfer.
 - `closing.rows`: list of `{"outcome", "reason" (null for none), "triggers": [<engine trigger names, below>],

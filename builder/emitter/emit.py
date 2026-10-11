@@ -69,6 +69,8 @@ class Ctx:
         self.has_notes = self.param("notes.reasons") is not None
         dnc = situations.get("do_not_call") or situations.get("no_contact")
         self.do_not_call = dnc if isinstance(dnc, dict) else None
+        labels = self.param("products.labels")
+        self.product_labels = {str(k): str(v) for k, v in labels.items() if isinstance(v, str) and v.strip()} if isinstance(labels, dict) else {}
         self.stages = ["party"] + (["callback"] if self.has_callback else []) + ["identity", "negotiate", "readback"]
 
     def param(self, path):

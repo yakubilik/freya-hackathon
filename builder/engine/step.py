@@ -267,8 +267,13 @@ def _eval(C, st, text, item=None):
 # items
 
 
-def _product_label(p):
-    t = str(p.get("type") or "product").replace("_", " ")
+def _product_label(p, labels=None):
+    """The spoken name of a product: the table's label for a coded type (products.labels, "CC" -> "credit card",
+    synthetic G), else the type with its underscores as spaces."""
+    code = str(p.get("type") or "product")
+    labels = labels if isinstance(labels, dict) else {}
+    label = labels.get(code) or labels.get(code.upper()) or labels.get(code.lower())
+    t = str(label) if isinstance(label, str) and label.strip() else code.replace("_", " ")
     if p.get("card_last4"):
         return t + " ending " + str(p.get("card_last4"))
     return t
@@ -278,12 +283,13 @@ def _build_items(C, st, products):
     bands = _param(C, "bands") or []
     floor_expr = _param(C, "amounts.floor_expr")
     max_items = _param(C, "multi.max_items") if _has_param(C, "multi.max_items") else None
+    labels = _param(C, "products.labels") if _has_param(C, "products.labels") else None
     items = []
     for n, p in enumerate(products or []):
         if not isinstance(p, dict):
             continue
         pid = p.get("product_id") or ("p%d" % (n + 1))
-        item = {"item_id": pid, "type": p.get("type"), "label": _product_label(p), "product": p,
+        item = {"item_id": pid, "type": p.get("type"), "label": _product_label(p, labels), "product": p,
                 "past_due": to_cents(p.get("past_due")), "floor": None, "days_late": p.get("days_late"),
                 "band": None, "deadline": None, "attempts_allowed": 0, "attempts_used": 0, "offers_made": [],
                 "floor_offered": False, "too_much": False, "agreed": None, "readback_version": 0,

@@ -289,3 +289,58 @@ def test_without_the_order_parameter_numbers_are_day_first_as_before():
     st, out = step(ready(TABLE_B, 1), [event('amount_proposal', item='p1', amount=360, date_text='16/10')], TABLE_B, NOW)
     assert st['items'][0]['agreed'] == {'amount': 360, 'date': '2026-10-16'}
     assert 'dates.numeric_order' not in out['unsupported']
+
+
+# 4. coded product types
+
+
+def labels_table():
+    table = copy.deepcopy(TABLE_B)
+    table['parameters']['products.labels'] = {'value': {'CC': 'credit card', 'PL': 'personal loan', 'HP': 'hire purchase'},
+                                              'type': 'object', 'confidence': 'quoted'}
+    return table
+
+
+def coded(table):
+    st = new_state()
+    st['identity']['state'] = 'verified'
+    st['stage'], st['pending'] = 'fetch', 'fetch'
+    return step(st, [event('tool_result', tool='get_account', result='ok', data={'ok': True, 'products': [
+        dict(product_id='p1', type='CC', card_last4='4471', past_due=360, minimum_payment=90, days_late=5),
+        dict(product_id='p2', type='PL', past_due=500, minimum_payment=120, days_late=5)]})], table, NOW)
+
+
+def test_engine_speaks_the_label_of_a_coded_type():
+    st, out = coded(labels_table())
+    assert [it['label'] for it in st['items']] == ['credit card ending 4471', 'personal loan']
+    assert 'credit card ending 4471: ' in out['say_next']
+
+
+def test_without_a_label_map_the_code_is_spoken_as_before():
+    st, out = coded(TABLE_B)
+    assert [it['label'] for it in st['items']] == ['CC ending 4471', 'PL']
+    assert 'products.labels' not in out['unsupported']
+
+
+def observe_item(wf, st, words):
+    code = wf['nodes']['negotiate_observe']['pre_actions'][0]['function']['parameters']['properties']['code']['default']
+    v = {'negotiate_reply1': 'amount_proposal', 'negotiate_item1': words, 'negotiate_amount1': '200', 'negotiate_words1': words,
+         'engine_state': json.dumps(st)}
+    exec(code, {'vars': v})
+    return json.loads(v['engine_events'])[0]['item']
+
+
+def test_dispatcher_matches_the_customer_words_against_the_label_of_a_coded_type():
+    from builder.emitter.emit import emit
+    from builder.readers.api_file import parse_api
+    api = parse_api(json.loads((ROOT / 'kit/build-the-builder/tools/openapi.json').read_text()))
+    table = labels_table()
+    st, _ = coded(table)
+    wf = emit(table, api)
+    assert observe_item(wf, st, 'the credit card') == 'p1'
+    assert observe_item(wf, st, 'the loan') == 'p2'
+    assert observe_item(wf, st, 'the one ending 4471') == 'p1'
+    assert observe_item(wf, st, 'the account') is None        # a bare "cc" inside "account" is no match
+    plain = emit(TABLE_B, api)
+    assert observe_item(plain, st, 'the credit card') is None   # the gap: without the map the code never matched
+    assert observe_item(plain, st, 'the one ending 4471') == 'p1'
