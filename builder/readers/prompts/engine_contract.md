@@ -79,7 +79,7 @@ no such rule, give the path with `"confidence": "not_specified"` and no `value`,
 
 `promise_recorded`, `paid_claim`, `all_items_noted_paid`, `transfer_done:<exact queue>`, `attempts_exhausted`,
 `dont_want_twice_verified`, `dont_want_twice_unverified`, `hardship_support_declined`, `dispute`,
-`record_failed_twice`, `identity_failed`, `identity_declined`, `callback_booked`, `callback_refused_twice`,
+`record_failed_twice` (also fired when the transfer to a queue failed twice: the call closes on the service-error row, never as transferred; `transfer_failed_twice` is fired too for a table with a row of its own), `identity_failed`, `identity_declined`, `callback_booked`, `callback_refused_twice`,
 `wrong_number`, `deceased`, `party_unclear_twice`, `fetch_failed_twice`, `first_non_paid_note:<exact note reason>`.
 Rank `precedence` from the brief's precedence statements; rows the brief does not rank share a number.
 

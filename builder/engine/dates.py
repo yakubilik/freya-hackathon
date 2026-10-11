@@ -717,6 +717,31 @@ def _numeric_groups_for_date(tokens):
     return groups
 
 
+_SPOKEN_DIGIT = {"zero": "0", "oh": "0", "o": "0", "nought": "0", "one": "1", "two": "2", "three": "3", "four": "4",
+                 "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9"}
+
+
+def _join_spoken_digits(tokens, runs=(4, 8)):
+    """A run of exactly four or eight single-digit words becomes one digit token: "one nine eight eight" -> "1988", a
+    year said digit by digit (the kit's in_words customers: public A PUB-01/PUB-04 on 2026-10-11 looped on "the rest of
+    the answer" because the year was never read), eight for the whole date. Other runs are left alone: "nine oh two
+    seventy-six" and "twenty four oh six eighty two" are day, month and year as number groups."""
+    out, run = [], []
+    def flush():
+        if len(run) in runs:
+            out.append("".join(_SPOKEN_DIGIT[t] for t in run))
+        else:
+            out.extend(run)
+        run.clear()
+    for t in tokens:
+        if t in _SPOKEN_DIGIT:
+            run.append(t)
+        else:
+            flush(); out.append(t)
+    flush()
+    return out
+
+
 def parse_identity_date(text, parse_rule="day_month_year"):
     """A date of birth as said by a customer -> {"status": "complete|partial|none", "value": 'YYYY-MM-DD'|None, "parts": dict of day/month/year.
     Numbers only are read day, month, year (parse_rule 'day_month_year') or month, day, year ('month_day_year').
@@ -752,7 +777,16 @@ def parse_identity_date(text, parse_rule="day_month_year"):
         else:
             res["parts"] = {"day": a, "month": b, "year": y}
         return _finish_dob(res)
-    tokens = s.split(" ")
+    tokens = _join_spoken_digits(s.split(" "))
+    if len(tokens) == 1 and re.match(r"^\d{8}$", tokens[0]):
+        # "one four zero three one nine eight eight": the whole date digit by digit
+        d8 = tokens[0]
+        a, b, y = int(d8[:2]), int(d8[2:4]), int(d8[4:])
+        if parse_rule == "month_day_year":
+            a, b = b, a
+        if 1 <= a <= 31 and 1 <= b <= 12 and 1800 <= y <= 2100:
+            res["parts"] = {"day": a, "month": b, "year": y}
+            return _finish_dob(res)
     # "fourteen oh three eighty-eight" / "fourteen, three, nineteen eighty-eight": day, month and year as numbers in words
     # (the kit's in_words customers, synthetic F-01 2026-10-11); nothing but number words, exactly three groups
     if not any(t in MONTHS for t in tokens):

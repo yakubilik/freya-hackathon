@@ -2368,3 +2368,22 @@ def test_two_failed_transfers_close_as_service_error_not_transferred():
     assert [w["tool"] for w in out["writes"]] == ["close_call"]
     assert out["writes"][0]["args"] == {"outcome": "no_promise", "reason": "service_error"}
     assert "transfer could not be completed" in out["say_next"]
+
+
+@pytest.mark.parametrize("text,value", [
+    ("fourteen March one nine eight eight", "1988-03-14"),            # public A PUB-01, in_words, 2026-10-11
+    ("The thirtieth of January one nine eight four", "1984-01-30"),   # public A PUB-04, in_words
+    ("March fourteen one nine eight eight", "1988-03-14"),
+    ("one four zero three one nine eight eight", "1988-03-14"),       # the whole date digit by digit
+    ("fourteen oh three eighty-eight", "1988-03-14"),                 # unchanged: a two-word run is not joined
+    ("Nineteenth October Nineteen eighty three", "1983-10-19"),
+])
+def test_identity_date_year_said_digit_by_digit(text, value):
+    from builder.engine.dates import parse_identity_date
+    r = parse_identity_date(text)
+    assert (r["status"], r["value"]) == ("complete", value)
+
+
+def test_identity_date_digit_by_digit_year_alone_is_a_partial():
+    from builder.engine.dates import parse_identity_date
+    assert parse_identity_date("one nine eight eight") == {"status": "partial", "value": None, "parts": {"year": 1988}}
