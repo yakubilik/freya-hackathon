@@ -2297,7 +2297,8 @@ def test_declined_hardship_transfer_keeps_the_call_open_when_the_brief_continues
     assert len(opens) == 1 and "Propose no amount" in opens[0]
     # nothing named in the open reply: noted as hardship and closed, no second question
     st, led, calls, log = drive(base, case, verified(case) + [[E("hardship", text="I lost my job")], [E("refuse")], [E("other", text="No, nothing.")]], table)
-    assert led["outcome"] == "no_promise" and led["reason"] == "hardship" and [c[0] for c in calls][-2:] == ["add_note", "close_call"]
+    assert led["outcome"] == "no_promise" and led["reason"] == "hardship" and [c[0] for c in calls][-1] == "close_call"
+    assert sum(1 for _, o in log if "anything the customer would like to arrange" in o["say_next"]) == 1
     # brief A: the decline closes the call
     st, led, calls, log = drive(base, case, verified(case) + [[E("hardship", text="I lost my job")], [E("refuse")]], TABLE_A)
     assert led["outcome"] == "no_promise" and led["reason"] == "hardship"
