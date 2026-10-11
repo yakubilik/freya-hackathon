@@ -22,7 +22,7 @@ import json
 import re
 from .calendar import (parse_now, parse_date, iso, calendar_from_table, is_business_day,
                        eval_expr, ExprError, EvalError, CalendarError)
-from .dates import (resolve_date, resolve_time, resolve_amount_cents, to_cents, cents_to_number, money_text, amount_words,
+from .dates import (UNITS, resolve_date, resolve_time, resolve_amount_cents, to_cents, cents_to_number, money_text, amount_words,
                     parse_identity_date, parse_digits, parse_year, parse_code, format_date_words, _weekday_mode)
 
 SPEAKING_STAGES = ("party", "callback", "identity", "negotiate", "readback")
@@ -1317,15 +1317,17 @@ def _code_question(q):
     return bool(CODE_QUESTION_RE.search(blob))
 
 
-_DIGIT_WORDS = {"zero": "0", "oh": "0", "o": "0", "nought": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
-                "six": "6", "seven": "7", "eight": "8", "nine": "9"}
+# the spoken digits of dates.py (zero, oh, one .. nine) plus the two ways of saying 0 that only come up letter by letter
+_DIGIT_WORDS = {w: str(v) for w, v in UNITS.items() if v < 10}
+_DIGIT_WORDS.update({"o": "0", "nought": "0"})
 
 
 def _normalise_text_answer(text, rule):
-    """A text answer (postcode, reference, name) as the bank wants it: spoken digits become digits ("seven zero three
-    zero" -> 7030, "double four" -> 44), a code said in groups loses its spaces when the rule says so or when it looks
-    like a code (short alphanumeric groups), case follows the rule ("upper case" / "lower case"). Platform synthetic
-    briefs C and H (2026-10-11): the postcode said in words was sent as words and counted as a wrong answer."""
+    """A free-text answer (a name, a town, a word) as the bank wants it. Questions that ask for a code (postcode,
+    reference, number: _code_question) do not come here, parse_code reads those. Spoken digits become digits ("seven
+    zero three zero" -> 7030, "double four" -> 44), a value that still looks like a code (short alphanumeric groups)
+    loses its spaces and goes upper case, otherwise case follows the rule ("lower case"). Platform synthetic briefs C and
+    H (2026-10-11): the postcode said in words was sent as words and counted as a wrong answer."""
     s = str(text or "").strip().rstrip(".,;!?")
     if not s:
         return ""
