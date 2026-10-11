@@ -982,3 +982,644 @@ def test_ext053_dont_know_exactly_comes_as_refuse(base):
     engine made a persuasion offer for Friday instead of proposing the deadline."""
     check(base, "EXT-053", verified(EXTENDED["EXT-053"]) + [[E("pay_today_no"), E("vague_period", date="when my salary comes in")],
                                                            [E("refuse")], [E("accept_offer")], [E("confirm")]])
+
+
+# ---------------------------------------------------------------------------------------------
+# night hardening 2026-10-11: loops, lost events, counters, same-turn combinations, spoken numbers
+
+
+def expect(outcome, reason=None, promises=(), notes=(), transfers=()):
+    return {"outcome": outcome, "reason": reason, "promises": [{"product_id": p, "amount": a, "date": d} for p, a, d in promises],
+            "notes": [{"product_id": p, "reason": r} for p, r in notes], "callbacks": [], "transfers": [{"queue": q} for q in transfers]}
+
+
+def readbacks(log):
+    return [o["readback_text"] for _, o in log if o["readback_text"]]
+
+
+def speaking_silent(log):
+    """Speaking turns the engine returned without anything to say."""
+    return [(ev, o) for ev, o in log if o["engine_next"] in engine.SPEAKING_STAGES
+            and not o["say_next"] and not o["mandatory_lines"] and not o["readback_text"]]
+
+
+# 1. the read-back loop
+
+
+@pytest.mark.parametrize("restated", [
+    [E("change", date="today")],
+    [E("change", date="today"), E("amount_proposal", amount=420, date="today")],
+    [E("amount_proposal", amount=420)],
+    [E("date_proposal", date="Wednesday 14 October")],
+    [E("pay_today_yes")],
+    [E("accept_offer")],
+    [E("confirm"), E("change", date="today", amount=420)],
+])
+def test_readback_restated_in_other_words_is_the_confirmation(base, restated):
+    """Platform EXT-023 (2026-10-10): at the read-back of 420 for today the customer said "I can pay the full amount
+    today" (extracted as change / date / amount) and the engine read the same promise back for 30 turns."""
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")], restated])
+    assert tools_of(calls).count("create_promise") == 1
+    assert len(readbacks(log)) == 1
+
+
+def test_readback_with_a_real_change_is_read_back_again(base):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")], [E("change", amount=200)], [E("confirm")]],
+                                expected=expect("promise", promises=[("p1", 200.0, "2026-10-14")]))
+    assert len(readbacks(log)) == 2
+
+
+def test_three_readbacks_without_a_yes_end_as_refused_brief_a(base):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")], [E("other", text="Hmm.")],
+                                                                              [E("question_back")], [E("other", text="Well.")], [E("confirm")]],
+                                expected=expect("no_promise", "refused"))
+    assert len(readbacks(log)) == 3 and "create_promise" not in tools_of(calls)
+    assert not speaking_silent(log)
+
+
+def test_three_denies_at_the_readback_end_as_refused_brief_b(base):
+    st, led, calls, log = check(base, "PUB-11", verified(PUBLIC["PUB-11"]) + [[E("pay_today_no"), E("date_proposal", date="this Friday")],
+                                                                              [E("deny")], [E("deny")], [E("deny")]],
+                                expected=expect("no_promise", "refused", notes=[("p1", "refused"), ("p2", "refused"), ("p3", "refused")]))
+    assert len(readbacks(log)) == 3 and "create_promise" not in tools_of(calls)
+
+
+# 2. the goodbye loop
+
+
+@pytest.mark.parametrize("bye", ["Thank you, goodbye.", "Okay, bye bye!", "That's all, thanks.", "I have to go now.", "Thanks, that will be all."])
+def test_goodbye_during_negotiation_closes_with_the_table_row(base, bye):
+    """Platform EXT-023 (2026-10-10): the pay-today answer was lost, the customer said goodbye twenty times and the
+    model said goodbye back every time; the call ended on the platform's maximum duration without close_call."""
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("other", text=bye)]], expected=expect("no_promise", "refused"))
+    assert tools_of(calls) == ["verify_identity", "verify_identity", "get_account", "close_call"]
+    assert not speaking_silent(log)
+
+
+def test_goodbye_said_as_dont_want_to_talk_closes_at_once(base):
+    check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")], [E("dont_want_to_talk", text="No, that's all, goodbye.")]],
+          expected=expect("no_promise", "refused"))
+
+
+def test_goodbye_before_verification_closes_as_declined(base):
+    st, led, calls, log = check(base, "PUB-01", [[E("party_confirmed")], [E("other", text="No thanks, bye.")]], expected=expect("not_verified", "declined"))
+    assert tools_of(calls) == ["close_call"]
+
+
+def test_goodbye_before_confirming_the_party_closes_as_unclear(base):
+    check(base, "PUB-01", [[E("other", text="Goodbye.")]], expected=expect("not_reached", "unclear"))
+
+
+def test_goodbye_from_a_third_party_closes_without_a_callback(base):
+    check(base, "PUB-02", [[E("party_other")], [E("other", text="I have to go, goodbye.")]], expected=expect("not_reached", "no_callback"))
+
+
+def test_three_replies_that_answer_nothing_end_the_conversation(base):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("other", text="Hmm.")], [E("other")], [E("other", text="Right.")]],
+                                expected=expect("no_promise", "refused"))
+    assert not speaking_silent(log)
+
+
+def test_two_idle_replies_then_an_answer_continue_normally(base):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("other", text="Hmm.")], [E("other")], [E("pay_today_yes")],
+                                                                              [E("other", text="Hmm.")], [E("confirm")]])
+    assert st["global"]["idle_turns"] == 0
+
+
+def test_thanks_alone_is_not_a_goodbye(base):
+    check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("other", text="Thank you.")], [E("pay_today_yes")], [E("confirm")]])
+
+
+# 3. identity counters
+
+
+def identity_state(answer="12 July 1991"):
+    st, out = step({}, [], TABLE_A, "2026-10-14T11:00")
+    st, out = step(st, [E("party_confirmed")], TABLE_A, "2026-10-14T11:00")
+    st, out = step(st, [E("id_answer", text=answer)], TABLE_A, "2026-10-14T11:00")
+    assert [w["tool"] for w in out["writes"]] == ["verify_identity"]
+    return st, out
+
+
+def verify_result(st, data):
+    ev = {"kind": "tool_result", "tool": "verify_identity", "result": "ok" if data.get("ok") else "failed", "data": data, "args": {}}
+    return step(st, [ev], TABLE_A, "2026-10-14T11:00")
+
+
+def test_wrong_answers_are_counted_when_the_bank_counter_does_not_move():
+    """Platform EXT-027/028 (2026-10-10): four verify calls, then get_account. The engine must keep its own count."""
+    st, out = identity_state()
+    for n in (1, 2):
+        st, out = verify_result(st, {"ok": True, "verified": False, "wrong_answers_left": 3})
+        assert st["identity"]["wrong"] == n and st["identity"]["state"] == "pending" and out["engine_next"] == "identity"
+        assert out["say_next"] or out["mandatory_lines"]
+        st, out = step(st, [E("id_answer", text="12 July 1991")], TABLE_A, "2026-10-14T11:00")
+    st, out = verify_result(st, {"ok": True, "verified": False, "wrong_answers_left": 3})
+    assert st["identity"]["state"] == "failed" and out["close"] == {"outcome": "not_verified", "reason": "failed"}
+    assert [w["tool"] for w in out["writes"]] == ["close_call"]
+
+
+def test_wrong_answers_are_counted_without_a_bank_counter():
+    st, out = identity_state()
+    for _ in range(2):
+        st, out = verify_result(st, {"ok": True, "verified": False})
+        st, out = step(st, [E("id_answer", text="12 July 1991")], TABLE_A, "2026-10-14T11:00")
+    st, out = verify_result(st, {"ok": True, "verified": False})
+    assert st["identity"]["wrong"] == 3 and out["close"] == {"outcome": "not_verified", "reason": "failed"}
+
+
+def test_bank_with_no_answers_left_ends_the_check_even_when_the_engine_counted_fewer():
+    st, out = identity_state()
+    st, out = verify_result(st, {"ok": True, "verified": False, "wrong_answers_left": 0})
+    assert st["identity"]["state"] == "failed" and out["close"] == {"outcome": "not_verified", "reason": "failed"}
+
+
+def test_empty_identity_answer_is_asked_again_and_the_next_wrong_answer_still_counts():
+    st, out = step({}, [], TABLE_A, "2026-10-14T11:00")
+    st, out = step(st, [E("party_confirmed")], TABLE_A, "2026-10-14T11:00")
+    st, out = step(st, [E("id_answer", text="")], TABLE_A, "2026-10-14T11:00")
+    assert out["writes"] == [] and out["engine_next"] == "identity" and "date of birth" in (out["say_next"] + " ".join(out["mandatory_lines"])).lower()
+    st, out = step(st, [E("id_answer", text="12 July 1991")], TABLE_A, "2026-10-14T11:00")
+    assert [w["tool"] for w in out["writes"]] == ["verify_identity"]
+    st, out = verify_result(st, {"ok": True, "verified": False, "wrong_answers_left": 2})
+    assert st["identity"]["wrong"] == 1
+
+
+def test_swap_hint_is_not_counted_unless_the_table_says_so():
+    st, out = identity_state("21 July 1991")
+    st, out = verify_result(st, {"ok": True, "verified": False, "wrong_answers_left": 3, "hint": "day_month_swapped"})
+    assert st["identity"]["wrong"] == 0 and st["identity"]["hinted"] is True and "month as a word" in out["say_next"]
+
+
+# 4. same-turn combinations
+
+
+@pytest.mark.parametrize("item", [None, "p1"])
+@pytest.mark.parametrize("order", ["date_first", "amount_first"])
+def test_pay_today_yes_with_a_smaller_amount_records_the_amount(base, item, order):
+    """Platform EXT-064 (2026-10-10): "yes, today, but only 200" recorded 420."""
+    evs = [E("pay_today_yes", item=item), E("amount_proposal", item=item, amount=200)]
+    if order == "amount_first":
+        evs.reverse()
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [evs, [E("confirm")]],
+                                expected=expect("promise", promises=[("p1", 200.0, "2026-10-14")]))
+    assert len(readbacks(log)) == 1 and "200 on Wednesday 14 October 2026" in readbacks(log)[0]
+
+
+@pytest.mark.parametrize("item", [None, "p1"])
+@pytest.mark.parametrize("order", ["date_first", "amount_first"])
+def test_date_with_an_amount_in_the_same_reply_takes_that_date(base, item, order):
+    evs = [E("date_proposal", item=item, date="this Friday"), E("amount_proposal", item=item, amount=200)]
+    if order == "amount_first":
+        evs.reverse()
+    check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_no")] + evs, [E("confirm")]],
+          expected=expect("promise", promises=[("p1", 200.0, "2026-10-16")]))
+
+
+@pytest.mark.parametrize("item", [None, "p1"])
+def test_pay_today_no_with_a_date_records_the_full_amount_on_that_date(base, item):
+    st, led, calls, log = check(base, "PUB-10", verified(PUBLIC["PUB-10"]) + [[E("pay_today_no", item=item), E("date_proposal", item=item, date="this Friday")], [E("confirm")]])
+    assert st["items"][0]["attempts_used"] == 0
+
+
+@pytest.mark.parametrize("item", [None, "p1"])
+@pytest.mark.parametrize("order", ["accept_first", "amount_first"])
+def test_accepting_the_offer_with_a_different_amount_takes_the_offer_date(base, item, order):
+    """PUB-06: too much, the floor 637.50 is offered for today; "fine, today, but I can do a thousand"."""
+    evs = [E("accept_offer", item=item), E("amount_proposal", item=item, amount=1000)]
+    if order == "amount_first":
+        evs.reverse()
+    st, led, calls, log = check(base, "PUB-06", verified(PUBLIC["PUB-06"]) + [[E("too_much", item=item)], evs, [E("confirm")]],
+                                expected=expect("promise", promises=[("p1", 1000.0, "2026-10-14")]))
+    assert st["items"][0]["attempts_used"] == 0
+
+
+@pytest.mark.parametrize("item", [None, "p1"])
+def test_too_much_with_an_own_amount_records_that_amount_without_a_floor_offer(base, item):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("too_much", item=item), E("amount_proposal", item=item, amount=150)], [E("confirm")]],
+                                expected=expect("promise", promises=[("p1", 150.0, "2026-10-14")]))
+    assert st["items"][0]["floor_offered"] is False and st["items"][0]["attempts_used"] == 0
+
+
+def test_too_much_with_an_amount_below_the_floor_offers_the_floor_once(base):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("too_much"), E("amount_proposal", amount=50)], [E("accept_offer")], [E("confirm")]],
+                                expected=expect("promise", promises=[("p1", 126.0, "2026-10-14")]))
+    assert [o["kind"] for o in st["items"][0]["offers_made"]] == ["floor"]
+
+
+def test_brief_b_pay_today_yes_for_one_product_with_a_smaller_amount(base):
+    st, led, calls, log = check(base, "PUB-11", verified(PUBLIC["PUB-11"]) + [[E("pay_today_yes", item="p1"), E("amount_proposal", item="p1", amount=100)],
+                                                                              [E("date_proposal", date="this Friday")], [E("confirm")]],
+                                expected=expect("promise", promises=[("p1", 100.0, "2026-10-14"), ("p2", 640.0, "2026-10-16"), ("p3", 75.0, "2026-10-16")]))
+
+
+# 5. persuasion attempts never exceed the table
+
+
+def attempts_within(st):
+    for it in st["items"]:
+        made = [o for o in it["offers_made"] if o["kind"] == "attempt"]
+        assert len(made) <= it["attempts_allowed"] and it["attempts_used"] <= it["attempts_allowed"], (it["item_id"], it["offers_made"])
+        assert len(made) == it["attempts_used"]
+
+
+def test_refusals_beyond_the_allowed_attempts_close_instead_of_offering_again_early(base):
+    st, led, calls, log = check(base, "EXT-076", verified(EXTENDED["EXT-076"]) + [[E("refuse")]] * 6)
+    attempts_within(st)
+    assert st["items"][0]["attempts_used"] == 1 and tools_of(calls) == ["verify_identity", "verify_identity", "get_account", "close_call"]
+    assert len([o for _, o in log if "Propose" in o["say_next"]]) == 1
+
+
+def test_too_much_then_refusals_late_band(base):
+    st, led, calls, log = check(base, "EXT-069", verified(EXTENDED["EXT-069"]) + [[E("too_much")]] + [[E("refuse")]] * 5,
+                                expected=expect("no_promise", "refused"))
+    attempts_within(st)
+    assert [o["kind"] for o in st["items"][0]["offers_made"]] == ["floor", "attempt", "attempt"]
+
+
+def test_too_much_said_twice_then_refusals_early_band(base):
+    st, led, calls, log = check(base, "EXT-071", verified(EXTENDED["EXT-071"]) + [[E("too_much")], [E("too_much")], [E("refuse")], [E("refuse")], [E("refuse")]])
+    attempts_within(st)
+    assert [o["kind"] for o in st["items"][0]["offers_made"]] == ["floor", "attempt"]
+
+
+def test_vague_twice_then_refusals_late_band(base):
+    st, led, calls, log = check(base, "EXT-053", verified(EXTENDED["EXT-053"]) + [[E("pay_today_no"), E("vague_period", date="when my salary comes in")],
+                                                                                   [E("vague_period", date="I cannot say")]] + [[E("refuse")]] * 5,
+                                expected=expect("no_promise", "refused"))
+    attempts_within(st)
+    assert [o["kind"] for o in st["items"][0]["offers_made"]] == ["deadline", "attempt", "attempt"]
+
+
+def test_below_floor_then_refusals_early_band(base):
+    st, led, calls, log = check(base, "EXT-068", verified(EXTENDED["EXT-068"]) + [[E("amount_proposal", amount=100, date="today")]] + [[E("refuse")]] * 4)
+    attempts_within(st)
+    assert [o["kind"] for o in st["items"][0]["offers_made"]] == ["floor", "attempt"]
+
+
+def test_denials_of_the_offer_count_like_refusals(base):
+    st, led, calls, log = check(base, "EXT-076", verified(EXTENDED["EXT-076"]) + [[E("pay_today_no")], [E("deny")], [E("deny")], [E("deny")]])
+    attempts_within(st)
+
+
+# 6. the engine is never silent in a speaking stage
+
+PUBLIC_TURNS = {
+    "PUB-01": lambda c: verified(c) + [[E("pay_today_yes")], [E("confirm")]],
+    "PUB-02": lambda c: [[E("party_other"), E("question_back"), E("other")], [E("callback_offer", date="tomorrow", time="around eleven in the morning")]],
+    "PUB-03": lambda c: [[E("party_confirmed")], [E("id_answer", text="12 July 1991")], [E("id_answer", text="21 August 1992")], [E("id_answer", text="21 July 1990")]],
+    "PUB-04": lambda c: verified(c) + [[E("date_proposal", date="6 November"), E("robot_question")], [E("accept_offer")], [E("confirm")]],
+    "PUB-05": lambda c: verified(c) + [[E("hardship"), E("other")], [E("refuse")]],
+    "PUB-06": lambda c: verified(c) + [[E("too_much")], [E("accept_offer", date="this Friday")], [E("confirm")]],
+    "PUB-07": lambda c: verified(c) + [[E("pay_today_no"), E("vague_period", date="the week after next")], [E("date_proposal", date="Monday the 26th")],
+                                       [E("accept_offer")], [E("confirm")]],
+    "PUB-08": lambda c: verified(c) + [[E("paid")]],
+    "PUB-09": lambda c: verified(c) + [[E("plan_request")]],
+    "PUB-10": lambda c: verified(c) + [[E("pay_today_no"), E("date_proposal", date="this Friday")], [E("confirm")]],
+    "PUB-11": lambda c: verified(c) + [[E("pay_today_no"), E("date_proposal", date="this Friday")], [E("confirm")]],
+    "PUB-12": lambda c: [[E("party_confirmed")], [E("id_answer", text="19 October 1983")], [E("id_answer", text="4401")], [E("id_answer", text="4410")],
+                         [E("date_proposal", item="p1", date="tomorrow")], [E("refuse")], [E("refuse")], [E("refuse")], [E("confirm")]],
+    "PUB-13": lambda c: verified(c) + [[E("pay_today_no"), E("date_proposal", date="30 October")], [E("confirm")]],
+}
+# kinds a stage does not expect: a noise-only turn before each real turn, and one more noise event inside it
+NOISE = {"party": ["id_answer", "deny", "vague_period"], "callback": ["id_answer", "confirm", "too_much"],
+         "identity": ["pay_today_yes", "accept_offer", "change", "callback_offer"],
+         "negotiate": ["id_answer", "party_confirmed", "callback_offer", "id_decline"],
+         "readback": ["id_answer", "party_confirmed", "callback_offer"]}
+
+
+@pytest.mark.parametrize("case_id", sorted(PUBLIC_TURNS))
+def test_every_speaking_turn_has_text_even_with_noise(base, case_id):
+    """Platform EXT-023 (2026-10-10): a turn the engine answered with nothing let the model invent "I have processed
+    the payment of 420 using your card"."""
+    import random
+    rnd = random.Random(int(case_id[-2:]))
+    case = PUBLIC[case_id]
+    table = TABLE_B if case.get("brief") == "B" else TABLE_A
+    status, s = replay.http(base, "/v1/practice/sessions", {"customer": case})
+    cid = s["variables"]["customer_id"]
+    now = case["variables"]["now"]
+    st = new_state(dict(s["variables"]))
+    log = []
+    calls = []
+
+    def apply(events):
+        nonlocal st
+        st, out = step(st, events, table, now)
+        log.append((events, out))
+        guard = 0
+        while out["writes"] and not st.get("closed"):
+            guard += 1
+            assert guard < 20
+            w = out["writes"][0]
+            status, body = replay.http(base, "/v1/" + w["tool"], dict(w["args"], customer_id=cid))
+            calls.append(w["tool"])
+            ev = {"kind": "tool_result", "tool": w["tool"], "item": w.get("item_id"), "result": result_class(status, body), "data": body, "args": w["args"]}
+            st, out = step(st, [ev], table, now)
+            log.append(([ev], out))
+
+    apply([])
+    noisy_stages = set()
+    for turn in PUBLIC_TURNS[case_id](case):
+        if st.get("closed"):
+            break
+        stage = st["stage"]
+        if stage in NOISE and stage not in noisy_stages:
+            noisy_stages.add(stage)                      # one noise-only turn per stage (the party stage counts its asks)
+            apply([E(rnd.choice(NOISE[stage]), text="x")])
+        if st.get("closed"):
+            break
+        apply(turn + [E(rnd.choice(NOISE.get(st["stage"], ["id_answer"])), text="x")])
+    status, led = replay.http(base, "/v1/practice/ledger/" + cid)
+    exp = case["expected"]
+    assert (led["outcome"], led["reason"]) == (exp["outcome"], exp["reason"]), (case_id, calls)
+    assert [(p["product_id"], float(p["amount"]), p["date"]) for p in led["promises"]] == [(p["product_id"], float(p["amount"]), p["date"]) for p in exp["promises"]]
+    assert calls.count("close_call") == 1 and calls[-1] == "close_call" and st["closed"]
+    assert not speaking_silent(log), [(ev, o["engine_next"], o["what_to_do_next"]) for ev, o in speaking_silent(log)]
+    for _, o in log:
+        if o["engine_next"] in engine.SPEAKING_STAGES:
+            assert o["what_to_do_next"]
+
+
+def test_question_about_an_item_that_was_noted_in_the_same_reply_is_not_asked(base):
+    """Brief B: "the card is paid" and a garbled amount for it in the same reply left the engine parked on
+    which_amount for an item that is no longer open, with nothing to say."""
+    st, led, calls, log = check(base, "PUB-11", verified(PUBLIC["PUB-11"]) + [[E("paid", item="p1"), E("amount_proposal", item="p1")],
+                                                                              [E("pay_today_no"), E("date_proposal", date="this Friday")], [E("confirm")]],
+                                expected=expect("promise", promises=[("p2", 640.0, "2026-10-16"), ("p3", 75.0, "2026-10-16")], notes=[("p1", "paid")]))
+    assert not speaking_silent(log)
+
+
+def test_support_offer_is_repeated_when_the_reply_answers_nothing(base):
+    st, led, calls, log = check(base, "PUB-05", verified(PUBLIC["PUB-05"]) + [[E("hardship")], [E("question_back")], [E("refuse")]])
+    assert sum(1 for _, o in log if "customer support team" in o["say_next"]) == 2
+    assert not speaking_silent(log)
+
+
+# 7. spoken numbers, self-corrections, amounts in words
+
+
+def test_digits_split_across_two_turns_and_said_as_tens(base):
+    from builder.engine.dates import parse_digits
+    assert parse_digits("four four", 4) == {"status": "partial", "value": "44"}
+    assert parse_digits("forty four seventy one", 4) == {"status": "complete", "value": "4471"}
+    assert parse_digits("four oh seven one", 4) == {"status": "complete", "value": "4071"}
+    assert parse_digits("four four, sorry, four five seven one", 4) == {"status": "complete", "value": "4571"}
+    st, led, calls, log = check(base, "EXT-023", [[E("party_confirmed")], [E("id_answer", text="14 March 1988")], [E("id_answer", text="four four")],
+                                                  [E("id_answer", text="seven one")], [E("pay_today_yes")], [E("confirm")]])
+    assert calls[1][1] == {"field": "phone_last4", "answer": "4471"}
+    assert any("rest" in o["say_next"] for _, o in log)
+
+
+def test_self_corrections_take_the_last_value():
+    from builder.engine.dates import resolve_date, resolve_amount_cents, parse_identity_date
+    now = "2026-10-12T11:00"
+    assert resolve_date("the 21st, sorry, the 20th", now)["date"] == "2026-10-20"
+    assert resolve_date("Friday, no wait, Monday", now)["date"] == "2026-10-19"
+    assert resolve_date("sorry, next Friday", now)["date"] == "2026-10-23"
+    assert resolve_date("the 20th", now)["date"] == "2026-10-20"
+    assert resolve_amount_cents("four hundred, sorry, four fifty") == 45000
+    assert resolve_amount_cents("200, I mean 250") == 25000
+    assert resolve_amount_cents("250, sorry") == 25000
+    assert parse_identity_date("14 March 1988, sorry, 1989")["value"] == "1989-03-14"
+    assert parse_identity_date("the 3rd of June, no wait, the 4th of June 1987")["value"] == "1987-06-04"
+    assert parse_identity_date("the third of June, nineteen eighty-seven")["value"] == "1987-06-03"
+
+
+def test_amounts_in_words_with_and_hyphens_and_a_hundred():
+    from builder.engine.dates import resolve_amount_cents
+    assert resolve_amount_cents("four hundred and fifty-five") == 45500
+    assert resolve_amount_cents("a hundred and fifty") == 15000
+    assert resolve_amount_cents("one hundred and fifty euros and twenty cents") == 15020
+    assert resolve_amount_cents("twelve hundred") == 120000
+    assert resolve_amount_cents("four-fifty") == 45000
+    assert resolve_amount_cents("oh, four hundred") == 40000
+    assert resolve_amount_cents("about two hundred and fifty, with a ten percent discount") is None
+    assert resolve_amount_cents("1,250.00") == 125000
+
+
+def test_ordinal_suffixes_and_ordinal_words_in_dates():
+    from builder.engine.dates import resolve_date
+    now = "2026-10-12T11:00"
+    assert resolve_date("the 1st of November", now)["date"] == "2026-11-01"
+    assert resolve_date("the twenty-first", now)["date"] == "2026-10-21"
+    assert resolve_date("Wednesday the 14th", now)["date"] == "2026-10-14"
+    assert resolve_date("22nd October", now)["date"] == "2026-10-22"
+    assert resolve_date("the thirtieth", now)["date"] == "2026-10-30"
+
+
+def test_goodbye_next_to_an_answer_is_politeness_not_the_end(base):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes"), E("other", text="Thanks, bye!")],
+                                                                              [E("confirm"), E("other", text="Goodbye.")]])
+    assert tools_of(calls).count("create_promise") == 1
+
+
+def test_dont_hang_up_and_being_done_with_it_are_not_goodbyes():
+    from builder.engine.step import _goodbye_like
+    assert not _goodbye_like("Please do not hang up, I need a moment.")
+    assert not _goodbye_like("I am done with this card, how much is it?")
+    assert _goodbye_like("Thank you, goodbye.") and _goodbye_like("Right, that's all then.") and _goodbye_like("I have to go now.")
+
+
+# codex review round 1 (runs/night/engine-review-round1.md)
+
+
+def test_amount_that_reaches_no_product_at_a_joint_readback_is_not_a_confirmation(base):
+    """Two products agreed, "200" with no product named: nothing is re-agreed, so nothing is confirmed."""
+    st, led, calls, log = check(base, "PUB-11", verified(PUBLIC["PUB-11"]) + [[E("pay_today_no"), E("date_proposal", date="this Friday")],
+                                                                              [E("amount_proposal", amount=200)], [E("confirm")]])
+    assert len(readbacks(log)) == 2 and tools_of(calls).count("create_promise") == 3
+
+
+def test_accept_offer_with_a_day_in_its_span_at_the_readback_is_a_change(base):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")], [dict(E("accept_offer"), span="this Friday")], [E("confirm")]],
+                                expected=expect("promise", promises=[("p1", 420.0, "2026-10-16")]))
+    assert len(readbacks(log)) == 2
+
+
+def test_readback_rounds_count_per_version_with_a_total_cap(base):
+    turns = verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")], [E("other", text="Hmm.")], [E("other")], [E("change", amount=200)],
+                                          [E("other", text="Hmm.")], [E("other")], [E("confirm")]]
+    st, led, calls, log = check(base, "PUB-01", turns, expected=expect("promise", promises=[("p1", 200.0, "2026-10-14")]))
+    assert len(readbacks(log)) == 6
+    turns = verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")]] + [[E("change", amount=a)] for a in (200, 300, 200, 300, 200)] + [[E("other")], [E("confirm")]]
+    st, led, calls, log = check(base, "PUB-01", turns, expected=expect("no_promise", "refused"))
+    assert len(readbacks(log)) == 6
+
+
+def test_negated_farewells_are_not_goodbyes():
+    from builder.engine.step import _goodbye_like
+    assert not _goodbye_like("I am not hanging up, I need you to explain.")
+    assert not _goodbye_like("Don't say goodbye yet, I have a question.")
+    assert not _goodbye_like("I do not have to go anywhere.")
+    assert _goodbye_like("Bye now.")
+
+
+def test_implied_offer_date_stays_with_its_own_product():
+    from builder.engine.step import _share_bundle_date as share
+    C = engine._context(TABLE_A, "2026-10-14T11:00")
+
+    def _share_bundle_date(st, group, common, key, accepted=False):
+        return share(C, st, group, common, key, accepted)
+    st = new_state()
+    st["items"] = [{"item_id": "p1", "status": "open", "offer": {"amount": 100, "date": "2026-10-16"}},
+                   {"item_id": "p2", "status": "open", "offer": {"amount": 200, "date": "2026-10-20"}}]
+    common = [E("accept_offer")]
+    own = [E("amount_proposal", item="p2", amount=200)]
+    shared = _share_bundle_date(st, common, None, None)
+    _share_bundle_date(st, own, shared, "p2")
+    assert shared is None and own[0]["date_text"] is None      # the engine then uses p2's own offer date
+    st["items"][1]["offer"] = None
+    own = [E("accept_offer", item="p1"), E("amount_proposal", item="p1", amount=150)]
+    _share_bundle_date(st, own, None, "p1")
+    assert own[1]["date_text"] == "2026-10-16"
+    spoken = [E("date_proposal", date="Friday")]
+    assert _share_bundle_date(st, spoken, None, None) == "Friday"
+
+
+def test_bank_exhaustion_is_final_even_with_a_hint_or_a_service_error():
+    st, out = identity_state("21 July 1991")
+    st, out = verify_result(st, {"ok": True, "verified": False, "wrong_answers_left": 0, "hint": "day_month_swapped"})
+    assert st["identity"]["state"] == "failed" and out["close"] == {"outcome": "not_verified", "reason": "failed"}
+    st, out = identity_state()
+    st, out = verify_result(st, {"ok": False, "wrong_answers_left": 0, "error": "verification attempts over"})
+    assert st["identity"]["state"] == "failed" and out["close"] == {"outcome": "not_verified", "reason": "failed"}
+    st, out = identity_state()
+    st, out = verify_result(st, {"ok": False, "error": "answer is not a date. Send it as YYYY-MM-DD."})
+    assert st["identity"]["state"] == "pending" and st["identity"]["wrong"] == 0 and out["engine_next"] == "identity"
+
+
+def test_hardship_decline_said_as_a_vague_day_closes_the_hardship_path(base):
+    st, led, calls, log = check(base, "PUB-05", verified(PUBLIC["PUB-05"]) + [[E("hardship")], [E("vague_period", date="when I get paid")]])
+    assert "transfer_to_agent" not in tools_of(calls) and st["items"][0]["attempts_used"] == 0
+
+
+def test_malformed_amount_never_leaves_the_engine_silent():
+    st, out = step({}, [], TABLE_A, "2026-10-14T11:00")
+    st2, out = step(st, [{"kind": "amount_proposal", "amount": {"value": 200}}], TABLE_A, "2026-10-14T11:00")
+    assert out["say_next"] or out["mandatory_lines"]
+    engine.DEBUG_RAISE = False
+    st3, out = step(st, [{"kind": "party_confirmed", "item": object}], TABLE_A, "2026-10-14T11:00")
+    assert out["say_next"] or out["mandatory_lines"]
+
+
+def test_corrections_in_order_and_comparisons_are_not_corrections():
+    from builder.engine.dates import resolve_date, resolve_amount_cents, parse_identity_date, parse_digits
+    now = "2026-10-14T11:00"
+    assert resolve_date("21 November, sorry, the 20th", now)["date"] == "2026-11-20"
+    assert resolve_date("the 20th of November 2026, actually the 21st", now)["date"] == "2026-11-21"
+    assert resolve_amount_cents("200 rather than 400") == 20000
+    assert resolve_amount_cents("200, I mean 250, sorry") == 25000
+    assert resolve_amount_cents("sorry, 250") == 25000
+    assert parse_digits("4471 rather than 4417", 4)["status"] == "none"
+    assert parse_identity_date("14 March 1988, sorry, the 15th, actually, 1989")["value"] == "1989-03-15"
+
+
+# codex review round 2 (runs/night/engine-review-round2.md)
+
+
+def test_a_restatement_next_to_an_unreached_amount_is_not_a_confirmation(base):
+    st, led, calls, log = check(base, "PUB-11", verified(PUBLIC["PUB-11"]) + [[E("pay_today_no"), E("date_proposal", date="this Friday")],
+                                                                              [E("amount_proposal", item="p1", amount=220), E("amount_proposal", amount=200)],
+                                                                              [E("confirm")]])
+    assert len(readbacks(log)) == 2
+
+
+def test_acceptance_at_the_readback_is_classified_by_what_its_words_resolve_to(base):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")], [dict(E("accept_offer"), span="yes that is fine")]])
+    assert len(readbacks(log)) == 1 and tools_of(calls).count("create_promise") == 1
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")], [E("accept_offer", text="fine but make it this Friday")], [E("confirm")]],
+                                expected=expect("promise", promises=[("p1", 420.0, "2026-10-16")]))
+    assert len(readbacks(log)) == 2
+
+
+def test_amount_in_words_with_a_day_in_the_same_reply_takes_that_day(base):
+    check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("amount_proposal", text="two hundred"), E("date_proposal", date="this Friday")], [E("confirm")]],
+          expected=expect("promise", promises=[("p1", 200.0, "2026-10-16")]))
+
+
+def test_seven_genuine_changes_hit_the_total_readback_cap(base):
+    turns = verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")]] + [[E("change", amount=a)] for a in (200, 300, 200, 300, 200, 300, 200)] + [[E("confirm")]]
+    st, led, calls, log = check(base, "PUB-01", turns, expected=expect("no_promise", "refused"))
+    assert len(readbacks(log)) == 6 and "create_promise" not in tools_of(calls)
+
+
+def test_bank_count_is_kept_on_an_exempt_hint_and_overloaded_is_not_over():
+    st, out = identity_state("21 July 1991")
+    st, out = verify_result(st, {"ok": True, "verified": False, "wrong_answers_left": 1, "hint": "day_month_swapped"})
+    assert st["identity"]["wrong"] == 2 and st["identity"]["state"] == "pending"
+    st, out = identity_state()
+    st, out = verify_result(st, {"ok": False, "error": "server overloaded"})
+    assert st["identity"]["state"] == "pending" and st["identity"]["wrong"] == 0 and out["engine_next"] == "identity"
+
+
+def test_goodbye_while_can_i_help_is_pending_closes(base):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("human")], [E("other", text="Goodbye.")]], expected=expect("no_promise", "refused"))
+    assert "transfer_to_agent" not in tools_of(calls)
+
+
+def test_goodbye_as_the_decline_of_the_support_offer_keeps_the_hardship_close(base):
+    check(base, "PUB-05", verified(PUBLIC["PUB-05"]) + [[E("hardship")], [E("other", text="No thanks, goodbye.")]])
+
+
+def test_corrections_never_turn_a_day_into_an_amount_or_revive_a_withdrawn_value():
+    from builder.engine.dates import resolve_date, resolve_amount_cents, parse_digits
+    assert resolve_amount_cents("200 on 20 October, sorry, the 21st") == 20000
+    assert resolve_amount_cents("two hundred on the twentieth, sorry, the twenty-first") == 20000
+    assert resolve_amount_cents("200 today, actually, I can only pay 20 percent") is None
+    assert resolve_amount_cents("I can pay 200, sorry about the delay") == 20000
+    assert parse_digits("4471, sorry, 44712", 4)["status"] == "none"
+    assert resolve_date("21 November, sorry, the 31st", "2026-10-14T11:00")["kind"] == "none"
+    assert resolve_date("21 December, sorry, the 31st", "2026-11-14T11:00")["date"] == "2026-12-31"
+    assert resolve_date("the 20th, sorry, next week", "2026-10-14T11:00")["kind"] == "vague"
+
+
+# codex review round 3 (runs/night/engine-review-round3.md)
+
+
+def test_acceptance_whose_words_carry_another_amount_is_a_change(base):
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")], [E("accept_offer", text="yes but only two hundred")], [E("confirm")]],
+                                expected=expect("promise", promises=[("p1", 200.0, "2026-10-14")]))
+    assert len(readbacks(log)) == 2
+    st, led, calls, log = check(base, "PUB-01", verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")], [E("accept_offer", text="yes, 420 today is fine")]])
+    assert len(readbacks(log)) == 1
+
+
+def test_small_corrected_amounts_are_amounts_not_days():
+    from builder.engine.dates import resolve_amount_cents
+    assert resolve_amount_cents("200, sorry, 20") == 2000
+    assert resolve_amount_cents("twenty, sorry, twenty five") == 2500
+    assert resolve_amount_cents("200, sorry, 2020") == 202000
+
+
+def test_a_products_own_spoken_day_beats_the_shared_day(base):
+    st, led, calls, log = check(base, "PUB-11", verified(PUBLIC["PUB-11"]) + [[E("date_proposal", date="this Friday"),
+                                                                               dict(E("amount_proposal", item="p1", amount=100), span="100 on this Thursday")], [E("confirm")]],
+                                expected=expect("promise", promises=[("p1", 100.0, "2026-10-15"), ("p2", 640.0, "2026-10-16"), ("p3", 75.0, "2026-10-16")]))
+
+
+def test_incomplete_proposals_at_the_readback_hit_the_limits(base):
+    turns = verified(PUBLIC["PUB-01"]) + [[E("pay_today_yes")]] + [[E("amount_proposal")], [E("date_proposal")]] * 6 + [[E("confirm")]]
+    st, led, calls, log = check(base, "PUB-01", turns, expected=expect("no_promise", "refused"))
+    assert len(readbacks(log)) <= 6 and not speaking_silent(log)
+
+
+def test_unreadable_dob_correction_withdraws_the_answer():
+    from builder.engine.dates import parse_identity_date
+    assert parse_identity_date("14 March 1988, sorry, 19899")["status"] == "none"
+    st, out = step({}, [], TABLE_A, "2026-10-14T11:00")
+    st, out = step(st, [E("party_confirmed")], TABLE_A, "2026-10-14T11:00")
+    st, out = step(st, [E("id_answer", text="14 March 1988, sorry, 19899")], TABLE_A, "2026-10-14T11:00")
+    assert out["writes"] == [] and out["engine_next"] == "identity" and (out["say_next"] or out["mandatory_lines"])
+
+
+def test_nineteen_or_twenty_before_a_month_is_the_day():
+    """Platform EXT-119/122/129/140 (Brief B, 2026-10-11): "Nineteen October nineteen eighty three" parsed as a partial
+    date (the day taken for a year start), the engine asked for the rest, the concatenation gave the 3rd, three wrong
+    answers, not verified. Every customer born on the 19th or 20th who says the date in words."""
+    from builder.engine.dates import parse_identity_date
+    assert parse_identity_date("Nineteen October nineteen eighty three", "day_month_year")["value"] == "1983-10-19"
+    assert parse_identity_date("twenty of May two thousand", "day_month_year")["value"] == "2000-05-20"
+    assert parse_identity_date("the twentieth of May 1990", "day_month_year")["value"] == "1990-05-20"
+    assert parse_identity_date("nineteen ninety three", "day_month_year")["parts"] == {"year": 1993}
+    assert parse_identity_date("Nineteen October nineteen eighty three. Nineteen October nineteen eighty three.", "day_month_year")["value"] == "1983-10-19"

@@ -42,6 +42,66 @@ VAGUE_PATTERNS = [
 ]
 
 
+# a self-correction: the words after a marker replace what came before ("the 21st, sorry, the 20th"); "rather than"
+# is a comparison, not a correction
+CORRECTION_RE = re.compile(r"\b(sorry|i mean|i meant|actually|no wait|wait|correction|make that|or rather|rather(?! than)|"
+                           r"scratch that|not that|let me correct|no no)\b")
+
+
+def _segments(text):
+    """The text split at its self-correction markers, in order, empty pieces dropped: ['200', '250'] for
+    "200, I mean 250, sorry". None when the text has no marker."""
+    s = (text or "").lower().replace("\u2019", "'")
+    if not CORRECTION_RE.search(s):
+        return None
+    pieces = [p.strip(" ,.;:-") for p in CORRECTION_RE.split(s)[::2]]
+    return [p for p in pieces if p]
+
+
+NUMERIC_WORDS = set(UNITS) | set(TENS) | set(SCALES) | set(ORDINALS)
+
+
+def _has_numeric(piece):
+    s = _norm(piece)
+    return bool(re.search(r"\d|%", s)) or any(t in NUMERIC_WORDS for t in s.split(" "))
+
+
+def _bare_day(piece):
+    """The day number when the piece is only a day ('the 21st', 'on the twenty first', '31st'), else None."""
+    tokens = [t for t in _norm(piece).split(" ") if t not in ("the", "on", "of")]
+    if not tokens or len(tokens) > 2:
+        return None
+    val, used = _ordinal_words(tokens, 0)
+    if val is None or used != len(tokens) or not (1 <= val <= 31):
+        return None
+    if len(tokens) == 1 and not (ORDINAL_SUFFIX.match(tokens[0]) or tokens[0] in ORDINALS or tokens[0].isdigit()):
+        return None
+    return val
+
+
+def _looks_like_day(piece):
+    """The piece names a day and nothing else ('the 21st', '20 October', 'next Friday'): its number is not an amount.
+    A bare cardinal ('20', 'twenty five') is an amount."""
+    tokens = [t for t in _norm(piece).split(" ") if t]
+    date_words = [t for t in tokens if t in MONTHS or t in WEEKDAY_INDEX or t in WEEKDAY_ABBR or
+                  t in ("today", "tomorrow", "next", "this", "the", "on", "of")]
+    rest = [t for t in tokens if t not in date_words]
+    ordinal = any(ORDINAL_SUFFIX.match(t) or t in ORDINALS for t in tokens)
+    if not rest:
+        return bool(date_words)
+    if not date_words and not ordinal:
+        return False
+    return _bare_day(" ".join(rest)) is not None
+
+
+def _corrected(text):
+    """The last piece of a self-corrected text, or None when there is no marker or nothing but the first piece."""
+    segs = _segments(text)
+    if not segs or len(segs) < 2:
+        return None
+    return segs[-1]
+
+
 def _norm(text):
     s = (text or "").lower().strip()
     s = s.replace("\u2019", "'").replace("-", " ")
@@ -123,11 +183,29 @@ def resolve_amount_cents(text):
     if isinstance(text, (int, float)):
         return int(round(float(text) * 100))
     raw = str(text).lower()
+    segs = _segments(raw)
+    if segs and len(segs) > 1:
+        # the last piece that carries a value wins; a piece that names a day ("sorry, the 21st") corrects the day,
+        # not the amount; a piece with a number that is no amount ("actually 20 percent") withdraws the amount
+        for piece in reversed(segs):
+            if _looks_like_day(piece):
+                continue
+            c = resolve_amount_cents(piece)
+            if c is not None:
+                return c
+            if _has_numeric(piece):
+                return None
+        return None
     # a percentage is a discount or a share, not an amount of money ("a twenty percent discount", "20%": platform EXT-042)
     if re.search(r"\bper ?cent\b|%", raw):
         return None
-    # digits first, on the raw text so that "1,250.00" and "455,50" keep their separators
-    m = re.search(r"(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)(?:[.,](\d{1,2}))?(?![\d,])", raw)
+    # digits first, on the raw text so that "1,250.00" and "455,50" keep their separators; "1.250,00" is the European form
+    m = re.search(r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+)(?:,(\d{1,2}))?(?!\d|[.,]\d)", raw)
+    if m:
+        whole = m.group(1).replace(".", "")
+        frac = m.group(2) or ""
+        return int(whole) * 100 + (int(frac.ljust(2, "0")) if frac else 0)
+    m = re.search(r"(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)(?:[.,](\d{1,2}))?(?!\d|,\d)", raw)
     if m:
         whole = m.group(1).replace(",", "")
         frac = m.group(2) or ""
@@ -408,6 +486,28 @@ def resolve_date(text, now, rules=None):
         out["kind"], out["how"] = "vague", how
         return out
 
+    segs = _segments(raw)
+    if segs and len(segs) > 1:
+        for i in range(len(segs) - 1, -1, -1):
+            day = _bare_day(segs[i])
+            if day is not None:
+                # "21 November, sorry, the 20th": the day changes, the month and year said before stay; an impossible
+                # day ("the 31st" of November) is no date at all, not the withdrawn one
+                for earlier in segs[:i][::-1]:
+                    tokens = _norm(earlier).split(" ")
+                    month = next((MONTHS[t] for t in tokens if t in MONTHS), None)
+                    if month is not None:
+                        year = next((int(t) for t in tokens if re.match(r"^(19|20)\d{2}$", t)), None)
+                        d = _resolve_day_month(today, day, month, year)
+                        return exact(d, "month_name") if d else out
+            r = resolve_date(segs[i], now, rules)
+            if r.get("kind") == "none":
+                if _has_numeric(segs[i]) or _looks_like_day(segs[i]):
+                    return out      # an attempted replacement that cannot be read: ask, do not keep the withdrawn day
+                continue
+            r["text"] = text
+            return r
+        return out
     # ISO
     m = re.search(r"\b(\d{4})-(\d{2})-(\d{2})\b", raw)
     if m:
@@ -534,6 +634,16 @@ def parse_identity_date(text, parse_rule="day_month_year"):
     if text is None:
         return res
     raw = str(text)
+    segs = _segments(raw)
+    if segs and len(segs) > 1:
+        parts = {}
+        for n, piece in enumerate(segs):
+            got = parse_identity_date(piece, parse_rule)["parts"]
+            if n and not got and _has_numeric(piece):
+                return res          # "sorry, 19899": the replacement is unreadable, the withdrawn answer is not sent
+            parts.update(got)
+        res["parts"] = parts
+        return _finish_dob(res)
     m = re.search(r"\b(\d{4})-(\d{1,2})-(\d{1,2})\b", raw)
     if m:
         res["parts"] = {"day": int(m.group(3)), "month": int(m.group(2)), "year": int(m.group(1))}
@@ -568,7 +678,12 @@ def parse_identity_date(text, parse_rule="day_month_year"):
         if day is None:
             val, used = _ordinal_words(tokens, i)
             # "twenty" alone may start a year in words; "twenty-eighth" / "twenty eight April" (two tokens) is a day
-            if val is not None and 1 <= val <= 31 and (t not in ("nineteen", "twenty") or used == 2) or ORDINAL_SUFFIX.match(t):
+            nxt = tokens[i + 1] if i + 1 < len(tokens) else ""
+            nxt2 = tokens[i + 2] if i + 2 < len(tokens) else ""
+            before_month = nxt in MONTHS or (nxt == "of" and nxt2 in MONTHS)
+            # "nineteen"/"twenty" alone may start a year in words (the year's words are already removed above); before a
+            # month name ("nineteen October", "twenty of May") or as two tokens ("twenty-eighth") it is the day
+            if val is not None and 1 <= val <= 31 and (t not in ("nineteen", "twenty") or used == 2 or before_month) or ORDINAL_SUFFIX.match(t):
                 if t in TENS and used == 1 and month is None:
                     # "twenty" could start a year in words; keep simple: treat as day only if an ordinal follows
                     pass
@@ -592,6 +707,16 @@ def parse_identity_date(text, parse_rule="day_month_year"):
 def _year_in_words_span(tokens):
     """(year, start, end) of a year said in words ('nineteen ninety three' -> (1993, i, i + 3)), or None."""
     for i in range(len(tokens) - 1):
+        if tokens[i] == "two" and tokens[i + 1] == "thousand":
+            # "two thousand", "two thousand and five", "two thousand twenty one"
+            j = i + 2
+            if j < len(tokens) and tokens[j] == "and":
+                j += 1
+            rest = _small_groups(tokens[j:j + 2])
+            if rest and 0 <= rest[0] < 100:
+                used = 2 if (tokens[j] in TENS and j + 1 < len(tokens) and tokens[j + 1] in UNITS and UNITS[tokens[j + 1]] < 10) else 1
+                return 2000 + rest[0], i, j + used
+            return 2000, i, i + 2
         if tokens[i] in ("nineteen", "twenty", "eighteen") and i + 1 < len(tokens):
             first = UNITS.get(tokens[i]) or TENS.get(tokens[i])   # "twenty" is in TENS; "twenty-eighth of April" starts here too
             rest = _small_groups(tokens[i + 1:i + 3])
@@ -625,6 +750,15 @@ def parse_digits(text, n):
     res = {"status": "none", "value": None}
     if text is None:
         return res
+    segs = _segments(str(text))
+    if segs and len(segs) > 1:
+        for piece in reversed(segs):
+            r = parse_digits(piece, n)
+            if r["status"] != "none":
+                return r
+            if _has_numeric(piece):
+                return res          # "sorry, 44712": the replacement is unreadable, the withdrawn answer is not sent
+        return res
     s = _norm(str(text))
     digits = ""
     for t in s.split(" "):
@@ -651,6 +785,14 @@ def parse_digits(text, n):
             digits2 += t
         elif t in UNITS and UNITS[t] < 10:
             digits2 += str(UNITS[t])
+        elif t in UNITS:
+            digits2 += str(UNITS[t])            # "eleven" -> 11
+        elif t in TENS:
+            v = TENS[t]                          # "forty four" -> 44, "twenty" -> 20
+            if i + 1 < len(tokens) and tokens[i + 1] in UNITS and 0 < UNITS[tokens[i + 1]] < 10:
+                v += UNITS[tokens[i + 1]]
+                i += 1
+            digits2 += str(v)
         i += 1
     digits = digits2
     if not digits:

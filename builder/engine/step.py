@@ -19,6 +19,7 @@ Contract with the emitter
     dialogue model must convey in its own words; `readback_text` is the versioned read-back.
 """
 import json
+import re
 from .calendar import (parse_now, parse_date, iso, calendar_from_table, is_business_day,
                        eval_expr, ExprError, EvalError, CalendarError)
 from .dates import (resolve_date, resolve_time, resolve_amount_cents, to_cents, cents_to_number, money_text,
@@ -314,7 +315,10 @@ def _target_items(st, ev):
 
 def _amount_of(ev):
     if ev.get("amount") is not None:
-        return to_cents(ev.get("amount"))
+        try:
+            return to_cents(ev.get("amount"))
+        except (TypeError, ValueError):
+            return None
     for key in ("span", "text"):
         if ev.get(key):
             c = resolve_amount_cents(ev.get(key))
@@ -437,6 +441,8 @@ def _agree(C, st, item, amount, d, own_deadline=False):
     item["status"] = "agreed"
     item["readback_version"] += 1
     st["pending"] = None
+    st["global"]["readback_rounds"] = 0      # a new version is read back afresh
+    C["agreed_calls"] = C.get("agreed_calls", 0) + 1
     C["understood"] = True
 
 
@@ -649,7 +655,7 @@ def _handle_amount(C, st, item, ev, cents, resolved_date):
 def _accept(C, st, item, ev):
     C["understood"] = True
     resolved = _date_of(C, st, ev) if (ev.get("date_text") or ev.get("span")) else None
-    cents = to_cents(ev.get("amount")) if ev.get("amount") is not None else None
+    cents = _amount_of(ev) if ev.get("amount") is not None else None
     if item.get("offer"):
         off = item["offer"]
         amount = cents if cents is not None else off["amount"]
@@ -793,6 +799,61 @@ def _handle_paid_or_dispute(C, st, key, ev):
             _note_item(C, st, it, reason)
     st["global"]["paid_claim" if key == "paid" else "dispute"] = True
     _trigger(C, st, "paid_claim" if key == "paid" else "dispute")
+
+
+# a farewell: only in a reply that does nothing else (a goodbye next to an answer is politeness, not the end)
+GOODBYE_RE = re.compile(r"\b(good ?bye|bye( bye)?|that'?s all|that is all|that will be all|that'?ll be all|"
+                        r"i (have|need|got) to go( now)?|gotta go|end (the|this) call|talk to you later|"
+                        r"have a (good|nice) (day|one|evening))\b")
+IDLE_TURNS_MAX = 3   # replies in a row that answer nothing end the conversation
+
+
+NEGATED_GOODBYE_RE = re.compile(r"\b(not|don'?t|do not|never|no need to|without)\b[^.!?]{0,24}?\b(hang|goodbye|bye|go)\b")
+
+
+def _goodbye_like(text):
+    if not text:
+        return False
+    low = str(text).lower().replace("\u2019", "'")
+    return bool(GOODBYE_RE.search(low)) and not NEGATED_GOODBYE_RE.search(low)
+
+
+def _end_signal(C, st, cust):
+    """True when the customer is ending the conversation: a goodbye in a reply that answers nothing, or several such
+    replies in a row (an answer the extractor lost would otherwise leave the model saying goodbye for ever)."""
+    g = st["global"]
+    if not cust:
+        return False
+    idle = all(e["kind"] == "other" for e in cust)
+    g["idle_turns"] = g.get("idle_turns", 0) + 1 if idle else 0
+    passive = all(e["kind"] in ("other", "dont_want_to_talk") for e in cust)
+    if passive and any(_goodbye_like(e.get("text") or e.get("span")) for e in cust):
+        return True
+    return idle and st["stage"] != "party" and g["idle_turns"] >= IDLE_TURNS_MAX
+
+
+def _end_conversation(C, st):
+    """Close with the row the table gives for a customer who ends the conversation at this point of the call."""
+    C["understood"] = True
+    st["global"]["ended_by_customer"] = True
+    if st["stage"] == "party":
+        _trigger(C, st, "party_unclear_twice")
+        return
+    if st["stage"] == "callback":
+        _trigger(C, st, "callback_refused_twice")
+        return
+    s = _sit(C, "dont_want_to_talk")
+    if s is not None:
+        st["global"]["dont_want"] = max(st["global"]["dont_want"], int(s.get("count") or 2)) - 1
+        _handle_dont_want(C, st, None)
+        return
+    verified = st["identity"]["state"] == "verified"
+    for it in _open_items(st) + _agreed_items(st):
+        it["agreed"] = None
+        it["status"] = "open"
+        _exhaust(C, st, it)
+    if not verified:
+        _trigger(C, st, "identity_declined")
 
 
 def _handle_dont_want(C, st, ev):
@@ -1038,13 +1099,27 @@ def _verify_result(C, st, ev):
         else:
             st["pending"] = "identity"
         return
-    if isinstance(data.get("wrong_answers_left"), int) and isinstance(max_wrong, int):
-        ident["wrong"] = max(ident["wrong"], max_wrong - data["wrong_answers_left"])
+    left = data.get("wrong_answers_left")
+    if not isinstance(left, int) or isinstance(left, bool):
+        left = None
+    err = str(data.get("error") or "").lower()
+    over = data.get("ok") is False and bool(re.search(r"\bover\b|exhausted|too many attempts|no (more |further )?attempts", err))
+    if left is not None and left <= 0 and data.get("verified") is not True:
+        over = True
+    bank_wrong = (max_wrong - left) if (left is not None and isinstance(max_wrong, int)) else 0
+    if over:
+        # the bank says the check is over (no answers left): final, whatever else the answer carries
+        ident["answer"] = None
+        ident["state"] = "failed"
+        _say(C, st, "use_app_or_branch")
+        _trigger(C, st, "identity_failed")
+        return
     hint_rule = _param(C, "identity.hint_rule") if _has_param(C, "identity.hint_rule") else None
     if data.get("hint") and isinstance(hint_rule, dict) and data.get("hint") == hint_rule.get("hint"):
         ident["hinted"] = True
         ident["answer"] = None
         if not hint_rule.get("counts_as_wrong", False):
+            ident["wrong"] = max(ident["wrong"], bank_wrong)    # the hint itself is exempt, the bank's count stays
             _say(C, st, "month_as_word")
             st["pending"] = "identity_hint"
             return
@@ -1053,12 +1128,15 @@ def _verify_result(C, st, ev):
         ident["answer"] = None
         st["pending"] = "identity_again"
         return
-    if data.get("verified") is False and not data.get("hint"):
-        if not isinstance(data.get("wrong_answers_left"), int):
-            ident["wrong"] += 1
+    hint_counts = isinstance(hint_rule, dict) and bool(hint_rule.get("counts_as_wrong", False))
+    if data.get("verified") is False and (not data.get("hint") or hint_counts):
+        # the engine keeps its own count of wrong answers and takes the stricter of the two counters: a bank whose
+        # counter does not move (or counts per question) must not let a fourth wrong answer through, and a bank that
+        # says no answers are left ends the check even when the engine counted fewer (platform EXT-027/028, 2026-10-10)
+        ident["wrong"] += 1
+    ident["wrong"] = max(ident["wrong"], bank_wrong)
     ident["answer"] = None
-    over = str(data.get("error") or "").lower().find("over") >= 0 and data.get("ok") is False
-    if (isinstance(max_wrong, int) and ident["wrong"] >= max_wrong) or over:
+    if isinstance(max_wrong, int) and ident["wrong"] >= max_wrong:
         ident["state"] = "failed"
         _say(C, st, "use_app_or_branch")
         _trigger(C, st, "identity_failed")
@@ -1072,8 +1150,110 @@ def _verify_result(C, st, ev):
 # stages: negotiation and read-back
 
 
+READBACK_ROUNDS_MAX = 3   # read-backs of the same version without a clear yes before the promise counts as refused
+READBACK_TOTAL_MAX = 6    # read-backs in the whole call, whatever the versions
+
+
+def _agreed_snapshot(st):
+    """What is agreed per item, for the read-back restatement check."""
+    return [(it["item_id"], it["status"], it.get("agreed_cents"), (it.get("agreed") or {}).get("date")) for it in st["items"]]
+
+
 def _negotiate_events(C, st, evs):
     """Item-scoped events after verification. Proposals beat refusals in the same bundle."""
+    at_readback = st.get("pending") in ("readback", "readback_deny")
+    if at_readback:
+        # "yes, that is fine" extracted as accept_offer at the read-back (no new day, no new amount) is the confirmation
+        for e in evs:
+            if e["kind"] == "accept_offer" and e.get("amount") is None:
+                r = _date_of(C, st, e)
+                if r is not None and r.get("kind") != "none":
+                    e["kind"] = "change"            # "fine, but make it Friday"
+                    e["date_text"] = e.get("date_text") or e.get("span") or e.get("text")
+                    continue
+                cents = _amount_in_words(e)
+                if cents is not None:
+                    e["kind"] = "change"            # "yes but only two hundred"
+                    e["amount"] = cents_to_number(cents)
+                else:
+                    e["kind"] = "confirm"
+        before = _agreed_snapshot(st)
+        C["agreed_calls"] = 0
+        st["global"]["unreached"] = 0
+        n_lines, n_mand = len(C["lines"]), len(C["mandatory"])
+        saved = _copy(st)
+    _negotiate_bundle(C, st, evs)
+    if not at_readback or st.get("pending") == "record":
+        return
+    kinds = set(e["kind"] for e in evs)
+    restating = kinds & set(["change", "date_proposal", "amount_proposal", "pay_today_yes", "accept_offer"])
+    known = all(not e.get("item") or _item_by_id(st, e.get("item"))[1] is not None for e in evs)
+    # an event that reached no item (an amount with no product named at a joint read-back) is not a restatement
+    if restating and known and C.get("agreed_calls") and not st["global"].get("unreached") \
+            and not (kinds & set(["deny", "refuse", "vague_period", "too_much"])) and _agreed_snapshot(st) == before \
+            and st.get("pending") in ("readback", "readback_deny", None) and _agreed_items(st):
+        # the customer repeated the agreed day and amount in other words ("I can pay the full amount today" at the
+        # read-back of the full amount for today): that is the yes, not a change to read back again (a platform call
+        # read the same promise back for 30 turns, EXT-023, 2026-10-10)
+        st.clear()
+        st.update(saved)
+        del C["lines"][n_lines:]
+        del C["mandatory"][n_mand:]
+        _confirm_readback(C, st)
+        return
+    g = st["global"]
+    still = st.get("pending") in ("readback", "readback_deny", None, "which_amount", "which_date")
+    same_version = g.get("readback_rounds", 0) >= READBACK_ROUNDS_MAX and still
+    too_many = g.get("readback_total", 0) >= READBACK_TOTAL_MAX and still
+    if (same_version or too_many) and _agreed_items(st) and not _open_items(st):
+        # three read-backs of one version (or six in the call) and still no clear yes: nothing can be recorded
+        for it in _agreed_items(st):
+            it["agreed"] = None
+            it["status"] = "open"
+            _exhaust(C, st, it)
+
+
+def _amount_in_words(e):
+    """An amount said in the words of an event that has no amount field; nothing when the words name a day."""
+    text = e.get("span") or e.get("text")
+    if not text or re.search(r"\b\d+(st|nd|rd|th)\b", str(text).lower()):
+        return None
+    return resolve_amount_cents(text)
+
+
+def _share_bundle_date(C, st, group, common_date, key, accepted=False):
+    """An amount named in the same reply as a day ("I can pay 200 today", "200 on Friday, yes to your proposal") takes
+    that day, whatever the order the extractor filed the two parts in; otherwise the amount would be agreed for the day
+    in play and the day would find nothing open (platform EXT-064, 2026-10-10). Returns the day said in words, the only
+    one that carries over to the other products of the reply; the day implied by accepting an offer stays with the
+    product that has that offer."""
+    date_src = common_date
+    for e in group:
+        if e["kind"] == "pay_today_yes":
+            date_src = "today"
+        elif e["kind"] in ("date_proposal", "change", "accept_offer") and e.get("date_text") and e.get("amount") is None:
+            date_src = e.get("date_text")
+    implied = None
+    if date_src is None and (any(e["kind"] == "accept_offer" for e in group) or (key is not None and accepted)):
+        if key is not None:
+            _, it = _item_by_id(st, key)
+            offers = [it] if it is not None and it.get("offer") else []
+        else:
+            offers = [it for it in _open_items(st) if it.get("offer")]
+        dates = set(it["offer"].get("date") for it in offers if it["offer"].get("date"))
+        if len(dates) == 1:
+            implied = dates.pop()
+    use = date_src or implied
+    if use:
+        for e in group:
+            if e["kind"] in ("amount_proposal", "change") and _amount_of(e) is not None and not e.get("date_text"):
+                own = _date_of(C, st, e)
+                if own is None or own.get("kind") == "none":
+                    e["date_text"] = use
+    return date_src
+
+
+def _negotiate_bundle(C, st, evs):
     C["pay_today_pending"] = st.get("pending") == "pay_today"
     if C["pay_today_pending"] and st["items"]:
         st["pay_today_asked"] = True
@@ -1088,6 +1268,11 @@ def _negotiate_events(C, st, evs):
         by_item[key].append(e)
         if e["kind"] in ("date_proposal", "amount_proposal", "accept_offer", "pay_today_yes", "change", "vague_period"):
             proposal_items.add(key)
+    common_date = _share_bundle_date(C, st, by_item[None], None, None) if None in by_item else None
+    accepted = any(e["kind"] == "accept_offer" for e in by_item.get(None, []))
+    for key in order:
+        if key is not None:
+            _share_bundle_date(C, st, by_item[key], common_date, key, accepted)
     # events for all items first (so a common date is applied before per-item ones)
     for key in order:
         group = by_item[key]
@@ -1166,6 +1351,13 @@ def _negotiate_events(C, st, evs):
 
 
 def _targets_for(st, e, current_only):
+    out = _targets_of(st, e, current_only)
+    if not out:
+        st["global"]["unreached"] = st["global"].get("unreached", 0) + 1
+    return out
+
+
+def _targets_of(st, e, current_only):
     if e.get("item"):
         _, it = _item_by_id(st, e.get("item"))
         if it is None:
@@ -1197,6 +1389,7 @@ def _prepare_change(it):
 
 def _confirm_readback(C, st):
     C["understood"] = True
+    st["global"]["readback_rounds"] = 0
     for it in _agreed_items(st):
         it["confirmed"] = True
         it["confirmed_version"] = it["readback_version"]
@@ -1212,16 +1405,24 @@ def _advance(C, st):
     g = st["global"]
     pending = st.get("pending")
     cur = _current(st)
-    if pending in ("support_offer", "can_i_help", "readback_deny", "past_date", "which_date", "which_amount", "exact_day"):
-        return
-    if pending == "offer" and cur is not None and cur.get("offer"):
+    if pending in ("support_offer", "can_i_help"):
         return
     if g.get("hardship_declined"):
+        # no persuasion after a declined support offer: whatever is still open (a vague day, an unanswered offer) is
+        # noted as hardship; a day agreed in the same reply is still read back and recorded
         for it in _open_items(st):
             _note_item(C, st, it, "hardship")
             if not C["notes_mode"]:
                 _trigger(C, st, "hardship_support_declined")
         cur = _current(st)
+        pending = st.get("pending")
+    if pending == "readback_deny" and _agreed_items(st):
+        return
+    if pending in ("past_date", "which_date", "which_amount", "exact_day") and cur is not None:
+        # a question about an item that is no longer open (noted, agreed in the same reply) must not be asked
+        return
+    if pending == "offer" and cur is not None and cur.get("offer"):
+        return
     if _to_record(st):
         st["stage"] = "record"
         st["pending"] = "record"
@@ -1477,6 +1678,8 @@ def _render(C, st, out):
         out["engine_next"] = "end"
         out["what_to_do_next"] = "The call is closed. Say nothing more."
         return
+    if stage == "readback" and not _readback_text(C, st):
+        st["stage"] = stage = "negotiate"
     # a chosen closing row wins over everything else (the situation already decided the call)
     row = None
     if g["pending_transfer"] and not g["transfer_done"] and stage == "transfer":
@@ -1546,8 +1749,10 @@ def _render(C, st, out):
         out["engine_next"] = "fetch"
         out["what_to_do_next"] = "Fetch the account before stating anything."
     elif pending in ("support_offer", "can_i_help"):
+        if C.get("question_now") != pending:
+            _say(C, st, pending)       # the reply did not answer the question: ask it again, after any answer given
         out["engine_next"] = stage if stage in SPEAKING_STAGES else "negotiate"
-        out["what_to_do_next"] = "Wait for the answer to the offer; report accept or decline."
+        out["what_to_do_next"] = "Ask the yes-or-no question again and report accept or decline."
     elif stage == "negotiate":
         if C.get("disclose"):
             _say(C, st, "disclosure")
@@ -1578,19 +1783,21 @@ def _render(C, st, out):
         elif cur is not None:
             _line(C, "Ask about the %s: %s past due; the customer should name a payment date." % (cur["label"], _money(cur["past_due"])))
             out["what_to_do_next"] = "Continue with the %s." % cur["label"]
+        else:
+            _line(C, "Ask the customer to repeat what they said.")
+            out["what_to_do_next"] = "Ask the customer to repeat what they said."
+            out["ask_clarify"] = True
         out["engine_next"] = "negotiate"
     elif stage == "readback":
-        text = _readback_text(C, st)
-        if text:
-            out["readback_text"] = text
-            _say(C, st, "do_you_confirm")
-            out["engine_next"] = "readback"
-            out["what_to_do_next"] = "Read the promise back exactly and ask for confirmation; report confirm, change or deny."
-            if pending == "readback_deny":
-                _line(C, "Ask what should change: the amount or the date.")
-            st["pending"] = "readback"
-        else:
-            out["engine_next"] = "negotiate"
+        out["readback_text"] = _readback_text(C, st)
+        g["readback_rounds"] = g.get("readback_rounds", 0) + 1
+        g["readback_total"] = g.get("readback_total", 0) + 1
+        _say(C, st, "do_you_confirm")
+        out["engine_next"] = "readback"
+        out["what_to_do_next"] = "Read the promise back exactly and ask for confirmation; report confirm, change or deny."
+        if pending == "readback_deny":
+            _line(C, "Ask what should change: the amount or the date.")
+        st["pending"] = "readback"
     elif stage == "record":
         for it in st["items"]:
             if it["confirmed"] and not it["recorded"] and it["status"] != "noted" and it.get("agreed"):
@@ -1719,15 +1926,19 @@ def _step(state, events, table, now):
             st["stage"] = "close"
             st["pending"] = "close"
         else:
+            # the farewell is judged on the whole reply, before the answer to a pending yes/no question is taken out
+            farewell = _end_signal(C, st, cust)
+            declined_support = False
             # answers to a pending yes/no offer (support, can-I-help)
             if st.get("pending") == "support_offer":
                 yes = kinds & set(["accept_offer", "confirm", "pay_today_yes"])
-                no = kinds & set(["refuse", "deny", "pay_today_no", "dont_want_to_talk", "date_proposal", "amount_proposal", "other"])
+                no = kinds & set(["refuse", "deny", "pay_today_no", "dont_want_to_talk", "date_proposal", "amount_proposal", "vague_period", "other"])
                 if yes:
                     _support_answer(C, st, True)
                     cust = [e for e in cust if e["kind"] not in ("accept_offer", "confirm")]
                 elif no:
                     _support_answer(C, st, False)
+                    declined_support = True
                     # the decline closes the hardship path; a plan request in the same breath ("no transfer, but can I get
                     # a discount?") must not turn into the transfer they just declined (platform PUB-05, 2026-10-10)
                     # "I do not want to be transferred" is the answer to the offer, not a wish to end the conversation
@@ -1742,11 +1953,15 @@ def _step(state, events, table, now):
                     C["understood"] = True
                     cust = [e for e in cust if e["kind"] not in ("accept_offer", "confirm", "other", "refuse", "deny")]
             kinds = set(e["kind"] for e in cust)
+            if farewell and st["stage"] in SPEAKING_STAGES and not declined_support:
+                _end_conversation(C, st)
+                cust = [e for e in cust if e["kind"] not in ("other", "dont_want_to_talk")]
+                kinds = set(e["kind"] for e in cust)
             if "hardship" in kinds:
                 _handle_hardship(C, st, None, cust)
                 # "I lost my job and cannot pay anything" is the hardship, not a refusal to negotiate: the same turn's
                 # no / too much / plan request do not note the item as refused or start a transfer (platform PUB-05)
-                cust = [e for e in cust if e["kind"] not in ("plan_request", "pay_today_no", "refuse", "too_much")
+                cust = [e for e in cust if e["kind"] not in ("plan_request", "pay_today_no", "refuse", "too_much", "dont_want_to_talk")
                         and not (e["kind"] == "amount_proposal" and e.get("amount") is None)
                         and not (e["kind"] == "date_proposal" and not e.get("date_text"))]
                 kinds = set(e["kind"] for e in cust)
@@ -1799,6 +2014,13 @@ def _step(state, events, table, now):
     if st.get("pending") == "close" and st["stage"] not in ("close", "note"):
         st["stage"] = "close"
     _render(C, st, out)
+    if out["engine_next"] in SPEAKING_STAGES and not C["lines"] and not C["mandatory"] and not out.get("readback_text"):
+        # never silent: with nothing from the engine the dialogue model invents the rest of the call (a platform run
+        # said "I have processed the payment", 2026-10-10); the pending question is the content
+        if not out.get("what_to_do_next"):
+            out["what_to_do_next"] = "Ask the customer to repeat what they said."
+            out["ask_clarify"] = True
+        _line(C, out["what_to_do_next"])
     out["mandatory_lines"] = list(C["mandatory"])
     out["say_next"] = " ".join(C["lines"])
     if cust and not C["understood"] and not tool_evs:
@@ -1822,7 +2044,8 @@ def step(state, events, table, now):
             raise
         st = _copy(state) if isinstance(state, dict) and state.get("stage") else new_state()
         stage = st.get("stage") or "party"
-        out = {"engine_next": stage if stage in SPEAKING_STAGES else "clarify", "say_next": "",
+        out = {"engine_next": stage if stage in SPEAKING_STAGES else "clarify",
+               "say_next": "Ask the customer to repeat what they said.",
                "mandatory_lines": [], "readback_text": "", "writes": [], "close": None,
                "what_to_do_next": "Ask the customer to repeat; the engine could not apply the last reply.",
                "ask_clarify": True, "unsupported": list(st.get("unsupported") or []) + ["engine_error:" + type(exc).__name__]}

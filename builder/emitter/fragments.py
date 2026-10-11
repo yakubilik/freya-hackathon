@@ -81,7 +81,7 @@ KIND_HELP = {
     "confirm": "says yes to the read-back or to a yes or no question",
     "deny": "says no to the read-back",
     "change": "changes the amount or the day of something already agreed",
-    "paid": "says it is already paid",
+    "paid": "says they paid recently (today, yesterday, this week) and it may not show yet",
     "dispute": "says it is not theirs, they never had the product, or it was closed or paid off in the past",
     "plan_request": "asks to split the amount or to spread it over months (a discount, waiver or lower total is not a plan: 'other')",
     "question_back": "asks a question back (who is calling, why, what it is about)",
@@ -108,7 +108,7 @@ CLOSE_SPOKEN = {
     "rest_overdue": "The rest stays overdue.",
     "paid_takes_day": "Payments can take one business day to appear.",
     "change_in_app": "A recorded promise cannot be changed in this call; it can be changed in the mobile app.",
-    "sympathy": "I am sorry for your loss.",
+    "sympathy": "I am sorry to hear that.",
     "no_information": "I do not have that information.",
     "use_app_or_branch": "I could not verify your identity, so I cannot go further on this call. Please use the mobile app or visit a branch.",
     "questions_protect": "The security questions protect your account.",
@@ -364,7 +364,7 @@ def slot_count(ctx, stage):
 
 def slot_vars(ctx, stage):
     node = STAGE_NODE[stage]
-    return ["%s_%s%d" % (node, f, k) for k in range(1, slot_count(ctx, stage) + 1) for f in STAGE_FIELDS[stage]]
+    return ["%s_%s%d" % (node, f, k) for k in range(1, slot_count(ctx, stage) + 1) for f in STAGE_FIELDS[stage]] + [node + "_raw"]
 
 
 def extraction_schema(ctx, stage):
@@ -409,6 +409,10 @@ def extraction_schema(ctx, stage):
                             "description": ("For %s_reply%d: the customer's exact words for this part of the reply. For an "
                                             "answer to a security question, everything they said as the answer, unchanged; "
                                             "never leave it empty when the reply is an answer." % (node, k))})
+    # the whole message, as a second chance when the extractor leaves a slot's words empty (seen on the platform for
+    # "8864. How much do I owe?": reply filled, words empty, the answer never reached the bank)
+    out.append({"name": node + "_raw", "type": "string", "min_confidence": 0.0,
+                "description": "The customer's entire last message, word for word, unchanged."})
     return out
 
 
@@ -464,6 +468,7 @@ def _ob_item(words):
 
 
 _FIELDS = ('words', 'amount', 'date', 'time', 'item')
+_RAW = __RAW__
 
 try:
     vals = [dict((f, _ob_val(s.get(f))) for f in _FIELDS) for s in _SLOTS]
@@ -493,6 +498,8 @@ try:
             except ValueError:
                 amount = None
         words = vals[i]['words'] or None
+        if words is None and sum(1 for x in kinds if x) == 1 and not vals[i]['amount'] and not vals[i]['date'] and not vals[i]['time']:
+            words = _ob_val(_RAW) or None   # the one reply of the turn with nothing attached: its words are the whole message
         if a and amount is None and not words:
             words = a
         ev = dict(kind=kind, item=_ob_item(vals[i]['item']), amount=amount,
@@ -513,7 +520,7 @@ def observe(ctx, stage):
         slots.append({f: "%s_%s%d" % (node, f, k) for f in STAGE_FIELDS[stage]})
     names = slot_vars(ctx, stage)
     code = (DISPATCH.replace("__KINDS__", py(STAGE_KINDS[stage])).replace("__SLOTS__", py(slots))
-            )
+            .replace("__RAW__", py(node + "_raw")))
     code = code + "".join("vars[%r] = ''\n" % n for n in names)
     name = node + "_observe"
     return Fragment({name: code_node(name, code, [always("engine")])})

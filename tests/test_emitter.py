@@ -388,3 +388,42 @@ def test_dispatcher_drops_product_words_that_match_no_product(workflows):
     v = {"negotiate_reply1": "date_proposal", "negotiate_item1": "the loan", "negotiate_date1": "Friday", "engine_state": state}
     exec(code, {"vars": v})
     assert json.loads(v["engine_events"])[0]["item"] == "p1"
+
+
+def test_dispatcher_hands_a_goodbye_to_the_engine_and_the_call_closes(bank, workflows):
+    """Platform EXT-023 (2026-10-10): "Thank you, goodbye." twenty times while the engine still waited for the
+    pay-today answer. The dispatcher files it as other (or dont_want_to_talk) with the words; the engine closes."""
+    code = workflows["A"]["nodes"]["negotiate_observe"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+    for reply in ("other", "dont_want_to_talk", "something_else"):
+        v = {"negotiate_reply1": reply, "negotiate_words1": "Thank you, goodbye.", "engine_state": ""}
+        exec(code, {"vars": v})
+        evs = json.loads(v["engine_events"])
+        assert len(evs) == 1 and evs[0]["kind"] in ("other", "dont_want_to_talk") and evs[0]["text"] == "Thank you, goodbye."
+    case = PUBLIC["PUB-01"]
+    expected = {"outcome": "no_promise", "reason": "refused", "promises": [], "notes": [], "callbacks": [], "transfers": []}
+    rec, led = check(bank, workflows, "PUB-01", verified(case) + [[E("other", text="Thank you, goodbye.")]], expected=expected)
+    assert sum(1 for t in rec["transcript"] if t["role"] == "assistant" and "goodbye" in t["text"].lower()) == 1
+
+
+def test_readback_restated_in_other_words_is_recorded_once(bank, workflows):
+    case = PUBLIC["PUB-01"]
+    rec, led = check(bank, workflows, "PUB-01", verified(case) + [[E("pay_today_yes")], [E("change", date="today", amount=420)]])
+    assert len(led["promises"]) == 1
+    assert sum(1 for t in rec["transcript"] if t["role"] == "assistant" and t["node"] == "readback") == 1
+
+
+def test_dispatcher_falls_back_to_the_whole_message_when_words_are_missing(workflows):
+    """Platform PUB-03 flake and EXT-027 (2026-10-11): the extractor filled identity_reply1 = id_answer but no words, the
+    answer never reached the bank. The schema now also asks for the whole message (identity_raw); the dispatcher uses it
+    for the one reply of the turn that has nothing attached."""
+    wf = workflows["A"]
+    schema = wf["nodes"]["identity"]["extraction_schema"]
+    assert any(f["name"] == "identity_raw" for f in schema)
+    code = wf["nodes"]["identity_observe"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+    v = {"identity_reply1": "id_answer", "identity_words1": "", "identity_raw": "21 August 1992.", "engine_state": ""}
+    exec(code, {"vars": v})
+    assert json.loads(v["engine_events"])[0]["text"] == "21 August 1992."
+    assert v["identity_raw"] == ""   # cleared with the slots
+    v = {"identity_reply1": "id_answer", "identity_words1": "", "identity_reply2": "question_back", "identity_raw": "8864. How much do I owe?", "engine_state": ""}
+    exec(code, {"vars": v})
+    assert json.loads(v["engine_events"])[0]["text"] is None   # two replies: the whole message is not one answer
