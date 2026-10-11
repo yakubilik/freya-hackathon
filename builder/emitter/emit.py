@@ -63,7 +63,8 @@ class Ctx:
         self.cid_field = wire.customer_id_field(api)
         self.resp_map = wire.response_field_map(api)
         situations = self.param("situations") or {}
-        self.has_callback = self.param("third_party.callback.window") is not None
+        self.has_callback = self.param("third_party.callback.window") is not None or any(
+            isinstance(s, dict) and isinstance(s.get("callback"), dict) for s in situations.values())
         self.has_transfer = any(isinstance(s, dict) and s.get("transfer_queue") for s in situations.values())
         self.has_notes = self.param("notes.reasons") is not None
         self.stages = ["party"] + (["callback"] if self.has_callback else []) + ["identity", "negotiate", "readback"]

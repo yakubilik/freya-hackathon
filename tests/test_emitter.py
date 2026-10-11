@@ -595,9 +595,9 @@ def test_emit_handles_an_api_with_other_field_names(letter):
         assert verify["question"]["default"].startswith("{{wa_verify_identity__question")
     if letter == "F":   # one question, the answer field is named after it, no question field is sent
         assert set(verify) == {"client_ref", "birth_date"}
-    if letter == "E":   # a required enum the engine never fills gets a fixed neutral value
+    if letter == "E":   # the callback reason follows the engine's situation entry; the API's neutral value when it sets none
         cb = wf["nodes"]["w_schedule_callback"]["pre_actions"][0]["function"]["parameters"]["properties"]["body"]["properties"]
-        assert cb["reason"]["default"] == "unavailable"
+        assert cb["reason"]["default"] == "{{wa_schedule_callback__reason}}"
     if cid != "customer_id":   # the setup node makes both names carry the id, whichever the call variables bring
         values = {"customer_id": "actual-member", cid: "test"}
         code = wf["nodes"]["setup"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]

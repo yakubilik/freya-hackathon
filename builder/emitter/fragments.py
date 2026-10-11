@@ -40,7 +40,7 @@ STAGE_NODE = {"party": "greeting", "callback": "callback", "identity": "identity
 WRITE_STAGE = {"verify_identity": "verify", "get_account": "fetch", "create_promise": "record",
                "transfer_to_agent": "transfer", "add_note": "note", "schedule_callback": "callback"}
 ENGINE_ARGS = {"verify_identity": ["field", "answer"], "get_account": [], "create_promise": ["product_id", "amount", "date"],
-               "add_note": ["product_id", "reason"], "schedule_callback": ["date", "time"], "transfer_to_agent": ["queue"],
+               "add_note": ["product_id", "reason"], "schedule_callback": ["date", "time", "reason"], "transfer_to_agent": ["queue"],
                "close_call": ["outcome", "reason"]}
 CLOSE_TOOL = "close_call"
 ENGINE_MARKER = "Freya call engine, rendered by builder/engine/snippet.py"
@@ -946,6 +946,9 @@ def _emit_route(v, pre):
         tool = str(w.get('tool'))
         args = w.get('args') if isinstance(w.get('args'), dict) else dict()
         for key in cfg['write_vars'][tool]:
+            if tool == 'schedule_callback' and key == 'reason' and key not in args:
+                # a required callback reason the engine did not set (a third-party callback has none): the API's neutral value
+                v[cfg['write_vars'][tool][key]] = cfg.get('callback_reason_default') or ''
             if key in args:
                 val = args.get(key)
                 if val is not None and 'cents' in cfg['write_vars'][tool][key].split('__')[-1].lower() and isinstance(val, (int, float)) and not isinstance(val, bool):
@@ -1021,6 +1024,10 @@ def engine_node(ctx, snippet, routes):
     cfg["write_types"] = {t: {k: (ctx.api["tools"][t].get("request_fields", {}).get(
         ctx.field_map.get(t, {}).get(k, k), {}) or {}).get("type") for k in ENGINE_ARGS[t]}
         for t in ctx.write_tools}
+    from builder.emitter.wire import required_default
+    reason_field = ctx.field_map.get("schedule_callback", {}).get("reason")
+    reason_schema = ctx.api["tools"].get("schedule_callback", {}).get("request_fields", {}).get(reason_field, {}) if reason_field else {}
+    cfg["callback_reason_default"] = required_default("schedule_callback", reason_field, reason_schema) if reason_schema else None
     prologue = "_EMIT_PRE = dict(vars)\n"
     if "import base64\n" in snippet:
         snippet = snippet.replace("import base64\n", BASE64_SHIM, 1)

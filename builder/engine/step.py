@@ -885,6 +885,12 @@ def _handle_hardship(C, st, ev, bundle):
         return
     if st["identity"]["state"] != "verified":
         return
+    if no_offer and not s.get("transfer_queue") and s.get("note"):
+        # no offer and no queue, only a line to say and a note (synthetic E: sympathy and the support line): what is
+        # already agreed stays, the items still open are noted with the entry's note and nothing is pushed
+        _line(C, s.get("say"))
+        st["global"]["hardship_declined"] = True
+        return
     if s.get("transfer_queue") and not st["global"]["support_offered"]:
         st["global"]["support_offered"] = True
         st["global"]["resume_pending"] = st.get("pending")
@@ -951,7 +957,29 @@ def _handle_human(C, st, ev):
         st["pending"] = "can_i_help"
         C["question_now"] = "can_i_help"
         return
-    _request_transfer(C, st, s.get("transfer_queue"), "human")
+    if not _request_situation_callback(C, st, s):
+        _request_transfer(C, st, s.get("transfer_queue"), "human")
+
+
+def _request_situation_callback(C, st, situation):
+    """A situation whose entry carries `callback: {reason, date_expr, time}` instead of a queue (synthetic E: nobody is
+    available on this line, the team calls back): the callback is booked at the configured day and time with the
+    configured reason, open and agreed-but-unrecorded items are dropped, and the entry's `close` row closes the call."""
+    cb = situation.get("callback")
+    if not isinstance(cb, dict):
+        return False
+    day = _eval(C, st, cb.get("date_expr"))
+    time = resolve_time(cb.get("time"))
+    if day is None or time is None:
+        _unsupported(C, st, "situations.callback date or time")
+        return True
+    _line(C, situation.get("say"))
+    for it in _agreed_items(st) + _open_items(st):
+        it["agreed"] = None
+        it["status"] = "skipped"
+    st["callback"].update(date=iso(day), time=time, reason=cb.get("reason"), close=situation.get("close"), situation=True)
+    st["stage"], st["pending"] = "callback", "callback_book"
+    return True
 
 
 def _request_transfer(C, st, queue, reason):
@@ -986,7 +1014,8 @@ def _handle_plan_request(C, st, ev):
         _unsupported(C, st, "situations.plan_request")
         return
     C["understood"] = True
-    _request_transfer(C, st, s.get("transfer_queue"), "plan_request")
+    if not _request_situation_callback(C, st, s):
+        _request_transfer(C, st, s.get("transfer_queue"), "plan_request")
 
 
 def _handle_paid_or_dispute(C, st, key, ev, exclude=()):
@@ -1870,7 +1899,7 @@ def _advance(C, st):
         for it in _open_items(st):
             if it.get("offer") and it["offer"].get("kind") != "attempt":
                 continue
-            _note_item(C, st, it, "hardship")
+            _note_item(C, st, it, (_sit(C, "hardship") or {}).get("note") or "hardship")
             if not C["notes_mode"]:
                 _trigger(C, st, "hardship_support_declined")
         cur = _current(st)
@@ -2092,8 +2121,12 @@ def _close_row(C, st):
                     break
     active.extend(g["triggers"])
     best = None
+    callback_close = st["callback"].get("close")
     for idx, row in enumerate(rows):
         trig = row.get("triggers") or []
+        if st["callback"].get("booked") and callback_close and "callback_booked" in trig \
+                and [row.get("outcome"), row.get("reason")] != list(callback_close):
+            continue
         hits = [active.index(t) for t in trig if t in active]
         if not hits:
             continue
@@ -2187,7 +2220,10 @@ def _render(C, st, out):
         out["engine_next"] = "callback"
     elif stage == "callback" and pending == "callback_book":
         cb = st["callback"]
-        writes.append({"tool": "schedule_callback", "args": {"date": cb["date"], "time": cb["time"]}, "item_id": None,
+        args = {"date": cb["date"], "time": cb["time"]}
+        if cb.get("reason") is not None:
+            args["reason"] = cb["reason"]
+        writes.append({"tool": "schedule_callback", "args": args, "item_id": None,
                        "intent_key": "callback:%s:%s" % (cb["date"], cb["time"])})
         out["engine_next"] = "callback"
         out["what_to_do_next"] = "Schedule the callback, then close."
@@ -2292,7 +2328,7 @@ def _render(C, st, out):
         out["engine_next"] = "record"
         out["what_to_do_next"] = "Record the promise; say it is recorded only after the bank confirms."
     elif stage in ("close", "note"):
-        if C["notes_mode"] and not g["transfer_done"] and not g["pending_transfer"]:
+        if C["notes_mode"] and not g["transfer_done"] and not g["pending_transfer"] and not st["callback"].get("situation"):
             for it in st["items"]:
                 if it["noted"] and not it["noted_written"] and not it["recorded"]:
                     writes.append({"tool": "add_note", "args": {"product_id": it["item_id"], "reason": it["noted"]["reason"]},
@@ -2551,7 +2587,7 @@ def _step(state, events, table, now):
                         and not (e["kind"] == "amount_proposal" and e.get("amount") is None)
                         and not (e["kind"] == "date_proposal" and not e.get("date_text"))]
                 kinds = set(e["kind"] for e in cust)
-            if "human" in kinds:
+            if "human" in kinds and not g["pending_transfer"]:
                 _handle_human(C, st, None)
             elif "plan_request" in kinds and verified:
                 _handle_plan_request(C, st, None)
@@ -2561,7 +2597,8 @@ def _step(state, events, table, now):
             if "dont_want_to_talk" in kinds:
                 _handle_dont_want(C, st, None)
             _answer_lines(C, st, cust)
-            if (not g["pending_transfer"] or g.get("transfer_keeps_promises")) and not g.get("dont_want_closed"):
+            if (not g["pending_transfer"] or g.get("transfer_keeps_promises")) and not g.get("dont_want_closed") \
+                    and not st["callback"].get("situation"):
                 if verified and st["stage"] in ("negotiate", "readback"):
                     for e in cust:
                         if e["kind"] == "paid":

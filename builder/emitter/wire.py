@@ -11,7 +11,7 @@ normaliser is also rendered as code for the write_result node (it runs in the pl
 import re
 
 CANONICAL_REQUEST = {"verify_identity": ["field", "answer"], "get_account": [], "create_promise": ["product_id", "amount", "date"],
-                     "add_note": ["product_id", "reason", "text"], "schedule_callback": ["date", "time"],
+                     "add_note": ["product_id", "reason", "text"], "schedule_callback": ["date", "time", "reason"],
                      "transfer_to_agent": ["queue"], "close_call": ["outcome", "reason"]}
 
 
@@ -82,6 +82,7 @@ def request_field_map(api):
         elif tool == "schedule_callback":
             m["time"] = _pick(fields, used, named("time", "hour", "slot"))
             m["date"] = _pick(fields, used, is_date, named("day", "when"))
+            m["reason"] = _pick(fields, used, named("reason", "purpose", "cause"), is_enum) or ""   # the engine's situation sets it
         elif tool == "transfer_to_agent":
             m["queue"] = _pick(fields, used, is_enum, named("queue", "team", "department", "target", "destination"), is_str)
         elif tool == "close_call":
