@@ -71,6 +71,9 @@ save again after each improvement that passes the dry run.
   A field the model fills inside a nested object of the body can arrive empty: the nested object goes out without
   it. When the contract wants a nested shape, fill the nested parts from workflow variables with `{{...}}` defaults,
   or check what the service accepts with curl, and confirm the shape in a simulation.
+- Never put an example value in the description or default of a field the model fills: the model can copy the
+  example instead of the real value. Give the value from a workflow variable (`{{...}}`) set from an earlier tool
+  result, and check in the simulation result that each request carries the value of this caller, not an example.
 - In every simulation result, check every tool request body: each one must carry the fields the contract requires,
   with values (not empty, not a placeholder). An empty or partial body is a defect even when the call went on.
 - Node prompts are instructions to the agent, never lines to say. In the simulation transcript the agent must not
@@ -95,7 +98,7 @@ how the call ended. The raw result is in `out/sim-<n>.json`.
 - Cover the main path, at least one unusual case, and one caller who says no or tries to misuse the agent.
 - Keep the names stable between runs: the same name with the same text is reused, not created again.
 - Read every failure and every tool request body; fix the workflow, save, and run again if time allows.
-- At most 3 simulations in the run, one at a time. Start one only when `python3 left.py` shows enough for it to finish
+- At most 6 simulations in the run, one at a time. Start one only when `python3 left.py` shows enough for it to finish
   and a save after it (about 4 minutes for the simulation plus 1 for the save; sim.py refuses otherwise). A simulation
   that fails or does not finish leaves the saved workflow as it was.
 

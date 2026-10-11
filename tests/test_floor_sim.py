@@ -113,7 +113,7 @@ def test_sim_py_is_written_with_its_bounds(tmp_path):
     work, state, clock = _workdir(tmp_path)
     assert (work / "sim.py").read_text() == runner.SIM_PY
     run = json.loads((work / "run.json").read_text())
-    assert run["sims_max"] == runner.SIMS_MAX == 3 and run["sims_log"].endswith("floor-sims.jsonl")
+    assert run["sims_max"] == runner.SIMS_MAX == 6 and run["sims_log"].endswith("floor-sims.jsonl")
     for helper in ("left.py", "save.py", "chat.py"):
         assert (work / helper).exists()
 
@@ -176,7 +176,7 @@ def test_a_hung_or_failed_simulation_keeps_the_saved_workflow(tmp_path, monkeypa
 def test_skill_allows_and_bounds_simulations():
     text = (ROOT / "builder" / "floor" / "SKILL.md").read_text()
     assert "Never start simulations" not in text and "python3 sim.py callers.json" in text
-    assert "At most 3 simulations" in text and "one at a time" in text and "python3 left.py" in text
+    assert "At most 6 simulations" in text and "one at a time" in text and "python3 left.py" in text
     assert "main path" in text and "unusual case" in text and "tries to misuse the agent" in text
     assert "request body" in text and "hooks" in text and "kit/docs/tools-and-code.md" in text
 
