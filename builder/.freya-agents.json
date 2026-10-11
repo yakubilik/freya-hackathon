@@ -2,11 +2,51 @@
  "20261010-192020-brief-a-final": {
   "workflow_id": "3e0cdffc-a8ff-408f-862f-f585f7696a5b",
   "agent_id": "320bf1fa-ac9c-4776-86ca-65c267b917d9",
-  "version": 15
+  "version": 21
  },
  "brief-b-final": {
   "workflow_id": "f67e39e0-5d7e-4a1b-815f-215b3cd4b7b9",
   "agent_id": "5ff61b01-bfc9-4def-80df-fb75c6302f59",
-  "version": 2
+  "version": 6
+ },
+ "synthetic-C": {
+  "workflow_id": "8b681300-b25f-4309-a7c3-54698d36ea5c",
+  "agent_id": "00497d95-b818-416c-9ce0-131267a77c0f",
+  "version": 5
+ },
+ "synthetic-D": {
+  "workflow_id": "f5a09f9d-612c-4449-9b8e-bce9b7183d00",
+  "agent_id": "cb83c620-58a1-4e58-8947-1079eae99158",
+  "version": 4
+ },
+ "synthetic-E": {
+  "workflow_id": "d545d4a4-55e4-49bc-adb7-a84130b981b2",
+  "agent_id": "8c1ba7ce-947b-4d78-a194-0a3f21cf568e",
+  "version": 4
+ },
+ "synthetic-F": {
+  "workflow_id": "205c7f1a-0c49-4f08-ab76-1d418e99c406",
+  "agent_id": "40bfccfb-c35c-4da4-bbe5-5889adae910e",
+  "version": 3
+ },
+ "synthetic-G": {
+  "workflow_id": "ae453b7e-da5e-4a42-adff-70591cce0e18",
+  "agent_id": "4bdf8196-2ad3-4df8-b8b7-3ddbbbc8d518",
+  "version": 5
+ },
+ "synthetic-H": {
+  "workflow_id": "b7b30573-350b-4f93-a24f-620768a772fa",
+  "agent_id": "4c39ffcc-df97-4c77-8077-65b64ecd2fe8",
+  "version": 5
+ },
+ "synthetic-I": {
+  "workflow_id": "7a7f6f61-b599-40a1-87bf-97526cf8c25b",
+  "agent_id": "6aa87244-6346-4b79-bc12-afd214066c52",
+  "version": 5
+ },
+ "synthetic-J": {
+  "workflow_id": "2df336a7-19d3-4946-aa12-3c829d63b4cd",
+  "agent_id": "aad05967-1582-4515-a8b3-4bb1cc686325",
+  "version": 5
  }
 }
