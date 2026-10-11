@@ -22,7 +22,7 @@ import urllib.error
 import urllib.request
 
 DEFAULT_CLAUDE_MODEL = "claude-opus-5-5"
-DEFAULT_R4_MODEL = "gpt-6-astra"
+DEFAULT_R4_MODEL = os.environ.get("R4_MODEL", "gpt-6-astra")   # the second family's model, as BUILDER_MODEL is Claude's
 OPENAI_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 
 
