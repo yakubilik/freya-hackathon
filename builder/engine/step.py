@@ -21,7 +21,7 @@ Contract with the emitter
 import json
 import re
 from .calendar import (parse_now, parse_date, iso, calendar_from_table, is_business_day,
-                       eval_expr, ExprError, EvalError, CalendarError)
+                       eval_expr, parse_expr, evaluate, ExprError, EvalError, CalendarError)
 from .dates import (UNITS, resolve_date, resolve_time, resolve_amount_cents, to_cents, cents_to_number, money_text, amount_words,
                     parse_identity_date, parse_digits, parse_year, parse_code, format_date_words, _weekday_mode)
 
@@ -301,6 +301,41 @@ def _expr_ctx(C, st, item=None):
 CENTS_FIELD_RE = re.compile(r"\bproduct\.([A-Za-z_][A-Za-z0-9_]*)")
 
 
+def _cents_names(ast):
+    """The product fields named in cents inside this subtree."""
+    out = set()
+    if isinstance(ast, tuple):
+        if ast[0] == "name" and isinstance(ast[1], list) and len(ast[1]) == 2 and ast[1][0] == "product" \
+                and "cents" in str(ast[1][1]).lower():
+            out.add(ast[1][1])
+        for part in ast[1:]:
+            out |= _cents_names(part)
+    elif isinstance(ast, list):
+        for part in ast:
+            out |= _cents_names(part)
+    return out
+
+
+def _eval_scaled(ast, ctx):
+    """Evaluate with the cents convention per branch: a conditional picks its branch first (the condition itself
+    evaluated under the convention), then only the branch taken decides whether cents fields scale the result. So
+    `product.minimum_payment if product.type == 'credit_card' else product.past_due_cents * 0.1` gives 25, not 0.25,
+    for a credit card (codex review 2026-10-11)."""
+    if isinstance(ast, tuple) and ast[0] == "if":
+        return _eval_scaled(ast[2] if _eval_scaled(ast[1], ctx) else ast[3], ctx)
+    cents = _cents_names(ast)
+    if cents and isinstance(ctx.get("product"), dict):
+        prod = dict(ctx["product"])
+        for n in cents:
+            v = prod.get(n)
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                prod[n] = int(round(float(v) * 100))
+        ctx = dict(ctx); ctx["product"] = prod
+        r = evaluate(ast, ctx)
+        return r / 100.0 if isinstance(r, (int, float)) and not isinstance(r, bool) else r
+    return evaluate(ast, ctx)
+
+
 def _eval(C, st, text, item=None):
     """Evaluate a table expression; None (and an unsupported mark) when it cannot be evaluated.
 
@@ -311,17 +346,7 @@ def _eval(C, st, text, item=None):
     band, 2026-10-11)."""
     try:
         ctx = _expr_ctx(C, st, item)
-        cents = [n for n in set(CENTS_FIELD_RE.findall(str(text or ""))) if "cents" in n.lower()]
-        if cents and isinstance(ctx.get("product"), dict):
-            prod = dict(ctx["product"])
-            for n in cents:
-                v = prod.get(n)
-                if isinstance(v, (int, float)) and not isinstance(v, bool):
-                    prod[n] = int(round(float(v) * 100))
-            ctx["product"] = prod
-            r = eval_expr(text, ctx)
-            return r / 100.0 if isinstance(r, (int, float)) and not isinstance(r, bool) else r
-        return eval_expr(text, ctx)
+        return _eval_scaled(parse_expr(str(text or "")), ctx)
     except (ExprError, EvalError, CalendarError, ValueError, TypeError, KeyError):
         _unsupported(C, st, "expression:" + str(text))
         return None

@@ -379,3 +379,19 @@ def test_expressions_over_cents_fields_are_evaluated_in_cents(cents, floor, band
 def test_expressions_over_unit_fields_are_unchanged():
     st = ready(TABLE_B, 1)
     assert st['items'][0]['floor'] == 9000 and st['items'][0]['band'] is not None
+
+
+def test_cents_convention_is_decided_by_the_branch_taken():
+    """codex review 2026-10-11: a cents field in the branch not taken must not scale a unit result."""
+    import importlib
+    engine = importlib.import_module("builder.engine.step")
+    C = engine._context(engine._copy(cents_table()), "2026-10-14T11:00")
+    st = engine.new_state()
+    st["items"] = [{"item_id": "p1", "product": {"type": "credit_card", "minimum_payment": 25, "past_due_cents": 2400, "past_due": 2400}}]
+    item = st["items"][0]
+    expr = "product.minimum_payment if product.type == 'credit_card' else product.past_due_cents * 0.1"
+    assert engine._eval(C, st, expr, item) == 25
+    item["product"]["type"] = "loan"
+    assert engine._eval(C, st, expr, item) == 240            # 2400 units -> 240000 cents * 0.1 / 100
+    assert engine._eval(C, st, "round(product.past_due_cents * 3 / 10, 100, 'up')", item) == 720
+    assert engine._eval(C, st, "product.past_due_cents <= 100000", item) is False
