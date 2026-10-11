@@ -206,7 +206,10 @@ class Bank:
     def _canonical(s, role, args):
         """Request args keyed by canonical field name, read through the profile's wire names."""
         names = s["profile"]["fields"].get(role, {})
-        return {canon: args[wire] for canon, wire in names.items() if wire in args}
+        out = {canon: args[wire] for canon, wire in names.items() if wire in args}
+        if role == "verify_identity" and names.get("field") == "" and len(s["identity"]) == 1:
+            out["field"] = next(iter(s["identity"]))
+        return out
 
     @staticmethod
     def _wire(s, role, canon):

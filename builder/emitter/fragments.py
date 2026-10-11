@@ -13,7 +13,7 @@ Runtime contract (one call turn):
             at the code node, and the next customer message re-runs the passthrough and hangs the chat (measured
             2026-10-10, version 4)
             w_<tool> (baked api_request) -> write_result (code: tool_result event) -> engine
-            close_<outcome>_<reason> (baked close_call, tts goodbye) -> write_result -> engine -> end
+            close_<outcome>_<reason> (baked close_call, model closing speech) -> write_result -> engine -> end
 
 The epilogue appended to the engine snippet turns the engine outputs into speech and routing variables:
 `say_head_line` (verbatim sentences the engine produced before its first content instruction, spoken word for
@@ -40,7 +40,7 @@ STAGE_NODE = {"party": "greeting", "callback": "callback", "identity": "identity
 WRITE_STAGE = {"verify_identity": "verify", "get_account": "fetch", "create_promise": "record",
                "transfer_to_agent": "transfer", "add_note": "note", "schedule_callback": "callback"}
 ENGINE_ARGS = {"verify_identity": ["field", "answer"], "get_account": [], "create_promise": ["product_id", "amount", "date"],
-               "add_note": ["product_id", "reason"], "schedule_callback": ["date", "time"], "transfer_to_agent": ["queue"],
+               "add_note": ["product_id", "reason"], "schedule_callback": ["date", "time", "reason"], "transfer_to_agent": ["queue"],
                "close_call": ["outcome", "reason"]}
 CLOSE_TOOL = "close_call"
 ENGINE_MARKER = "Freya call engine, rendered by builder/engine/snippet.py"
@@ -104,11 +104,12 @@ ENTRY_PROMPT = ("{{say_head_line}}\nConvey all of this content to the customer n
                 "do not combine separate product statements into a total. Instructions about reporting events or "
                 "waiting for a reply are for you, not words to say to the customer.\n"
                 "{{say_tail_line}}\nDo not add anything else and do not call any tool.")
+CLOSE_PROMPT = ("End this call with the following speech plan, in order. Read each 'Say exactly' line verbatim; "
+                "express each 'Convey' line naturally to the customer. Preserve all supplied contact methods and "
+                "details. Instructions are not spoken text. Add no offers, questions or tool claims.\n{{close_content}}")
 HEAD_PREFIX = "Start your message with exactly these words:"
-# The close node has no model turn: its tts can only speak sentences. The engine's content lines are instructions for
-# a model; these are the ones that can come up at a close, by the engine's phrase id (the table's wording of a non-exact
-# phrase varies by brief), as the sentence the tts says instead. Any other instruction is dropped there (the goodbye is
-# always said).
+# Legacy sentence preview for trace consumers of close_text. Actual closing
+# speech uses close_content, preserving this table's exact lines and instructions.
 CLOSE_SPOKEN = {
     "thanks_goodbye": "Thank you, goodbye.",
     "could_not_record": "I could not record the promise because of a technical problem.",
@@ -380,7 +381,7 @@ def setup(ctx, first):
     names = []
     for stage in ctx.stages:
         names += slot_vars(ctx, stage)
-    names += ["say_tts", "say_head_line", "say_content", "say_tail_line", "close_text", "write_tool", "write_item", "write_args",
+    names += ["say_tts", "say_head_line", "say_content", "say_tail_line", "close_text", "close_content", "write_tool", "write_item", "write_args",
               "wr_json", "wr_body", "engine_events"]
     for tool in ctx.write_tools:
         for key in ENGINE_ARGS[tool]:
@@ -736,14 +737,14 @@ def close_rows(ctx):
         fn = api_tool(ctx, CLOSE_TOOL, defaults, "Close the call as %s%s." % (outcome, (" / " + reason) if reason else ""))
         tools.append(fn)
         nodes[name] = {"name": name, "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "write_result",
-                       "on_enter": {"type": "tts", "text": "{{close_text}}"}, "on_enter_first_entry_only": True,
+                       "on_enter": {"type": "llm", "prompt": CLOSE_PROMPT}, "on_enter_first_entry_only": True,
                        "disable_inactivity_monitor": True, "suppress_tool_results": True, "pre_actions": [fn],
                        "response_mapping": RESULT_MAPPING, "transitions": [always("write_result")]}
         routes.append(when_all(name, "Engine: close as %s / %s" % (outcome, reason or "no reason"),
                                [leaf("engine_next", "equals", "close"), leaf("close_outcome", "equals", outcome),
                                 leaf("close_reason", "equals", reason or "")]))
     nodes["close_unmatched"] = code_node("close_unmatched", "vars['spoken_stage'] = 'close_unmatched'\n", [always("end")],
-                                         on_enter={"type": "tts", "text": "{{close_text}}"})
+                                         on_enter={"type": "llm", "prompt": CLOSE_PROMPT})
     routes.append(when_all("close_unmatched", "Engine: close without a matching row", [leaf("engine_next", "equals", "close")]))
     return Fragment(nodes, routes, tools)
 
@@ -842,9 +843,8 @@ def _emit_route(v, pre):
         v['speech_buf'] = '[]'
         return
     if nxt == 'close':
-        # no model turn before the close node: its tts speaks the verbatim lines (exact phrases, read-backs) and, for a
-        # content line, the sentence EMIT_CFG['close_spoken'] gives for its phrase id; other instructions are not
-        # spoken (measured 2026-10-10: the tts read "Thank the customer and say goodbye" to the customer). One goodbye.
+        # Preserve the legacy sentence preview; it is not sent to speech. The
+        # actual model speech plan below retains table-specific closing content.
         parts = []
         for s in buf + segs:
             t = s[1] if s[0] == 'v' else cfg['close_spoken'].get(s[2] if len(s) > 2 else '', '')
@@ -854,6 +854,17 @@ def _emit_route(v, pre):
         if 'goodbye' not in text.lower():
             text = (text + ' ' + cfg['goodbye']).strip()
         v['close_text'] = text
+        # A phrase id is a semantic role, not permission to replace this table's
+        # wording with a sentence from another policy. Let the dialogue model
+        # realise non-exact content; exact lines remain explicitly verbatim.
+        plan = []
+        for s in buf + segs:
+            line = ('Say exactly: ' if s[0] == 'v' else 'Convey: ') + s[1]
+            if line not in plan:
+                plan.append(line)
+        if not plan:
+            plan.append('Say exactly: ' + cfg['goodbye'])
+        v['close_content'] = '\\n'.join(plan)
         v['speech_buf'] = '[]'
         v['write_tool'] = cfg['close_tool']
         w = writes[0] if writes and isinstance(writes[0], dict) else dict()
@@ -864,6 +875,8 @@ def _emit_route(v, pre):
         tool = str(w.get('tool'))
         args = w.get('args') if isinstance(w.get('args'), dict) else dict()
         for key in cfg['write_vars'][tool]:
+            if tool == 'schedule_callback' and key == 'reason' and key not in args:
+                v[cfg['write_vars'][tool][key]] = cfg.get('callback_reason_default') or ''
             if key in args:
                 val = args.get(key)
                 if val is not None and 'cents' in cfg['write_vars'][tool][key].split('__')[-1].lower() and isinstance(val, (int, float)) and not isinstance(val, bool):
@@ -933,6 +946,10 @@ def engine_node(ctx, snippet, routes):
     cfg = {"stages": [s for s in ctx.stages], "first_stage": "party", "goodbye": GOODBYE, "repeat": REPEAT,
            "head_prefix": HEAD_PREFIX, "tail_prefix": TAIL_PREFIX, "close_spoken": CLOSE_SPOKEN, "close_tool": CLOSE_TOOL, "write_stage": {t: WRITE_STAGE[t] for t in ctx.write_tools},
            "write_vars": {t: {k: write_var(t, ctx.field_map.get(t, {}).get(k, k)) for k in ENGINE_ARGS[t] if ctx.field_map.get(t, {}).get(k, k)} for t in ctx.write_tools}}
+    from builder.emitter.wire import required_default
+    reason_field = ctx.field_map.get('schedule_callback', {}).get('reason')
+    reason_schema = ctx.api['tools'].get('schedule_callback', {}).get('request_fields', {}).get(reason_field, {})
+    cfg['callback_reason_default'] = required_default('schedule_callback', reason_field, reason_schema) if reason_schema else None
     prologue = "_EMIT_PRE = dict(vars)\n"
     if "import base64\n" in snippet:
         snippet = snippet.replace("import base64\n", BASE64_SHIM, 1)

@@ -2,12 +2,13 @@
 import json, pathlib, sys
 
 import pytest
+from data_paths import data_path
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from bank import replay  # noqa: E402
 
-SEQUENCES = json.load(open(replay.DEFAULT_RECORDING))
+SEQUENCES = json.load(open(data_path("research/bank-recorded-behaviour.json")))
 
 
 @pytest.fixture(scope="module")

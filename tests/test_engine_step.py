@@ -11,6 +11,7 @@ import pathlib
 import sys
 
 import pytest
+from data_paths import data_path
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -22,7 +23,7 @@ from builder.engine.step import step, new_state  # noqa: E402
 TABLE_A = json.load(open(ROOT / "fixtures" / "tables" / "brief-a.json"))
 TABLE_B = json.load(open(ROOT / "fixtures" / "tables" / "brief-b.json"))
 PUBLIC = {c["id"]: c for c in json.load(open(ROOT / "kit" / "build-the-builder" / "public-test-set.json"))}
-EXTENDED = {c["id"]: c for c in json.load(open(ROOT / "scenarios" / "extended-test-set.json"))}
+EXTENDED = {c["id"]: c for c in json.load(open(data_path("scenarios/extended-test-set.json")))}
 CASES = dict(PUBLIC)
 CASES.update(EXTENDED)
 

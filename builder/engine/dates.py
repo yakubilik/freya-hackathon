@@ -698,6 +698,18 @@ def parse_identity_date(text, parse_rule="day_month_year"):
             res["parts"] = {"day": a, "month": b, "year": y}
         return _finish_dob(res)
     tokens = s.split(" ")
+    # Numeric dates may be spoken as number groups, including a leading zero in
+    # the month. Keep the same ordering and century convention as digit input.
+    groups = _small_groups(tokens)
+    if groups and len(groups) == 4 and groups[1] == 0:
+        groups = [groups[0], groups[2], groups[3]]
+    if groups and len(groups) == 3:
+        a, b, y = groups
+        if 1 <= a <= 31 and 1 <= b <= 31 and 0 <= y < 100:
+            y += 1900 if y > 30 else 2000
+            res["parts"] = {"day": b if parse_rule == "month_day_year" else a,
+                            "month": a if parse_rule == "month_day_year" else b, "year": y}
+            return _finish_dob(res)
     day = month = year = None
     span = _year_in_words_span(tokens)
     if span:

@@ -63,6 +63,8 @@ def _role_of(name, props, idf):
     enums = {k: v.get("enum") for k, v in others.items() if v.get("enum")}
     kinds = {k: (v.get("type"), v.get("format"), (v.get("description") or "").lower()) for k, v in others.items()}
     lname = name.lower()
+    if name in TOOLS:
+        return name
     if not others: return "get_account"
     if any(w in lname for w in ROLE_HINTS["verify_identity"]) and len(others) >= 2: return "verify_identity"
     if any(w in lname for w in ROLE_HINTS["close_call"]) and ("outcome" in others or enums): return "close_call"
@@ -102,6 +104,8 @@ def _field_map(role, props, idf):
     if role == "verify_identity":
         m["field"] = _pick(others, used, is_enum, named("field", "question", "kind", "type"))
         m["answer"] = _pick(others, used, named("answer", "value", "response"), is_str)
+        if len(others) == 1 and m["field"] is None:
+            return {"field": "", "answer": next(iter(others))}
     elif role == "create_promise":
         m["product_id"] = _pick(others, used, named("product", "item", "account", "policy"), lambda k, v: k.endswith("id"))
         m["amount"] = _pick(others, used, named("amount", "sum", "value"), is_num)

@@ -11,7 +11,7 @@ normaliser is also rendered as code for the write_result node (it runs in the pl
 import re
 
 CANONICAL_REQUEST = {"verify_identity": ["field", "answer"], "get_account": [], "create_promise": ["product_id", "amount", "date"],
-                     "add_note": ["product_id", "reason", "text"], "schedule_callback": ["date", "time"],
+                     "add_note": ["product_id", "reason", "text"], "schedule_callback": ["date", "time", "reason"],
                      "transfer_to_agent": ["queue"], "close_call": ["outcome", "reason"]}
 
 
@@ -82,6 +82,7 @@ def request_field_map(api):
         elif tool == "schedule_callback":
             m["time"] = _pick(fields, used, named("time", "hour", "slot"))
             m["date"] = _pick(fields, used, is_date, named("day", "when"))
+            m["reason"] = _pick(fields, used, named("reason", "purpose", "cause"), is_enum) or ""
         elif tool == "transfer_to_agent":
             m["queue"] = _pick(fields, used, is_enum, named("queue", "team", "department", "target", "destination"), is_str)
         elif tool == "close_call":
@@ -91,8 +92,8 @@ def request_field_map(api):
     return out
 
 
-def _item_keys(spec, list_key):
-    pref = list_key + "[]."
+def _item_keys(spec, list_key, singleton=False):
+    pref = list_key + ("." if singleton else "[].")
     return {k[len(pref):]: v for k, v in (spec.get("response_fields") or {}).items() if k.startswith(pref)}
 
 
@@ -116,9 +117,13 @@ def response_field_map(api):
             m["hint"] = _pick(resp, used, both(is_str, named("hint", "clue")))
         elif tool == "get_account":
             lst = _pick(resp, used, lambda n, s: s.get("type") == "array")
+            singleton = False
+            if not lst:
+                lst = _pick(resp, used, lambda n, s: s.get("type") == "object" and "." not in n)
+                singleton = bool(lst)
             if lst:
                 m["products"] = lst
-                items = _item_keys(spec, lst)
+                items = _item_keys(spec, lst, singleton)
                 iu, im = set(), {}
                 im["product_id"] = _pick(items, iu, named("product_id"), lambda n, s: n.lower().endswith(("id", "ref")))
                 im["type"] = _pick(items, iu, named("type", "kind", "category", "product"))
@@ -129,7 +134,8 @@ def response_field_map(api):
                 im["past_due"] = _pick(items, iu, both(is_int, named("past_due", "arrears", "overdue", "due", "balance", "outstanding", "amount")))
                 item_map = {w: c for c, w in im.items() if w and w != c}
                 cents = [w for w in items if "cents" in w.lower()]
-                out[tool] = {"fields": {}, "list": lst if lst != "products" else None, "item": item_map, "cents": cents}
+                out[tool] = {"fields": {}, "list": lst if lst != "products" else None, "item": item_map, "cents": cents,
+                             "singleton": singleton}
                 continue
         elif tool in ("create_promise", "schedule_callback", "add_note", "transfer_to_agent", "close_call"):
             key = {"create_promise": "promise_id", "schedule_callback": "callback_id", "add_note": "note_id",
@@ -150,17 +156,19 @@ def _wire_norm(tool, data):
         return data
     def fix(d, fields, cents):
         d = dict(d)
-        for w in cents:
-            if isinstance(d.get(w), (int, float)) and not isinstance(d.get(w), bool):
-                d[w] = d[w] / 100.0
         for w, c in fields.items():
             if w in d and c not in d:
-                d[c] = d[w]
+                value = d[w]
+                if w in cents and isinstance(value, (int, float)) and not isinstance(value, bool):
+                    value = value / 100.0
+                d[c] = value
         return d
     data = fix(data, spec.get('fields') or {}, [c for c in spec.get('cents') or [] if '[]' not in c])
     lst = spec.get('list')
     if lst and lst in data and 'products' not in data:
         data['products'] = data[lst]
+    if spec.get('singleton') and isinstance(data.get('products'), dict):
+        data['products'] = [data['products']]
     if isinstance(data.get('products'), list) and (spec.get('item') or spec.get('cents')):
         data['products'] = [fix(p, spec.get('item') or {}, spec.get('cents') or []) if isinstance(p, dict) else p for p in data['products']]
     return data

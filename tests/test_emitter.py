@@ -12,6 +12,7 @@ import pathlib
 import sys
 
 import pytest
+from data_paths import data_path
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -28,7 +29,7 @@ API_PATH = ROOT / "kit" / "build-the-builder" / "tools" / "openapi.json"
 API_RAW = json.load(open(API_PATH))
 API = load_api(API_PATH)
 PUBLIC = {c["id"]: c for c in json.load(open(ROOT / "kit" / "build-the-builder" / "public-test-set.json"))}
-EXTENDED = {c["id"]: c for c in json.load(open(ROOT / "scenarios" / "extended-test-set.json"))}
+EXTENDED = {c["id"]: c for c in json.load(open(data_path("scenarios/extended-test-set.json")))}
 CASES = dict(PUBLIC)
 CASES.update(EXTENDED)
 NODE_STAGE = {v: k for k, v in STAGE_NODE.items()}
@@ -423,15 +424,12 @@ def test_dispatcher_pairs_a_reply_with_the_words_filed_under_another_slot(workfl
 
 
 
-def test_close_tts_speaks_sentences_not_instructions(bank, workflows):
-    """Seen on the platform 2026-10-10 (PUB-02): the close node's tts read "Thank the customer and say goodbye." At a
-    close the engine's content lines are instructions; the tts says their sentence form, or nothing, plus one goodbye."""
-    case = PUBLIC["PUB-02"]
-    rec, led = run(bank, workflows, "PUB-02", [[E("party_other")], [E("callback_offer", date="tomorrow", time="around eleven")]])
-    closing = [t["text"] for t in rec["transcript"] if t["role"] == "assistant" and t["node"].startswith("close_")]
-    assert closing and all("customer" not in c.lower() and "say goodbye" not in c.lower() for c in closing), closing
-    assert closing[-1].lower().count("goodbye") == 1
-    assert led["outcome"] == "not_reached" and led["reason"] == "callback"
+def test_close_speech_does_not_send_instructions_to_tts():
+    wf = emit(TABLE_A, API)
+    node = wf["nodes"]["close_not_reached_callback"]
+    assert node["on_enter"]["type"] == "llm"
+    assert "Instructions are not spoken text" in node["on_enter"]["prompt"]
+    assert "{{close_content}}" in node["on_enter"]["prompt"]
 
 
 def test_dispatcher_drops_product_words_that_match_no_product(workflows):
@@ -488,7 +486,7 @@ def test_dispatcher_falls_back_to_the_whole_message_when_words_are_missing(workf
     assert json.loads(v["engine_events"])[0]["text"] is None   # two replies: the whole message is not one answer
 
 
-SYNTH = ROOT / "synthetic"
+SYNTH = data_path("synthetic")
 
 
 @pytest.mark.parametrize("letter", ["C", "D", "E", "F", "G", "J"])
@@ -496,7 +494,7 @@ def test_emit_handles_an_api_with_other_field_names(letter):
     """The organisers keep the seven tool names; fields and allowed values change (README, "The final"). Synthetic briefs
     C and D (frozen tables from the night's reads) have question/pay_date/callback_date/client_ref and other response
     names; the emitter must map them, not raise."""
-    table_path = ROOT / "runs" / "synthetic" / ("build-%s" % letter) / "read" / "table.json"
+    table_path = data_path("runs/synthetic/build-%s/read/table.json" % letter)
     if not table_path.exists():
         pytest.skip("no frozen table for %s" % letter)
     from builder.readers.api_file import parse_api
@@ -512,9 +510,9 @@ def test_emit_handles_an_api_with_other_field_names(letter):
         assert verify["question"]["default"].startswith("{{wa_verify_identity__question")
     if letter == "F":   # one question, the answer field is named after it, no question field is sent
         assert set(verify) == {"client_ref", "birth_date"}
-    if letter == "E":   # a required enum the engine never fills gets a fixed neutral value
+    if letter == "E":   # callback purpose now follows the engine's situation
         cb = wf["nodes"]["w_schedule_callback"]["pre_actions"][0]["function"]["parameters"]["properties"]["body"]["properties"]
-        assert cb["reason"]["default"] == "unavailable"
+        assert cb["reason"]["default"] == "{{wa_schedule_callback__reason}}"
     if cid != "customer_id":   # the setup node makes both names carry the id, whichever the call variables bring
         values = {"customer_id": "actual-member", cid: "test"}
         code = wf["nodes"]["setup"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
