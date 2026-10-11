@@ -304,7 +304,8 @@ def engine_table(table):
             params[k] = {"value": e["value"]}
     phrases = [{f: ph[f] for f in ("id", "kind", "text", "exact") if f in ph} for ph in table.get("phrases") or []
                if isinstance(ph, dict) and ph.get("kind") == "mandatory" and ph.get("id")]
-    return {"parameters": params, "phrases": phrases}
+    from .step import derive_table_flags   # the flags the engine reads from the whole table (obligations, units)
+    return {"parameters": params, "phrases": phrases, "derived": derive_table_flags(table)}
 
 
 _PACK_HEADER = ('"""Freya call engine, rendered by builder/engine/snippet.py (zlib + base64 packed; the plain source is '

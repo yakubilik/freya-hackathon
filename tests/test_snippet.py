@@ -192,3 +192,24 @@ def test_packed_snippet_is_small_and_behaves_like_the_plain_one(table):
     ns = {"vars": dict(CALL)}
     exec(packed + "\nvars['probe'] = str(callable(step)) + str(callable(new_state))\n", ns)
     assert ns["vars"]["probe"] == "TrueTrue"
+
+
+
+def test_engine_table_carries_the_derived_flags():
+    """Synthetic C-01 (platform, 2026-10-11): the amounts-in-words flag is read from the table's obligations, which the
+    engine node does not carry; the emitter embeds the derived flags and the engine reads them back."""
+    import json, pathlib, importlib
+    from builder.engine import snippet
+    step = importlib.import_module("builder.engine.step")
+    root = pathlib.Path(__file__).resolve().parent.parent
+    table = json.load(open(root / "fixtures" / "tables" / "brief-a.json"))
+    table["obligations"] = list(table.get("obligations") or []) + [{"id": "O-x", "status": "effective", "when": {}, "then": [{"say": {"content": "say amounts in words in euros"}}]}]
+    table["units"] = {"x.1": {"text": "Declined: continue without persuasion; a date or amount the customer still names is recorded."}}
+    small = snippet.engine_table(table)
+    assert small["derived"]["amount_words"] is True and small["derived"]["currency"] == "euros" and small["derived"]["hardship_continues"] is True
+    assert "obligations" not in small and "units" not in small
+    C = step._context(small, "2026-10-16T10:00")
+    assert C["amount_words"] and C["currency"] == "euros" and C["hardship_continues"]
+    assert step._money(38000, C) == "three hundred and eighty euros"
+    plain = step._context(snippet.engine_table(json.load(open(root / "fixtures" / "tables" / "brief-a.json"))), "2026-10-16T10:00")
+    assert not plain["amount_words"] and not plain["hardship_continues"]

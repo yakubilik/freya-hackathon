@@ -982,6 +982,9 @@ def test_ext053_dont_know_exactly_comes_as_refuse(base):
     engine made a persuasion offer for Friday instead of proposing the deadline."""
     check(base, "EXT-053", verified(EXTENDED["EXT-053"]) + [[E("pay_today_no"), E("vague_period", date="when my salary comes in")],
                                                            [E("refuse")], [E("accept_offer")], [E("confirm")]])
+    # extracted as other (synthetic C-03, 2026-10-11): the same, the exact day is asked only once
+    st, led, calls, log = check(base, "EXT-053", verified(EXTENDED["EXT-053"]) + [[E("pay_today_no"), E("vague_period", date="when my salary comes in")],
+                                                                                 [E("other", text="I do not know exactly")], [E("accept_offer")], [E("confirm")]]) or (None,) * 4
 
 
 # ---------------------------------------------------------------------------------------------

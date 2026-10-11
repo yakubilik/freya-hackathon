@@ -201,17 +201,43 @@ def _context(table, now):
         rules["bare_weekday_unspecified"] = True
     C["rules"] = rules
     C["notes_mode"] = bool(_has_param(C, "notes.reasons"))
-    cur_note = _param(C, "amounts.currency") if _has_param(C, "amounts.currency") else None
-    C["currency"] = _currency_word(cur_note)
-    # the brief wants amounts spoken in words ("three hundred and eighty euros", never "380.00"): the currency note
-    # says so, or an obligation/phrase does; the currency word then comes from that text when no note names it
-    words_text = _amount_words_text(C, cur_note)
-    C["amount_words"] = bool(words_text)
-    if words_text and not C["currency"]:
-        C["currency"] = _currency_word(words_text)
     sits = _param(C, "situations") if _has_param(C, "situations") else None
     C["situations"] = sits if isinstance(sits, dict) else {}
+    # flags read from the whole table (obligations, units, phrases). The engine node on the platform carries only the
+    # parameters and the mandatory phrases (snippet.engine_table), so the emitter computes them once and embeds them
+    # as table["derived"]; offline the full table is at hand and they are computed here (synthetic C-01, 2026-10-11:
+    # the amounts-in-words flag was lost on the platform)
+    derived = table.get("derived") if isinstance(table.get("derived"), dict) else derive_table_flags(table, C)
+    C["currency"] = derived.get("currency") or ""
+    C["amount_words"] = bool(derived.get("amount_words"))
+    C["hardship_continues"] = bool(derived.get("hardship_continues"))
+    C["hardship_when"] = derived.get("hardship_when") if isinstance(derived.get("hardship_when"), dict) else dict()
     return C
+
+
+def derive_table_flags(table, C=None):
+    """The table-wide flags the engine needs at run time, computed from the full table: the currency word, whether
+    amounts are spoken in words, whether the call continues after a declined hardship transfer, and the hardship
+    obligation's `when`. Embedded by snippet.engine_table as table["derived"]."""
+    if C is None:
+        C = {"table": table, "params": table.get("parameters") or dict(), "missing": [], "phrases": dict()}
+        for ph in table.get("phrases") or []:
+            if isinstance(ph, dict) and ph.get("id"):
+                C["phrases"][ph["id"]] = ph
+        sits = _param(C, "situations") if _has_param(C, "situations") else None
+        C["situations"] = sits if isinstance(sits, dict) else {}
+    cur_note = _param(C, "amounts.currency") if _has_param(C, "amounts.currency") else None
+    currency = _currency_word(cur_note)
+    words_text = _amount_words_text(C, cur_note)
+    if words_text and not currency:
+        currency = _currency_word(words_text)
+    hs = C["situations"].get("hardship") if isinstance(C["situations"].get("hardship"), dict) else None
+    when = dict()
+    for o in table.get("obligations") or []:
+        if hs and o.get("id") == hs.get("obligation") and o.get("status") == "effective":
+            when = o.get("when") or dict()
+    return {"currency": currency, "amount_words": bool(words_text), "hardship_continues": bool(hs) and _hardship_continues(C, hs),
+            "hardship_when": when}
 
 
 def _expr_ctx(C, st, item=None):
@@ -852,9 +878,7 @@ def _handle_hardship(C, st, ev, bundle):
     # "offer": "none" or an explicit null means the transfer follows at once, without asking (synthetic H-06, 2026-10-11)
     no_offer = s.get("offer") == "none" or ("offer" in s and s.get("offer") in (None, "", False))
     if no_offer and s.get("transfer_queue"):
-        obligation = next((o for o in C["table"].get("obligations", [])
-                           if o.get("id") == s.get("obligation") and o.get("status") == "effective"), {})
-        when = obligation.get("when") or {}
+        when = C.get("hardship_when") or dict()
         if st["identity"]["state"] == "verified" or (when.get("state") == "any" and not when.get("guards")
                                                     and not when.get("stage_id")):
             _request_transfer(C, st, s["transfer_queue"], "hardship")
@@ -885,7 +909,7 @@ def _support_answer(C, st, accepted):
     # declined: no persuasion; items still open after this bundle are noted as hardship (see _advance),
     # a date or amount named in the same reply is still recorded
     st["global"]["hardship_declined"] = True
-    if _hardship_continues(C, s) and _open_items(st):
+    if C.get("hardship_continues") and _open_items(st):
         # "Declined: continue without persuasion; a date or amount the customer still names is recorded" (synthetic
         # D, G, I, J): the call stays open for one more reply instead of closing on the decline (G-06, J-05 2026-10-11);
         # brief A says "If they decline, close as no_promise / hardship" and keeps closing at once
@@ -1670,7 +1694,7 @@ def _negotiate_bundle(C, st, evs):
         has_too_much = any(e["kind"] == "too_much" for e in group)
         for e in group:
             k = e["kind"]
-            if k in ("refuse", "deny") and st.get("pending") == "exact_day" and not e.get("date_text") and e.get("amount") is None:
+            if k in ("refuse", "deny", "other") and st.get("pending") == "exact_day" and not e.get("date_text") and e.get("amount") is None:
                 # "I do not know exactly" after the one question for the exact day: still no day, so the vague rule's
                 # second step (propose the deadline), not a refusal with a persuasion offer (platform EXT-053, 2026-10-10)
                 k = "vague_period"
@@ -2514,6 +2538,12 @@ def _step(state, events, table, now):
                         elif e["kind"] == "dispute":
                             _handle_paid_or_dispute(C, st, "dispute", e, exclude=proposed_for)
                     if not g["paid_claim"] and not g["dispute"]:
+                        if st.get("pending") == "exact_day" and not (kinds & (set(CARRIER_KINDS) | set(["refuse", "deny", "too_much", "pay_today_no", "pay_today_yes", "confirm"]))):
+                            # "I do not know exactly" after the one question for the exact day, extracted as other: still
+                            # no day, the vague rule's second step follows (synthetic C-03, 2026-10-11)
+                            for e in cust:
+                                if e["kind"] == "other" and not e.get("date_text") and e.get("amount") is None:
+                                    e["kind"] = "vague_period"
                         _negotiate_events(C, st, [e for e in cust if e["kind"] not in ("paid", "dispute", "hardship", "complaint", "human", "plan_request", "dont_want_to_talk", "robot_question", "scam_question", "question_back", "other")])
                 elif st["stage"] == "party":
                     _party_events(C, st, [e for e in cust if e["kind"] not in ("human", "hardship", "dont_want_to_talk")])
