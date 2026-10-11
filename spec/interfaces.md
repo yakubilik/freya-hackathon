@@ -65,7 +65,7 @@ Wire strings are exact. `not_specified` is explicit; no silent defaults.
 
 **Well-known parameter paths** (absent when the brief is silent):
 `party.confirmation_words`, `party.max_asks`, `third_party.callback.window{days_expr,start,end,inclusive}`, `identity.questions[]{id, wire_field, type: date|digits:N|year|text, parse_rule, order}`,
-`identity.max_wrong`, `identity.hint_rule`, `identity.decline_rule`, `calendar.holidays[]`, `calendar.business_days`, `bands[]{id, condition, deadline_expr, attempts}`,
+`identity.max_wrong`, `identity.max_wrong_per_question` (2026-10-11, engine-gaps: per-question limit; a question entry may carry `max_wrong`), `identity.hint_rule`, `identity.decline_rule`, `calendar.holidays[]`, `calendar.business_days`, `bands[]{id, condition, deadline_expr, attempts}`,
 `dates.vague_rule`, `dates.this_next_rule`, `dates.bare_weekday_rule`, `amounts.floor_expr`, `amounts.range_rule`, `attempts[]{n, amount_rule, date_expr, band}`,
 `situations{hardship, paid, dispute, plan_request, human, scam, robot, deceased, wrong_number, dont_want_to_talk}`, `recording.retries`, `multi.max_items`, `multi.order`,
 `closing.rows[]{outcome, reason, triggers[], precedence}`, `call_variables[]`.
@@ -94,7 +94,7 @@ def step(state: dict, events: list[dict], table: dict, now: str) -> tuple[dict, 
 
 ```
 { "rev": int, "stage": str, "party": "unknown|customer|representative|third_party|wrong_number|deceased",
-  "identity": {"q_index": int, "wrong": int, "hinted": bool, "partials": {qid: str}, "passed": [qid], "state": "pending|verified|failed|declined"},
+  "identity": {"q_index": int, "wrong": int, "wrong_by_q": {qid: int} (only with a per-question limit), "hinted": bool, "partials": {qid: str}, "passed": [qid], "state": "pending|verified|failed|declined"},
   "callback": {"date": str|null, "time": str|null, "invalid": int},
   "items": [ {"item_id", "type", "label", "past_due", "floor", "days_late", "band", "deadline", "attempts_allowed",
               "attempts_used", "offers_made": [{"amount","date","kind"}], "floor_offered": bool, "too_much": bool,

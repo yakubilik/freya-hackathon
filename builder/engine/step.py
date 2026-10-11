@@ -1427,6 +1427,15 @@ def _identity_events(C, st, evs):
                 st["pending"] = "identity"
 
 
+def _per_question_limit(C, q):
+    """The wrong answers on one question that end the check: the question's own `max_wrong`, else
+    `identity.max_wrong_per_question`; None when the table counts in total only (then nothing changes)."""
+    v = (q or {}).get("max_wrong")
+    if not isinstance(v, int) or isinstance(v, bool):
+        v = _param(C, "identity.max_wrong_per_question") if _has_param(C, "identity.max_wrong_per_question") else None
+    return v if isinstance(v, int) and not isinstance(v, bool) and v > 0 else None
+
+
 def _verify_result(C, st, ev):
     ident = st["identity"]
     qs = _questions(C, st)
@@ -1434,7 +1443,9 @@ def _verify_result(C, st, ev):
     result = ev.get("result") or ("ok" if data.get("ok") else "failed")
     ans = ident.get("answer") or {}
     qid = ans.get("qid")
-    max_wrong = _param(C, "identity.max_wrong")
+    per_q = _per_question_limit(C, next((x for x in qs if x.get("id") == qid), None))
+    # the total is read as before; with a per-question limit only, a silent total is not a missing rule
+    max_wrong = _param(C, "identity.max_wrong") if (per_q is None or _has_param(C, "identity.max_wrong")) else None
     if result != "ok" and not isinstance(data.get("verified"), bool) and _has_param(C, "tools.retries"):
         retries = _param(C, "tools.retries")
         if isinstance(retries, int) and not isinstance(retries, bool) and retries >= 0:
@@ -1486,7 +1497,9 @@ def _verify_result(C, st, ev):
     over = data.get("ok") is False and bool(re.search(r"\bover\b|exhausted|too many attempts|no (more |further )?attempts", err))
     if left is not None and left <= 0 and data.get("verified") is not True:
         over = True
-    bank_wrong = (max_wrong - left) if (left is not None and isinstance(max_wrong, int)) else 0
+    bank_wrong = (max_wrong - left) if (left is not None and isinstance(max_wrong, int) and per_q is None) else 0
+    # a bank that counts per question reports the answers left on this question (synthetic C: wrong_left_on_question)
+    bank_wrong_q = (per_q - left) if (left is not None and per_q is not None) else 0
     wc = data.get("wrong_count")   # an API that counts wrong answers so far instead of answers left (wire normaliser)
     if isinstance(wc, int) and not isinstance(wc, bool):
         bank_wrong = max(bank_wrong, wc)
@@ -1529,14 +1542,22 @@ def _verify_result(C, st, ev):
         # counter does not move (or counts per question) must not let a fourth wrong answer through, and a bank that
         # says no answers are left ends the check even when the engine counted fewer (platform EXT-027/028, 2026-10-10)
         ident["wrong"] += 1
+        if per_q is not None:
+            wq = ident.setdefault("wrong_by_q", {})
+            wq[str(qid)] = wq.get(str(qid), 0) + 1
     ident["wrong"] = max(ident["wrong"], bank_wrong)
     ident["answer"] = None
-    if isinstance(max_wrong, int) and ident["wrong"] >= max_wrong:
+    over_q = False
+    if per_q is not None:
+        wq = ident.setdefault("wrong_by_q", {})
+        wq[str(qid)] = max(wq.get(str(qid), 0), bank_wrong_q)
+        over_q = wq[str(qid)] >= per_q
+    if (isinstance(max_wrong, int) and ident["wrong"] >= max_wrong) or over_q:
         ident["state"] = "failed"
         _say(C, st, "use_app_or_branch")
         _trigger(C, st, "identity_failed")
         return
-    if max_wrong is None:
+    if max_wrong is None and per_q is None:
         _unsupported(C, st, "identity.max_wrong")
     st["pending"] = "identity_again"
 

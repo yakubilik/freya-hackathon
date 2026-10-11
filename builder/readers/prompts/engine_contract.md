@@ -17,7 +17,10 @@ no such rule, give the path with `"confidence": "not_specified"` and no `value`,
   "type": "date" | "digits:<N>" | "year" | "text", "order": 1.., "text": <the question>,
   "parse_rule": <how to read the answer; for a date say "day, then month, then year" or "month, then day, then year">}`.
   Use the wire field itself as `id`.
-- `identity.max_wrong`: integer (total wrong answers that end the check).
+- `identity.max_wrong`: integer (total wrong answers that end the check). Set it only when the brief states a total.
+- `identity.max_wrong_per_question`: integer, only when the brief's limit is per question (two wrong answers on the
+  same question end the check; one wrong answer on each of two questions does not). A question entry may carry its own
+  `max_wrong` instead when the limits differ per question.
 - `identity.hint_rule`: `{"hint": <exact hint value the verify tool returns>, "ask": <what to ask>, "counts_as_wrong": true|false}`.
 - `identity.decline_rule`: `{"explain_once": <what to explain>, "max_declines": <integer: declines that close>,
   "question_about_call_counts_as_decline": true|false}`.
