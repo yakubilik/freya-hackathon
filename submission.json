@@ -1,0 +1,12 @@
+{
+  "team": "?",
+  "members": [
+    {"name": "Yakup Keskin", "email": "yakupkeskin777@gmail.com"}
+  ],
+  "repo": "https://github.com/yakubilik/freya-hackathon.git",
+  "commit": "<filled by tools/final.sh>",
+  "run_command": "python3 builder/build.py {case_folder} {mock_url}",
+  "workflow": "submission/final.workflow.json",
+  "trace": "traces/final.log",
+  "mock_url": "<from mock/.url>"
+}

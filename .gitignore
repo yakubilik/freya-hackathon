@@ -34,3 +34,6 @@ bank/.tunnel.*
 
 # Wrangler local state
 mock/worker/.wrangler/
+
+# tools/final.sh dry-run output
+/final/.dry-run.customers.json
