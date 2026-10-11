@@ -1934,3 +1934,19 @@ def test_immediate_hardship_transfer_uses_table_policy(verified_customer):
     st, out = step(st, [{"kind": "tool_result", "tool": "transfer_to_agent", "result": "ok",
                         "data": {"ok": True}}], table, now)
     assert [(w["tool"], w["args"]) for w in out["writes"]] == [("close_call", {"outcome": "transferred", "reason": "care"})]
+
+
+
+def test_text_identity_answers_are_normalised_like_the_bank_wants():
+    """Synthetic briefs C and H (platform, 2026-10-11): the postcode said in words ("seven zero three zero") was sent as
+    words and counted as a wrong answer; "ab12 3cd" must go as AB123CD when the brief says upper case, no spaces."""
+    from builder.engine.step import _parse_answer
+    q = {"id": "postcode", "type": "text", "parse_rule": "upper case letters and digits, no spaces, however the member says it"}
+    assert _parse_answer(q, "seven zero three zero.")[1] == "7030"
+    assert _parse_answer(q, "ab12 3cd")[1] == "AB123CD"
+    assert _parse_answer(q, "4021")[1] == "4021"
+    assert _parse_answer(q, "oh two one five")[1] == "0215"
+    assert _parse_answer(q, "double four seven one")[1] == "4471"
+    name = {"id": "mother_maiden_name", "type": "text"}
+    assert _parse_answer(name, "Johansen")[1] == "Johansen"     # a word stays a word
+    assert _parse_answer(name, "van der Berg")[1] == "van der Berg"

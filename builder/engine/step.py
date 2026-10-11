@@ -1056,8 +1056,42 @@ def _parse_answer(q, text):
     if typ == "year":
         r = parse_year(text)
         return r["status"], r["value"]
-    s = str(text or "").strip()
+    s = _normalise_text_answer(text, str(q.get("parse_rule") or ""))
     return ("complete", s) if s else ("none", None)
+
+
+_DIGIT_WORDS = {"zero": "0", "oh": "0", "o": "0", "nought": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+                "six": "6", "seven": "7", "eight": "8", "nine": "9"}
+
+
+def _normalise_text_answer(text, rule):
+    """A text answer (postcode, reference, name) as the bank wants it: spoken digits become digits ("seven zero three
+    zero" -> 7030, "double four" -> 44), a code said in groups loses its spaces when the rule says so or when it looks
+    like a code (short alphanumeric groups), case follows the rule ("upper case" / "lower case"). Platform synthetic
+    briefs C and H (2026-10-11): the postcode said in words was sent as words and counted as a wrong answer."""
+    s = str(text or "").strip().rstrip(".,;!?")
+    if not s:
+        return ""
+    toks = [t for t in re.split(r"[\s\-]+", s) if t]
+    out, i = [], 0
+    while i < len(toks):
+        t, low = toks[i], toks[i].lower().strip(".,")
+        if low in ("double", "triple") and i + 1 < len(toks) and toks[i + 1].lower() in _DIGIT_WORDS:
+            out.append(_DIGIT_WORDS[toks[i + 1].lower()] * (2 if low == "double" else 3))
+            i += 2
+            continue
+        out.append(_DIGIT_WORDS.get(low, t))
+        i += 1
+    low_rule = rule.lower()
+    code_like = len(out) >= 2 and all(re.fullmatch(r"[A-Za-z0-9]{1,4}", x) for x in out) and any(ch.isdigit() for ch in "".join(out))
+    joined = "".join(out) if ("no space" in low_rule or "without space" in low_rule or code_like) else " ".join(out)
+    if "upper" in low_rule:
+        joined = joined.upper()
+    elif "lower" in low_rule:
+        joined = joined.lower()
+    elif code_like:
+        joined = joined.upper()
+    return joined
 
 
 def _identity_events(C, st, evs):
