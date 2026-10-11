@@ -565,7 +565,7 @@ def resolve_date(text, now, rules=None):
         return exact(today + timedelta(days=2), "relative")
     if re.search(r"\btomorrow\b", s):
         return exact(today + timedelta(days=1), "relative")
-    if re.search(r"\btoday\b", s) or re.search(r"\bright now\b", s) or re.search(r"\bthis (morning|afternoon|evening)\b", s):
+    if re.search(r"\b(today|tonight)\b", s) or re.search(r"\bright now\b", s) or re.search(r"\bthis (morning|afternoon|evening)\b", s):
         return exact(today, "relative")
     # end of the month
     if re.search(r"\b(end|last day) of (the|this) month\b", s) or re.search(r"\bend of month\b", s) or re.search(r"\bmonth end\b", s):

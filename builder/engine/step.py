@@ -66,6 +66,7 @@ FALLBACK_TEXT = {
     "thanks_goodbye": "Thank the customer and say goodbye.",
     "month_as_word": "Ask the customer to say the date of birth again with the month as a word.",
     "own_deadline_note": "For {product} the latest date that can be recorded is {deadline}, so it is recorded on {deadline}.",
+    "request_noted": "Acknowledge that the customer's request has been noted.",
 }
 
 
@@ -888,8 +889,12 @@ def _handle_dont_want(C, st, ev):
     limit = int(s.get("count") or 2)
     verified = st["identity"]["state"] == "verified"
     if st["global"]["dont_want"] >= limit:
+        # The situation may use a more specific note reason than a payment refusal.
+        reasons = _param(C, "notes.reasons") if _has_param(C, "notes.reasons") else []
+        close = s.get("close_verified") or []
+        reason = s.get("note") or (close[1] if len(close) > 1 and close[1] in (reasons or []) else "refused")
         for it in _open_items(st) + _agreed_items(st):
-            _note_item(C, st, it, "refused")
+            _note_item(C, st, it, reason)
         _trigger(C, st, "dont_want_twice_verified" if verified else "dont_want_twice_unverified")
         st["global"]["dont_want_closed"] = True
         return
@@ -970,10 +975,12 @@ def _callback_events(C, st, evs):
             r = resolve_date(dtext, C["now"], C["rules"])
             if r.get("kind") == "exact":
                 cb["date"] = r["date"]
-            elif r.get("kind") == "vague":
+            elif r.get("kind") == "vague" or e.get("date_text") or (cb["date"] is None and resolve_time(dtext) is None):
                 cb["date"] = "vague"
         if ttext:
-            t = resolve_time(ttext)
+            # Day and time are separate extraction slots; the day can carry the daypart.
+            daypart = re.search(r"\b(tonight|morning|afternoon|evening|night)\b", str(dtext or ""), re.I)
+            t = resolve_time(ttext + (" " + daypart.group(0) if daypart else ""))
             if t:
                 cb["time"] = t
     win = _callback_window(C, st)
@@ -1118,6 +1125,14 @@ def _verify_result(C, st, ev):
             return
     ident["service_failures"] = 0
     if result == "unknown":
+        ident["unreadable"] = ident.get("unreadable", 0) + 1
+        if ident["unreadable"] >= UNREADABLE_MAX:
+            _unsupported(C, st, "verify_identity gave no verdict %d times: no rule" % UNREADABLE_MAX)
+            ident["answer"] = None
+            ident["state"] = "failed"
+            _say(C, st, "system_unavailable")
+            _trigger(C, st, "identity_failed")
+            return
         if ident["retried"] < 1:
             ident["retried"] += 1
             st["pending"] = "verify"
@@ -1824,6 +1839,11 @@ def _render(C, st, out):
     elif stage == "party":
         if not st["opened"]:
             _say(C, st, "opening")
+            opening = _phrase(C, "opening") or {}
+            content = _param(C, "opening.sentence_content") if _has_param(C, "opening.sentence_content") else None
+            if opening.get("exact") and isinstance(content, str) and content.strip() != str(opening.get("text") or "").strip():
+                _line(C, "After the supplied exact opening, convey any remaining introduction content from these "
+                      "requirements without repeating that opening: " + content)
             st["opened"] = True
         _say(C, st, "party_question")
         out["engine_next"] = "party"
@@ -1968,8 +1988,15 @@ def _render(C, st, out):
                     args["reason"] = row.get("reason")
                 writes.append({"tool": "close_call", "args": args, "item_id": None,
                                "intent_key": "close:%s:%s" % (row.get("outcome"), row.get("reason"))})
-                if row.get("line"):
+                notes = [it for it in st["items"] if it["noted"]]
+                contact_close = g.get("dont_want_closed") and bool(notes)
+                notes_ok = all(it["noted_written"] and it["note_failures"] < 2 for it in notes)
+                # A contact-request closing phrase may acknowledge the notes. Never speak it after a failed write.
+                if row.get("line") and (not contact_close or notes_ok):
                     _say(C, st, row["line"])
+                phrase = _phrase(C, row.get("line")) if row.get("line") else None
+                if contact_close and notes_ok and not (phrase and phrase.get("exact")):
+                    _say(C, st, "request_noted")
                 _say(C, st, "thanks_goodbye")
                 out["engine_next"] = "close"
                 out["what_to_do_next"] = "Thank the customer and say goodbye, then close the call as %s / %s." % (row.get("outcome"), row.get("reason"))
