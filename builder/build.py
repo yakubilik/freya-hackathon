@@ -2,6 +2,13 @@
 
     python3 builder/build.py <brief.md> <tools.json> [--out-dir runs/<run_id>] [--slot NAME] [--skip-tests]
                              [--reuse-table PATH] [--base BRIEF.md] [--no-deploy] [--no-platform-test]
+    python3 builder/build.py <case_folder> <mock_url> 2>&1 | tee traces/final.log     (the final's form)
+
+The final's form: the case folder holds BRIEF.md, README.md, the documents and a service contract; the second argument
+is the base URL of our mock of the bank. The contract (a .json/.yaml/.yml OpenAPI document anywhere in the folder) is
+copied with its server on the mock, so every tool of the final variant calls the mock and nothing else; without a
+machine-readable contract the build stops with a trace error. BRIEF.md, README.md and then the other text documents
+(file-name order, subfolders included) are joined into <case_folder>.joined.md; images and binaries are only listed.
 
 Stages, under one 30-minute budget with reservations (Schedule below):
   1. read     builder.readers.read_brief -> frozen rule table (or --reuse-table). Failure -> T1 floor.
@@ -16,7 +23,7 @@ Stages, under one 30-minute budget with reservations (Schedule below):
   6. manifest runs/<run_id>/manifest.json, written even on failure.
 
 The floor is the kit's example builder (kit/build-the-builder/examples/agent_builder.py), run as a subprocess.
-Trace: runs/<run_id>/trace.log (plain text) and trace.jsonl. Keys come from the environment or from .env in the
+Trace: runs/<run_id>/trace.log (plain text, every line also on stdout, paths repo-relative) and trace.jsonl. Keys come from the environment or from .env in the
 repository root (KEY=VALUE lines); they are never written to the trace.
 """
 from __future__ import annotations
@@ -158,6 +165,29 @@ def _now_iso():
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+SECRET_NAME = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|PASSWD", re.I)
+
+
+def rel(p):
+    """A path as the trace and the manifest show it: relative to the repository root, never absolute."""
+    if p is None:
+        return None
+    try:
+        return os.path.relpath(str(p), str(ROOT))
+    except ValueError:
+        return pathlib.Path(p).name
+
+
+def scrub(text):
+    """No absolute paths and no key values in anything the builder writes or prints."""
+    s = str(text)
+    for k, v in os.environ.items():
+        if v and len(v) >= 8 and SECRET_NAME.search(k):
+            s = s.replace(v, "***")
+    s = s.replace(str(ROOT) + os.sep, "").replace(str(ROOT), ".")
+    return s.replace(str(pathlib.Path.home()), "~")
+
+
 class Trace:
     """trace.log (one human-readable line per event) and trace.jsonl (the same events as JSON)."""
 
@@ -179,13 +209,19 @@ class Trace:
 
     def write(self, kind, text, **data):
         rec = {"at": _now_iso(), "t": self._t(), "kind": kind, **data}
-        line = "%s [%7s s] %-8s %s" % (rec["at"], rec["t"], kind, text)
+        line = scrub("%s [%7s s] %-8s %s" % (rec["at"], rec["t"], kind, text))
         with self.log.open("a") as fh:
             fh.write(line + "\n")
         with self.jsonl.open("a") as fh:
-            fh.write(json.dumps(rec, default=str, ensure_ascii=False) + "\n")
+            fh.write(scrub(json.dumps(rec, default=str, ensure_ascii=False)) + "\n")
         if self.echo:
             print(line, flush=True)
+
+    def echo_output(self, name, text):
+        """A subprocess's output (kept in its own file in the run directory) also goes to stdout, which the organisers
+        keep as the trace."""
+        if self.echo and text.strip():
+            print(scrub("\n".join("  %s | %s" % (name, ln) for ln in text.rstrip().splitlines())), flush=True)
 
     def info(self, text, **data):
         self.write("info", text, **data)
@@ -396,8 +432,8 @@ class FloorTrigger(Exception):
 
 def parse_args(argv=None):
     ap = argparse.ArgumentParser(description="Build a Freya phone agent from a brief.")
-    ap.add_argument("brief")
-    ap.add_argument("tools")
+    ap.add_argument("brief", help="a brief file, a directory of brief documents, or the final's case folder")
+    ap.add_argument("tools", help="the tool API file, or an http(s) URL: the base of our mock bank (the final's form)")
     ap.add_argument("--out-dir")
     ap.add_argument("--slot")
     ap.add_argument("--skip-tests", action="store_true", help="no local and no platform self-tests")
@@ -437,15 +473,192 @@ def join_brief_dir(d):
     return out
 
 
+# ---- the final's case folder: BRIEF.md, README.md, documents, a service contract; the second argument a mock URL
+
+NOT_TEXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".heic", ".ico", ".svg", ".pdf", ".zip",
+            ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".key", ".pages", ".numbers"}
+CONTRACT_SUFFIXES = (".json", ".yaml", ".yml")
+
+
+def is_url(s):
+    return bool(re.match(r"^https?://[^\s/]+", str(s or "").strip(), re.I))
+
+
+def is_case_dir(d):
+    return any(p.stem.lower() == "brief" for p in case_files(d))
+
+
+def case_files(d):
+    """Every file under the folder, recursively, in relative-path order; hidden files and zip debris left out."""
+    d = pathlib.Path(d)
+    out = []
+    for p in sorted(d.rglob("*"), key=lambda q: str(q.relative_to(d)).lower()):
+        parts = p.relative_to(d).parts
+        if p.is_file() and not any(x.startswith(".") or x == "__MACOSX" for x in parts):
+            out.append(p)
+    return out
+
+
+def load_structured(p):
+    """A .json, .yaml or .yml file as data. YAML through PyYAML, else Ruby's YAML (macOS ships it); ValueError when
+    neither is there or the file does not parse."""
+    p = pathlib.Path(p)
+    text = p.read_text(encoding="utf-8")
+    if p.suffix.lower() == ".json":
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as e:
+            raise ValueError("not valid JSON: %s" % e)
+    try:
+        import yaml  # noqa: PLC0415
+        try:
+            return yaml.safe_load(text)
+        except yaml.YAMLError as e:
+            raise ValueError("not valid YAML: %s" % str(e)[:200])
+    except ImportError:
+        pass
+    try:
+        r = subprocess.run(["ruby", "-ryaml", "-rjson", "-rdate", "-e",
+                            "puts JSON.generate(YAML.safe_load(STDIN.read, permitted_classes: [Date, Time, Symbol], aliases: true))"],
+                           input=text, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise ValueError("YAML file but no YAML parser: PyYAML is not installed and ruby is not usable (%s)" % e)
+    if r.returncode != 0:
+        raise ValueError("YAML not parsed (PyYAML not installed; ruby says: %s)" % r.stderr.strip()[-200:])
+    return json.loads(r.stdout)
+
+
+def looks_like_contract(doc):
+    return isinstance(doc, dict) and ("openapi" in doc or "swagger" in doc or isinstance(doc.get("paths"), dict))
+
+
+def find_contract(files):
+    """(path, doc, notes): the machine-readable service contract among the files, an OpenAPI/Swagger document (JSON or
+    YAML, `openapi`, `swagger` or `paths` at the top). With several, the one with most operations, then the first by
+    name. (None, None, notes) when there is none; notes say why candidate files were passed over."""
+    from builder.readers.api_file import parse_api
+
+    found, notes = [], []
+    for p in files:
+        if p.suffix.lower() not in CONTRACT_SUFFIXES:
+            continue
+        try:
+            doc = load_structured(p)
+        except (ValueError, UnicodeDecodeError) as e:
+            notes.append("%s: %s" % (p.name, e))
+            continue
+        if not looks_like_contract(doc):
+            continue
+        try:
+            n = len(parse_api(doc)["tools"])
+        except Exception as e:  # noqa: BLE001
+            notes.append("%s: looks like OpenAPI but does not parse: %s" % (p.name, str(e)[:200]))
+            continue
+        if n:
+            found.append((-n, len(found), p, doc))
+        else:
+            notes.append("%s: OpenAPI without operations" % p.name)
+    if not found:
+        return None, None, notes
+    _, _, p, doc = min(found, key=lambda x: (x[0], x[1]))
+    return p, doc, notes
+
+
+def join_case_dir(d, exclude=(), out=None):
+    """The case folder's text documents joined into one markdown file the reader takes like any brief: BRIEF.md first,
+    README.md second, then every other text document (.md, .txt, .json, .csv, ...) by relative path, subfolders
+    included; the service contract (`exclude`) left out. Images and binaries are skipped. Returns (joined path,
+    included relative paths, skipped relative paths)."""
+    d = pathlib.Path(d)
+    exclude = {pathlib.Path(x).resolve() for x in exclude if x}
+
+    def rank(p):
+        parts = p.relative_to(d).parts
+        cls = {"brief": 0, "readme": 1}.get(p.stem.lower(), 2) if p.suffix.lower() in (".md", ".txt", "") else 2
+        return (cls, len(parts) if cls < 2 else 0, "/".join(parts).lower())
+
+    texts, used, skipped = [], [], []
+    for p in sorted(case_files(d), key=rank):
+        r = str(p.relative_to(d))
+        if p.resolve() in exclude:
+            continue
+        if p.suffix.lower() in NOT_TEXT:
+            skipped.append(r)
+            continue
+        try:
+            t = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            skipped.append(r)
+            continue
+        if "\x00" in t:
+            skipped.append(r)
+            continue
+        if t.strip():
+            texts.append(t.strip() + "\n")
+            used.append(r)
+    if not texts:
+        raise ValueError("case folder %s has no text documents" % rel(d))
+    out = pathlib.Path(out) if out else d.parent / (d.name + ".joined.md")
+    out.write_text("\n\n---\n\n".join(texts), encoding="utf-8")
+    return out, used, skipped
+
+
+def prepare_case(trace, manifest, case_dir, tools_path, mock_url, joined):
+    """The brief and the tool API file for the reader, from a case folder. With a mock URL the folder's service
+    contract is located and copied with its server on the mock (the official run: every tool calls the mock, nothing
+    else), so the reader, the emitter's final variant, the export and the floor all see the mock as the bank."""
+    from builder.emitter.emit import base_url_for
+    from builder.readers.api_file import parse_api
+
+    files = case_files(case_dir)
+    trace.info("case folder %s: %d file(s): %s" % (rel(case_dir), len(files), ", ".join(str(p.relative_to(case_dir)) for p in files)))
+    contract = tools_path
+    if mock_url:
+        contract, doc, notes = find_contract(files)
+        for n in notes:
+            trace.info("contract candidate passed over: %s" % n)
+        if contract is None:
+            raise ValueError("no machine-readable service contract in the case folder (looked for a .json/.yaml/.yml "
+                             "OpenAPI document with openapi/swagger/paths at the top%s); no tools are invented, the "
+                             "build stops" % ("; " + " | ".join(notes) if notes else ""))
+        api0 = parse_api(doc)
+        mock_base = base_url_for(api0, "final", mock_url)
+        trace.info("service contract: %s, %d operation(s) (%s); its server %s; tools go to the mock %s" % (
+            contract.relative_to(case_dir), len(api0["tools"]), ", ".join(sorted(api0["tools"])), api0["server"] or "none",
+            mock_base))
+        manifest["contract_path"] = rel(contract)
+        manifest["mock_url"] = mock_url
+        doc = dict(doc)
+        doc["servers"] = [{"url": mock_base}]
+        tools_path = joined.parent / (case_dir.name + ".contract.json")
+        tools_path.write_text(json.dumps(doc, indent=1, ensure_ascii=False), encoding="utf-8")
+    brief_path, used, skipped = join_case_dir(case_dir, exclude=[contract], out=joined)
+    trace.info("brief material, in reading order: %s" % ", ".join(used))
+    if skipped:
+        trace.info("not read (image or binary): %s" % ", ".join(skipped))
+    manifest["brief_documents"], manifest["skipped_documents"] = used, skipped
+    manifest["brief_path"], manifest["tools_path"] = rel(brief_path), rel(tools_path)
+    return brief_path, tools_path
+
+
 def run(argv=None, schedule=None):
     a = parse_args(argv)
     schedule = schedule or Schedule(a.budget)
     started = _now_iso()
-    brief_path, tools_path = pathlib.Path(a.brief).resolve(), pathlib.Path(a.tools).resolve()
+    brief_path = pathlib.Path(a.brief).resolve()
+    mock_url = a.tools.strip() if is_url(a.tools) else None
+    tools_path = None if mock_url else pathlib.Path(a.tools).resolve()
     global EXPORT_DIR
     EXPORT_DIR = ROOT / "submission-test" if getattr(a, "deploy_variant", "final") == "test" else SUBMISSION
-    if brief_path.is_dir():
+    case_dir = None
+    if mock_url and brief_path.is_file():
+        case_dir = brief_path.parent          # BRIEF.md handed over instead of its folder: the case is the folder
+    elif brief_path.is_dir() and (mock_url or is_case_dir(brief_path)):
+        case_dir = brief_path
+    elif brief_path.is_dir():
         brief_path = join_brief_dir(brief_path)
+    if case_dir is not None:
+        brief_path = case_dir.parent / (case_dir.name + ".joined.md")
     bslug = slug(brief_path)
     run_id = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d-%H%M%S") + "-" + bslug
     out_dir = pathlib.Path(a.out_dir) if a.out_dir else ROOT / "runs" / run_id
@@ -454,7 +667,8 @@ def run(argv=None, schedule=None):
     trace = Trace(out_dir, schedule)
     env_set = load_env()
     manifest = {
-        "run_id": run_id, "brief_path": str(brief_path), "tools_path": str(tools_path),
+        "run_id": run_id, "brief_path": rel(brief_path), "tools_path": rel(tools_path),
+        "case_dir": rel(case_dir), "mock_url": mock_url, "contract_path": None,
         "brief_hash": None, "tools_hash": None, "table_hash": "none", "plan_hash": "none",
         "source_commit": source_commit(), "variant": "final", "slot": None, "workflow_id": None, "agent_id": None,
         "version": None, "export_path": None, "export_hash": None, "bank_url": None, "endpoint_check": None,
@@ -463,10 +677,13 @@ def run(argv=None, schedule=None):
         "stages": trace.stages, "model_calls": trace.model_calls, "tests": trace.tests,
         "started": started, "finished": None,
     }
-    trace.info("builder start: run %s, brief %s, tools %s, commit %s" % (run_id, brief_path, tools_path,
-                                                                         manifest["source_commit"]))
+    trace.info("builder start: run %s, %s %s, %s %s, commit %s" % (
+        run_id, "case folder" if case_dir else "brief", rel(case_dir or brief_path),
+        "mock bank" if mock_url else "tools", mock_url or rel(tools_path), manifest["source_commit"]))
     trace.info("environment: %d keys loaded from .env (names only: %s)" % (len(env_set), ", ".join(sorted(env_set))))
     try:
+        if case_dir is not None:
+            brief_path, tools_path = prepare_case(trace, manifest, case_dir, tools_path, mock_url, brief_path)
         _pipeline(a, schedule, trace, manifest, brief_path, tools_path, bslug, run_id, out_dir)
     except Exception as e:  # noqa: BLE001 - the manifest is written whatever happens
         manifest["status"] = "failed"
@@ -477,9 +694,9 @@ def run(argv=None, schedule=None):
             manifest["results"][t["result"] if t["result"] in manifest["results"] else "UNKNOWN"] += 1
         manifest["finished"] = _now_iso()
         manifest["elapsed_s"] = round(schedule.elapsed(), 1)
-        (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1, default=str))
+        (out_dir / "manifest.json").write_text(scrub(json.dumps(manifest, indent=1, default=str)))
         trace.info("builder end: status %s, %.1f s, results %s, manifest %s" % (
-            manifest["status"], schedule.elapsed(), manifest["results"], out_dir / "manifest.json"))
+            manifest["status"], schedule.elapsed(), manifest["results"], rel(out_dir / "manifest.json")))
         trace.info("created on Freya: workflow %s, agent %s, slot %s, version %s, export %s" % (
             manifest["workflow_id"], manifest["agent_id"], manifest["slot"], manifest["version"], manifest["export_path"]))
     return manifest
@@ -532,7 +749,7 @@ def stage_read(a, schedule, trace, manifest, brief_path, tools_path, public, out
         table = json.loads(pathlib.Path(a.reuse_table).read_text())
         rm = table.get("run_metadata") or {}
         trace.info("reusing frozen table %s (table hash %s, assurance %s); no model calls in this run" % (
-            a.reuse_table, rm.get("table_hash"), rm.get("assurance")))
+            rel(pathlib.Path(a.reuse_table).resolve()), rm.get("table_hash"), rm.get("assurance")))
         _note_table(trace, manifest, table)
         trace.stage_end("read", "reused")
         return table
@@ -540,7 +757,7 @@ def stage_read(a, schedule, trace, manifest, brief_path, tools_path, public, out
     if not bases and public in PUBLIC_BASES:
         bases = [str(PUBLIC_BRIEFS[x]) for x in PUBLIC_BASES[public]]
     if bases:
-        trace.info("base documents for the reading: %s" % ", ".join(bases))
+        trace.info("base documents for the reading: %s" % ", ".join(rel(b) for b in bases))
     read_dir = out_dir / "read"
     errors = []
     for attempt in (1, 2):
@@ -776,6 +993,7 @@ def stage_platform(schedule, trace, manifest, public):
         p = subprocess.run(cmd, cwd=KIT, capture_output=True, text=True, timeout=budget, env=dict(os.environ))
         out = p.stdout + p.stderr
         (trace.dir / "platform-test.log").write_text(out)
+        trace.echo_output("platform", out)
         line = next((ln for ln in out.splitlines() if ln.startswith(("PASS ", "FAIL "))), None)
         reasons = [ln.strip() for ln in out.splitlines() if ln.startswith("       -")]
         sim = re.search(r"Last simulation (\S+)", out)
@@ -815,6 +1033,7 @@ def run_floor(a, schedule, trace, manifest, ft, brief_path, tools_path, bslug):
     try:
         p = subprocess.run(cmd, cwd=KIT, capture_output=True, text=True, timeout=budget, env=dict(os.environ))
         (trace.dir / "floor.log").write_text(p.stdout + p.stderr)
+        trace.echo_output("floor", p.stdout + p.stderr)
         done = re.search(r"done: (\d+) turns, (\d+) s, \$([\d.]+)", p.stdout)
         trace.model_call(os.environ.get("BUILDER_MODEL", "claude-opus-5-5"), "kit floor: build, test and fix a phone agent",
                          None, round(time.monotonic() - t0, 1), detail=done.group(0) if done else "exit %s" % p.returncode)
