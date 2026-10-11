@@ -150,6 +150,10 @@ def read(brief_path, api_path, *, out_dir, deadline_s: float = 720, skip_r4: boo
                 trace.add(u)
         except models.ModelCallError as e:
             adjudication = {"skipped": f"adjudicator failed: {e}"}
+            # the rules ask for every model call in the trace, failed ones too (rehearsal G 2026-10-11: the
+            # adjudicator timed out at the read deadline and left no line)
+            trace.add({"model": "claude", "purpose": "adjudicate (failed: %s)" % str(e)[:120],
+                       "seconds": round(time.monotonic() - s, 1), "backend": "claude"})
         timings["adjudicate"] = round(time.monotonic() - s, 1)
     else:
         adjudication = {"skipped": "no time left" if deadline.remaining() < ADJ_MIN_S else "nothing to adjudicate"}
