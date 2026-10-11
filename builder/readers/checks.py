@@ -378,7 +378,12 @@ def check_basics(table, f):
 
 
 def _same(a, b):
-    return str(a)[:10] == str(b)[:10] if a is not None and b is not None else a == b
+    if a is None or b is None:
+        return a == b
+    try:
+        return abs(float(a) - float(b)) < 1e-6   # 154 and 154.0 are the same amount
+    except (TypeError, ValueError):
+        return str(a)[:10] == str(b)[:10]
 
 
 def evaluate_example(table, ex):

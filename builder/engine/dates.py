@@ -466,6 +466,29 @@ def _resolve_day_month(today, day, month, year):
         return None
 
 
+_WEEKDAY_MODES = ("following_week", "forward", "current_week", "next_occurrence", "on_or_after")
+
+
+def _weekday_mode(rule, default):
+    """The calendar mode for a this/next/bare weekday rule. The reader writes the rule as a small expression
+    ("next_weekday(w)", "this_weekday(w) if this_weekday(w) > today else next_weekday(w)") or as a mode name."""
+    if not isinstance(rule, str) or not rule.strip():
+        return default
+    r = rule.strip()
+    if r in _WEEKDAY_MODES:
+        return r
+    low = r.lower()
+    if "> today" in low or "after today" in low or ("if" in low and "else" in low):
+        return "forward"                 # the first such weekday after today, whatever the week
+    if low.startswith("next_weekday"):
+        return "following_week"
+    if low.startswith("this_weekday"):
+        return "current_week"
+    if "on_or_after" in low or ">= today" in low:
+        return "on_or_after"
+    return default
+
+
 def resolve_date(text, now, rules=None):
     """Customer date text to {"kind": "exact|vague|none", "date": iso|None, "text": text, "how": str}."""
     rules = rules or {}
@@ -609,14 +632,14 @@ def resolve_date(text, now, rules=None):
     if wd is not None:
         prev = tokens[wd_pos - 1] if wd_pos > 0 else ""
         if prev == "next" or (wd_pos > 1 and tokens[wd_pos - 2] == "next" and prev in ("on",)):
-            return exact(next_weekday(today, wd, rules.get("next", "following_week")), "next_weekday")
+            return exact(next_weekday(today, wd, _weekday_mode(rules.get("next"), "following_week")), "next_weekday")
         if prev == "this" or (wd_pos > 1 and tokens[wd_pos - 2] == "this"):
-            return exact(this_weekday(today, wd, rules.get("this", "current_week")), "this_weekday")
+            return exact(this_weekday(today, wd, _weekday_mode(rules.get("this"), "current_week")), "this_weekday")
         if re.search(r"\b(a week on|week on)\b", s):
-            return exact(bare_weekday(today, wd, rules.get("bare_weekday", "next_occurrence")) + timedelta(days=7), "week_on_weekday")
+            return exact(bare_weekday(today, wd, _weekday_mode(rules.get("bare_weekday"), "next_occurrence")) + timedelta(days=7), "week_on_weekday")
         if re.search(r"\bthe week after next\b", s):
-            return exact(next_weekday(today, wd, rules.get("next", "following_week")) + timedelta(days=7), "weekday_after_next")
-        return exact(bare_weekday(today, wd, rules.get("bare_weekday", "next_occurrence")), "bare_weekday")
+            return exact(next_weekday(today, wd, _weekday_mode(rules.get("next"), "following_week")) + timedelta(days=7), "weekday_after_next")
+        return exact(bare_weekday(today, wd, _weekday_mode(rules.get("bare_weekday"), "next_occurrence")), "bare_weekday")
     if _is_vague(s):
         return vague("period")
     return out

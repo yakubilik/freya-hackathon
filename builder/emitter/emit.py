@@ -22,6 +22,7 @@ import sys
 import urllib.parse
 
 from builder.engine.snippet import pack, render
+from builder.emitter import wire
 from builder.readers.api_file import parse_api
 from . import fragments as F
 from .fragments import EmitError
@@ -53,7 +54,14 @@ class Ctx:
         if not isinstance(rows, list) or not rows:
             raise EmitError("the table has no closing.rows")
         self.rows = rows
-        self.field_map = table.get("field_map") or {}
+        # the API's own field names for the engine's canonical ones: derived from the API file by type and name (the
+        # organisers keep the seven tool names, the fields and allowed values can change), the reader's map on top
+        self.field_map = wire.request_field_map(api)
+        for tool, m in (table.get("field_map") or {}).items():
+            if isinstance(m, dict):
+                self.field_map.setdefault(tool, {}).update({k: v for k, v in m.items() if isinstance(v, str)})
+        self.cid_field = wire.customer_id_field(api)
+        self.resp_map = wire.response_field_map(api)
         situations = self.param("situations") or {}
         self.has_callback = self.param("third_party.callback.window") is not None
         self.has_transfer = any(isinstance(s, dict) and s.get("transfer_queue") for s in situations.values())

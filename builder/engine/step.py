@@ -23,7 +23,7 @@ import re
 from .calendar import (parse_now, parse_date, iso, calendar_from_table, is_business_day,
                        eval_expr, ExprError, EvalError, CalendarError)
 from .dates import (resolve_date, resolve_time, resolve_amount_cents, to_cents, cents_to_number, money_text,
-                    parse_identity_date, parse_digits, parse_year, format_date_words)
+                    parse_identity_date, parse_digits, parse_year, format_date_words, _weekday_mode)
 
 SPEAKING_STAGES = ("party", "callback", "identity", "negotiate", "readback")
 DEBUG_RAISE = False   # tests may set this to see the traceback instead of the never-raise fallback
@@ -183,8 +183,10 @@ def _context(table, now):
     rules = {}
     tn = _param(C, "dates.this_next_rule") if _has_param(C, "dates.this_next_rule") else None
     if isinstance(tn, dict):
-        rules["this"] = "current_week" if "this_weekday" in str(tn.get("this", "")) else "forward"
-        rules["next"] = "following_week" if "next_weekday" in str(tn.get("next", "")) else "forward"
+        # the reader writes the rule as a small expression ("next_weekday(w)", or "this_weekday(w) if this_weekday(w) >
+        # today else next_weekday(w)" for "the first such weekday after today"); the resolver knows the modes
+        rules["this"] = _weekday_mode(tn.get("this"), "current_week")
+        rules["next"] = _weekday_mode(tn.get("next"), "following_week")
     else:
         rules["this_next_unspecified"] = True
     bw = _param(C, "dates.bare_weekday_rule") if _has_param(C, "dates.bare_weekday_rule") else None
@@ -1107,6 +1109,11 @@ def _verify_result(C, st, ev):
     if left is not None and left <= 0 and data.get("verified") is not True:
         over = True
     bank_wrong = (max_wrong - left) if (left is not None and isinstance(max_wrong, int)) else 0
+    wc = data.get("wrong_count")   # an API that counts wrong answers so far instead of answers left (wire normaliser)
+    if isinstance(wc, int) and not isinstance(wc, bool):
+        bank_wrong = max(bank_wrong, wc)
+        if isinstance(max_wrong, int) and wc >= max_wrong and data.get("verified") is not True:
+            over = True
     if over:
         # the bank says the check is over (no answers left): final, whatever else the answer carries
         ident["answer"] = None

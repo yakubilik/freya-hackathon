@@ -427,3 +427,46 @@ def test_dispatcher_falls_back_to_the_whole_message_when_words_are_missing(workf
     v = {"identity_reply1": "id_answer", "identity_words1": "", "identity_reply2": "question_back", "identity_raw": "8864. How much do I owe?", "engine_state": ""}
     exec(code, {"vars": v})
     assert json.loads(v["engine_events"])[0]["text"] is None   # two replies: the whole message is not one answer
+
+
+SYNTH = ROOT / "synthetic"
+
+
+@pytest.mark.parametrize("letter", ["C", "D"])
+def test_emit_handles_an_api_with_other_field_names(letter):
+    """The organisers keep the seven tool names; fields and allowed values change (README, "The final"). Synthetic briefs
+    C and D (frozen tables from the night's reads) have question/pay_date/callback_date/client_ref and other response
+    names; the emitter must map them, not raise."""
+    table_path = ROOT / "runs" / "synthetic" / ("build-%s" % letter) / "read" / "table.json"
+    if not table_path.exists():
+        pytest.skip("no frozen table for %s" % letter)
+    from builder.readers.api_file import parse_api
+    api_raw = json.load(open(SYNTH / letter / "api.json"))
+    api = parse_api(api_raw)
+    table = json.load(open(table_path))
+    wf = emit(table, api)
+    assert walk(wf, table, api_raw) == []
+    verify = wf["nodes"]["w_verify_identity"]["pre_actions"][0]["function"]["parameters"]["properties"]["body"]["properties"]
+    cid = "client_ref" if letter == "C" else "customer_id"
+    assert verify[cid]["default"] in ("{{customer_id}}", "{{%s}}" % cid) and verify["question"]["default"].startswith("{{wa_verify_identity__question")
+    if cid != "customer_id":   # the setup node makes both names carry the id, whichever the call variables bring
+        assert "vars['customer_id'] = vars.get('customer_id') or vars.get(%r)" % cid in wf["nodes"]["setup"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+
+
+def test_write_result_adds_canonical_response_names():
+    """Brief J's API answers passed/wrong_total/all_passed and lists debts with kind/amount_due/days_overdue/minimum;
+    the write_result node gives the engine verified/wrong_count/all_verified and products[].type/past_due/days_late."""
+    from builder.readers.api_file import parse_api
+    from builder.emitter.emit import Ctx
+    from builder.emitter import fragments as F
+    api = parse_api(json.load(open(SYNTH / "J" / "api.json")))
+    ctx = Ctx(TABLE_A, api, "https://x")
+    code = F.write_result(ctx).nodes["write_result"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+    v = {"write_tool": "verify_identity", "wr_body": json.dumps({"ok": True, "passed": False, "wrong_total": 2, "all_passed": False})}
+    exec(code, {"vars": v})
+    d = json.loads(v["engine_events"])[0]["data"]
+    assert d["verified"] is False and d["wrong_count"] == 2 and d["all_verified"] is False
+    v = {"write_tool": "get_account", "wr_body": json.dumps({"ok": True, "debts": [{"product_id": "p1", "kind": "credit_card", "amount_due": 95.5, "days_overdue": 4, "minimum": 30}]})}
+    exec(code, {"vars": v})
+    p = json.loads(v["engine_events"])[0]["data"]["products"][0]
+    assert p["type"] == "credit_card" and p["past_due"] == 95.5 and p["days_late"] == 4 and p["minimum_payment"] == 30

@@ -1623,3 +1623,15 @@ def test_nineteen_or_twenty_before_a_month_is_the_day():
     assert parse_identity_date("the twentieth of May 1990", "day_month_year")["value"] == "1990-05-20"
     assert parse_identity_date("nineteen ninety three", "day_month_year")["parts"] == {"year": 1993}
     assert parse_identity_date("Nineteen October nineteen eighty three. Nineteen October nineteen eighty three.", "day_month_year")["value"] == "1983-10-19"
+
+
+def test_next_weekday_rule_as_the_reader_writes_it():
+    """Brief C (synthetic) says "next Friday" is the first Friday after today; the reader writes the rule as a small
+    expression, not a mode name. Brief A's plain "next_weekday(w)" keeps the following-week reading."""
+    from builder.engine.dates import resolve_date
+    wed = "2026-10-14T10:00"
+    c_rule = {"this": "this_weekday(w) if this_weekday(w) > today else next_weekday(w)", "next": "this_weekday(w) if this_weekday(w) > today else next_weekday(w)"}
+    assert resolve_date("next Friday", wed, c_rule)["date"] == "2026-10-16"
+    assert resolve_date("next Friday", "2026-10-16T17:30", c_rule)["date"] == "2026-10-23"
+    assert resolve_date("next Friday", wed, {"this": "this_weekday(w)", "next": "next_weekday(w)"})["date"] == "2026-10-23"
+    assert resolve_date("this Friday", wed, {"this": "this_weekday(w)", "next": "next_weekday(w)"})["date"] == "2026-10-16"

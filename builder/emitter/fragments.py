@@ -145,8 +145,8 @@ SYSTEM_PROMPT = (
     "Rules for every step:\n"
     "- What to say is decided for you in the current step. Never decide amounts, days, outcomes or next steps yourself.\n"
     "- Never claim that something was done in the bank's systems unless your current step says it was. You cannot take "
-    "money, charge a card or process anything: never say money was taken or processed, never ask for card or banking "
-    "details. The bank only records when the customer will pay.\n"
+    "money or process anything: never say money was taken or processed, never ask for banking details. The bank only "
+    "records when the customer will pay.\n"
     "- Never offer a reduction, a waiver, an arrangement or any term your current step does not give you.\n"
     "- If asked something your step does not answer, say you do not have that information.\n"
     "- No tool call is allowed. Never end a turn with nothing.")
@@ -321,8 +321,14 @@ def write_var(tool, field):
 
 
 def call_var_defaults(ctx, tool):
-    """Body fields filled from call variables (customer_id): any request field named like a call variable."""
-    return {f: "{{%s}}" % f for f in ctx.api["tools"][tool]["request_fields"] if f in ctx.call_vars}
+    """Body fields filled from call variables: any request field named like a call variable, and the API's customer id
+    field (client_ref, account_no, ...) from the customer_id call variable."""
+    fields = ctx.api["tools"][tool]["request_fields"]
+    out = {f: "{{%s}}" % f for f in fields if f in ctx.call_vars}
+    cid = getattr(ctx, "cid_field", "customer_id")
+    if cid in fields and cid not in out and "customer_id" in ctx.call_vars:
+        out[cid] = "{{customer_id}}"
+    return out
 
 
 def engine_write_defaults(ctx, tool):
@@ -352,6 +358,11 @@ def setup(ctx, first):
             names.append(write_var(tool, ctx.field_map.get(tool, {}).get(key, key)))
     lines = ["vars[%r] = ''" % n for n in names]
     lines += ["vars['speech_buf'] = '[]'", "vars['last_stage'] = %r" % first]
+    cid = getattr(ctx, "cid_field", "customer_id")
+    if cid != "customer_id":
+        # the API calls the customer id client_ref / account_no / ...: whichever name the call variables carry, both are set
+        lines += ["vars[%r] = vars.get(%r) or vars.get('customer_id') or ''" % (cid, cid),
+                  "vars['customer_id'] = vars.get('customer_id') or vars.get(%r) or ''" % cid]
     code = "try:\n" + "\n".join("    " + ln for ln in lines) + "\nexcept Exception:\n    pass\n"
     return Fragment({"setup": code_node("setup", code, [always("engine")])})
 
@@ -634,7 +645,14 @@ vars['wr_body'] = ''
 
 
 def write_result(ctx):
-    return Fragment({"write_result": code_node("write_result", WRITE_RESULT, [always("engine")])})
+    """The write_result code node: the API's answer, with the engine's canonical response names added next to the
+    API's own (builder/emitter/wire.py), as one tool_result event."""
+    from builder.emitter.wire import NORMALISER
+    resp_map = getattr(ctx, "resp_map", None) or {}
+    literal = repr(resp_map).replace("{{", "{ {").replace("}}", "} }")   # a Python literal (json's null/true would not run)
+    code = ("_RESP_MAP = " + literal + "\n" + NORMALISER + "\n"
+            + WRITE_RESULT.replace("    ev = dict(kind='tool_result'", "    data = _wire_norm(tool, data)\n    ev = dict(kind='tool_result'", 1))
+    return Fragment({"write_result": code_node("write_result", code, [always("engine")])})
 
 
 def close_rows(ctx):
@@ -788,6 +806,8 @@ def _emit_route(v, pre):
         for key in cfg['write_vars'][tool]:
             if key in args:
                 val = args.get(key)
+                if val is not None and 'cents' in cfg['write_vars'][tool][key].split('__')[-1].lower() and isinstance(val, (int, float)) and not isinstance(val, bool):
+                    val = int(round(float(val) * 100))   # the API wants cents (amount_cents): the engine works in units
                 v[cfg['write_vars'][tool][key]] = '' if val is None else val
         v['write_tool'] = tool
         v['write_item'] = str(w.get('item_id') or '')
