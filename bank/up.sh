@@ -23,7 +23,10 @@ echo "bank up on http://0.0.0.0:$PORT/v1 (pid $(cat "$HERE/.pid"))"
 echo "http://127.0.0.1:$PORT" >"$HERE/.url"
 
 if [ "${BANK_TUNNEL:-0}" = "1" ] && command -v cloudflared >/dev/null 2>&1; then
-  nohup cloudflared tunnel --url "http://127.0.0.1:$PORT" --no-autoupdate >"$HERE/.tunnel.log" 2>&1 &
+  # an empty --config: this machine has a named tunnel in ~/.cloudflared whose settings would otherwise be loaded and
+  # the quick tunnel's URL would answer 404 (seen 2026-10-11)
+  : >"$HERE/.tunnel.empty.yml"
+  nohup cloudflared tunnel --config "$HERE/.tunnel.empty.yml" --url "http://127.0.0.1:$PORT" --no-autoupdate >"$HERE/.tunnel.log" 2>&1 &
   echo $! >"$HERE/.tunnel.pid"
   URL=""
   for _ in $(seq 1 120); do

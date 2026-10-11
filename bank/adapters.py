@@ -52,6 +52,8 @@ def _customer_id_field(ops):
         if cand in common: return cand
     for c in sorted(common):
         if "customer" in c.lower() or c.lower().endswith("id"): return c
+    if len(common) == 1:
+        return next(iter(common))   # the one field every tool shares is the customer id, whatever it is called (client_ref, account_no)
     return "customer_id"
 
 

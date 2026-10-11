@@ -394,8 +394,36 @@ def parse_args(argv=None):
     ap.add_argument("--base", action="append", default=[], help="a brief this one builds on (repeatable)")
     ap.add_argument("--no-deploy", action="store_true", help="stop after the local self-tests (offline run)")
     ap.add_argument("--no-platform-test", action="store_true")
+    ap.add_argument("--deploy-variant", choices=("final", "test"), default="final",
+                    help="deploy the test variant (tools on OWN_BANK_URL, our mock bank) instead of the final one; for our own tests only")
     ap.add_argument("--budget", type=float, default=TOTAL_S, help=argparse.SUPPRESS)
     return ap.parse_args(argv)
+
+
+BRIEF_FILE_ORDER = ("mail", "letter", "email", "policy", "procedure", "memo", "circular", "notice", "codes", "code")
+
+
+def join_brief_dir(d):
+    """A brief handed over as a directory of documents (the organisers' raw-material form: a mail, a policy extract, a
+    memo that changes it, a code list) is joined into one markdown file, documents separated by a rule, in reading
+    order: mail, policy, memo, codes, then any other file by name. The reader segments on headings, rules and mail or
+    memo markers and keeps every document's own date. Written next to the directory as <name>.joined.md."""
+    files = sorted(p for p in d.iterdir() if p.suffix.lower() in (".md", ".txt") and not p.name.lower().startswith(("readme", "review")))
+
+    def rank(p):
+        low = p.stem.lower()
+        for i, w in enumerate(BRIEF_FILE_ORDER):
+            if w in low:
+                return (i, low)
+        return (len(BRIEF_FILE_ORDER), low)
+
+    files.sort(key=rank)
+    if not files:
+        raise SystemExit("brief directory %s has no .md or .txt files" % d)
+    text = "\n\n---\n\n".join(p.read_text(encoding="utf-8").strip() + "\n" for p in files)
+    out = d.parent / (d.name + ".joined.md")
+    out.write_text(text, encoding="utf-8")
+    return out
 
 
 def run(argv=None, schedule=None):
@@ -403,6 +431,8 @@ def run(argv=None, schedule=None):
     schedule = schedule or Schedule(a.budget)
     started = _now_iso()
     brief_path, tools_path = pathlib.Path(a.brief).resolve(), pathlib.Path(a.tools).resolve()
+    if brief_path.is_dir():
+        brief_path = join_brief_dir(brief_path)
     bslug = slug(brief_path)
     run_id = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d-%H%M%S") + "-" + bslug
     out_dir = pathlib.Path(a.out_dir) if a.out_dir else ROOT / "runs" / run_id
@@ -593,6 +623,8 @@ def stage_emit(a, schedule, trace, manifest, table, api, raw_api):
     test_base_in = os.environ.get("OWN_BANK_URL") or TEST_PLACEHOLDER_BANK
     test_wf = emit(table, api, variant="test", bank_url=test_base_in)
     test_base = base_url_for(api, "test", test_base_in)
+    if getattr(a, "deploy_variant", "final") == "test":
+        trace.info("deploy variant: test (tools on %s); the final variant was built and walked as usual" % test_base)
     endpoint, other = variant_diff(wf, test_wf, final_base, test_base)
     manifest["variant_diff"] = {"endpoint_locations": len(endpoint), "other": [p for p, _, _ in other][:20],
                                 "test_bank": "OWN_BANK_URL" if os.environ.get("OWN_BANK_URL") else "placeholder"}
@@ -611,6 +643,8 @@ def stage_emit(a, schedule, trace, manifest, table, api, raw_api):
         trace.stage_end("emit", "T4")
         raise FloorTrigger("T4", "unsupported on every path: %s" % hits)
     trace.stage_end("emit", "ok")
+    if getattr(a, "deploy_variant", "final") == "test":
+        return test_wf, counts(test_wf)
     return wf, c
 
 
