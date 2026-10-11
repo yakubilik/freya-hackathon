@@ -1903,3 +1903,34 @@ def test_identity_service_failures_follow_the_table_retry_budget(retries, result
             assert out["writes"][0]["tool"] == "close_call"
             assert st["identity"]["state"] == "failed"
             assert "The verification service is unavailable." in out["mandatory_lines"]
+
+
+@pytest.mark.parametrize("verified_customer", [False, True])
+def test_immediate_hardship_transfer_uses_table_policy(verified_customer):
+    table = engine._copy(TABLE_A)
+    situation = table["parameters"]["situations"]["value"]["hardship"]
+    situation.update(offer="none", transfer_queue="care_team", voluntary_promise="drop")
+    for obligation in table["obligations"]:
+        if obligation["id"] == situation["obligation"]:
+            obligation["when"].update(state="any", stage_id=None)
+    table["parameters"]["transfer.unrecorded_rule"] = {"confidence": "not_specified"}
+    for row in table["parameters"]["closing.rows"]["value"]:
+        if "transfer_done:support" in row["triggers"]:
+            row.update(reason="care", triggers=["transfer_done:care_team"])
+    now = "2026-10-14T11:00"
+    st, _ = step(new_state(), [E("party_confirmed")], table, now)
+    if verified_customer:
+        st["identity"]["state"] = "verified"
+        st["stage"] = st["pending"] = "fetch"
+        st, _ = step(st, [{"kind": "tool_result", "tool": "get_account", "result": "ok",
+                          "data": {"ok": True, "products": [{"product_id": "alpha", "type": "personal_loan",
+                                   "past_due": 800, "days_late": 10, "instalment_amount": 160}]}}], table, now)
+    st, out = step(st, [E("hardship"), E("date_proposal", date="tomorrow")], table, now)
+    assert out["engine_next"] == "transfer"
+    assert [(w["tool"], w["args"]) for w in out["writes"]] == [("transfer_to_agent", {"queue": "care_team"})]
+    assert not st["global"]["support_offered"]
+    assert all(it["agreed"] is None for it in st["items"])
+    assert "transfer.unrecorded_rule" not in out["unsupported"]
+    st, out = step(st, [{"kind": "tool_result", "tool": "transfer_to_agent", "result": "ok",
+                        "data": {"ok": True}}], table, now)
+    assert [(w["tool"], w["args"]) for w in out["writes"]] == [("close_call", {"outcome": "transferred", "reason": "care"})]
