@@ -2305,3 +2305,17 @@ def test_declined_hardship_transfer_keeps_the_call_open_when_the_brief_continues
     # brief A: the decline closes the call
     st, led, calls, log = drive(base, case, verified(case) + [[E("hardship", text="I lost my job")], [E("refuse")]], TABLE_A)
     assert led["outcome"] == "no_promise" and led["reason"] == "hardship"
+
+
+def test_tiny_piece_after_a_wrong_year_is_joined(base):
+    """Synthetic H-04 (2026-10-11): the pieces customer said "nineteen seventy", which was sent and judged wrong, then "one".
+    The tail is read together with the rejected answer (1971) instead of as a new answer of its own."""
+    case = copy.deepcopy(PUBLIC["PUB-01"])
+    table = _with(TABLE_A, identity__questions=[{"id": "postcode", "wire_field": "postcode", "type": "text", "order": 1, "text": "postcode", "parse_rule": "upper case, no spaces"},
+                                                {"id": "birth_year", "wire_field": "birth_year", "type": "year", "order": 2, "text": "year of birth", "parse_rule": "four digits"}])
+    case["identity"] = {"postcode": "8142", "birth_year": "1971"}
+    st, led, calls, log = drive(base, case, [[E("party_confirmed")], [E("id_answer", text="eight one")], [E("id_answer", text="four two.")],
+                                             [E("id_answer", text="seventy-one")], [E("id_answer", text="nineteen seventy")], [E("id_answer", text="one")],
+                                             [E("pay_today_yes")], [E("confirm")]], table)
+    sent = [c[1].get("answer") for c in calls if c[0] == "verify_identity"]
+    assert sent == ["8142", "1970", "1971"] and st["identity"]["state"] == "verified" and led["outcome"] == "promise"

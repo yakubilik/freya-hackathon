@@ -1322,6 +1322,12 @@ def _normalise_text_answer(text, rule):
     return joined
 
 
+def _tiny_piece(text):
+    """One digit or one number word ("one", "seven", "42"): the tail of a number said in pieces, nothing else."""
+    toks = re.sub(r"[^\w\s-]", " ", str(text or "").lower()).replace("-", " ").split()
+    return len(toks) == 1 and (toks[0].isdigit() and len(toks[0]) <= 2 or toks[0] in _DIGIT_WORDS)
+
+
 def _identity_events(C, st, evs):
     ident = st["identity"]
     qs = _questions(C, st)
@@ -1338,6 +1344,13 @@ def _identity_events(C, st, evs):
             C["understood"] = True
             text = e.get("text") or e.get("span") or ""
             status, value = _parse_answer(q, text)
+            lw = ident.get("last_wrong") or dict()
+            if lw.get("qid") == qid and lw.get("text") and _tiny_piece(text):
+                # "nineteen seventy" was sent, judged wrong, and the customer adds "one": the pieces customer's second
+                # half (synthetic H-04, 2026-10-11); the two are read together before anything else
+                s2, v2 = _parse_answer(q, str(lw["text"]) + " " + text)
+                if s2 == "complete" and v2 != lw.get("value"):
+                    status, value = s2, v2
             if status != "complete":
                 prev = ident["partials"].get(qid)
                 if prev:
@@ -1352,7 +1365,9 @@ def _identity_events(C, st, evs):
                     ident["partials"][qid] = text
             if status == "complete":
                 ident["partials"].pop(qid, None)
-                ident["answer"] = {"qid": qid, "field": q.get("wire_field") or qid, "value": value}
+                ident["answer"] = {"qid": qid, "field": q.get("wire_field") or qid, "value": value,
+                                   "text": (str(lw["text"]) + " " + text) if (lw.get("qid") == qid and lw.get("text") and _tiny_piece(text)) else text}
+                ident["last_wrong"] = None
                 st["pending"] = "verify"
             else:
                 st["pending"] = "identity_rest" if ident["partials"].get(qid) else "identity_again"
@@ -1468,6 +1483,8 @@ def _verify_result(C, st, ev):
         st["pending"] = "identity_again"
         return
     hint_counts = isinstance(hint_rule, dict) and bool(hint_rule.get("counts_as_wrong", False))
+    if data.get("verified") is False and ans.get("text"):
+        ident["last_wrong"] = {"qid": qid, "text": ans.get("text"), "value": ans.get("value")}
     if data.get("verified") is False and (not data.get("hint") or hint_counts):
         # the engine keeps its own count of wrong answers and takes the stricter of the two counters: a bank whose
         # counter does not move (or counts per question) must not let a fourth wrong answer through, and a bank that
